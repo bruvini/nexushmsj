@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "pmj-hmsj"
+  },
+  "targets": {
+    "pmj-hmsj": {
+      "hosting": {
+        "app": [
+          "nexushmsj"
+        ]
+      }
+    }
+  }
+}

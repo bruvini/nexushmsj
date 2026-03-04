@@ -1,0 +1,1075 @@
+import { useState, useEffect } from 'react';
+import {
+  collection,
+  query,
+  onSnapshot,
+  doc,
+  updateDoc,
+  deleteDoc,
+  getDoc,
+} from 'firebase/firestore';
+import { db } from '../../../services/firebase';
+
+// IMPORTAÇÕES DO TOASTIFY
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
+export default function GestaoAihs() {
+  const [todasSolicitacoes, setTodasSolicitacoes] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [busca, setBusca] = useState('');
+
+  // ESTADOS DO MODAL DE DELEÇÃO
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [solicitacaoParaDeletar, setSolicitacaoParaDeletar] = useState(null);
+
+  // Controle dos Acordeões
+  const [grupoAberto, setGrupoAberto] = useState(
+    'Validação SISREG (Fila de Entrada)'
+  );
+
+  // Estados do Sidebar
+  const [sidebarAberto, setSidebarAberto] = useState(false);
+  const [solicitacaoAtiva, setSolicitacaoAtiva] = useState(null);
+  const [dadosPacienteAtivo, setDadosPacienteAtivo] = useState(null);
+
+  // Estados para o Parecer
+  const [numeroSisreg, setNumeroSisreg] = useState('');
+  const [decisao, setDecisao] = useState('');
+
+  // Campos dinâmicos dependendo da decisão
+  const [motivoDivergencia, setMotivoDivergencia] = useState('');
+  const [sisregOriginal, setSisregOriginal] = useState('');
+  const [dataSisregOriginal, setDataSisregOriginal] = useState('');
+  const [contraReferencia, setContraReferencia] = useState('');
+  const [unidadeReferencia, setUnidadeReferencia] = useState('');
+
+  // NOVOS CAMPOS PARA DECISÃO DA SES/SC
+  const [numeroMapaEstado, setNumeroMapaEstado] = useState('');
+  const [motivoNegativaSes, setMotivoNegativaSes] = useState('');
+
+  // 1. Busca TODAS as solicitações em Tempo Real (Ativas, Concluídas e Negadas)
+  useEffect(() => {
+    const q = query(collection(db, 'nexus_eletivas_solicitacoes'));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const lista = [];
+      querySnapshot.forEach((doc) => {
+        lista.push({ id: doc.id, ...doc.data() });
+      });
+      lista.sort(
+        (a, b) => new Date(a.dataSolicitacao) - new Date(b.dataSolicitacao)
+      );
+      setTodasSolicitacoes(lista);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const solicitacoesFiltradas = todasSolicitacoes.filter((sol) => {
+    if (busca.trim() === '') return true;
+    const termo = busca.toLowerCase();
+    return (
+      sol.nomePaciente?.toLowerCase().includes(termo) ||
+      sol.cns?.includes(termo) ||
+      sol.numeroSisreg?.includes(termo)
+    );
+  });
+
+  const grupos = [
+    {
+      titulo: 'Validação SISREG (Fila de Entrada)',
+      statusOriginais: ['VALIDAÇÃO SISREG'],
+      cor: 'amber',
+    },
+    {
+      titulo: 'Aprovadas / Aguarda Entrar no Mapa',
+      statusOriginais: ['AGUARDA ENTRAR NO MAPA'],
+      cor: 'emerald',
+    },
+    {
+      titulo: 'Devoluções por Divergência / Duplicidade',
+      statusOriginais: ['DIVERGENCIA ENCONTRADA', 'DUPLICIDADE'],
+      cor: 'red',
+    },
+    {
+      titulo: 'Casos Especiais (Deliberações CIB)',
+      statusOriginais: [
+        'DELIBERAÇÃO 66/CIB/2018',
+        'CONTINUIDADE DE ATENDIMENTO',
+        'TRAUMA-FRATURA',
+      ],
+      cor: 'purple',
+    },
+    {
+      titulo: 'Autorizadas (Mapa Cirúrgico Estadual)',
+      statusOriginais: ['AUTORIZADO MAPA CIRURGICO'],
+      cor: 'blue',
+    },
+    {
+      titulo: 'Negadas (SES/SC)',
+      statusOriginais: ['NEGADO SES/SC'],
+      cor: 'slate',
+    },
+  ];
+
+  const abrirDetalhes = async (solicitacao) => {
+    setSolicitacaoAtiva(solicitacao);
+    setNumeroSisreg(solicitacao.numeroSisreg || '');
+    setDecisao(solicitacao.status);
+
+    setMotivoDivergencia(solicitacao.motivoDivergencia || '');
+    setSisregOriginal(solicitacao.sisregOriginal || '');
+    setDataSisregOriginal(solicitacao.dataSisregOriginal || '');
+    setContraReferencia(solicitacao.contraReferencia || '');
+    setUnidadeReferencia(solicitacao.unidadeReferencia || '');
+    setNumeroMapaEstado(solicitacao.numeroMapaEstado || '');
+    setMotivoNegativaSes(solicitacao.motivoNegativaSes || '');
+
+    setSidebarAberto(true);
+
+    try {
+      const pacRef = doc(
+        db,
+        'nexus_eletivas_pacientes',
+        solicitacao.pacienteId
+      );
+      const pacSnap = await getDoc(pacRef);
+      if (pacSnap.exists()) setDadosPacienteAtivo(pacSnap.data());
+    } catch (error) {
+      console.error('Erro:', error);
+    }
+  };
+
+  const fecharSidebar = () => {
+    setSidebarAberto(false);
+    setTimeout(() => {
+      setSolicitacaoAtiva(null);
+      setDadosPacienteAtivo(null);
+    }, 300);
+  };
+
+  // --- FUNÇÕES DO MODAL DE DELEÇÃO ---
+  const handleClickDeletar = (e, sol) => {
+    e.stopPropagation(); // Impede que o clique na lixeira abra o sidebar
+    setSolicitacaoParaDeletar(sol);
+    setShowDeleteModal(true);
+  };
+
+  const cancelarDelecao = () => {
+    setShowDeleteModal(false);
+    setSolicitacaoParaDeletar(null);
+  };
+
+  const confirmarDelecao = async () => {
+    if (!solicitacaoParaDeletar) return;
+
+    setShowDeleteModal(false);
+    setLoading(true);
+
+    try {
+      await deleteDoc(
+        doc(db, 'nexus_eletivas_solicitacoes', solicitacaoParaDeletar.id)
+      );
+      if (solicitacaoAtiva?.id === solicitacaoParaDeletar.id) fecharSidebar();
+      toast.success('Solicitação excluída permanentemente.');
+    } catch (error) {
+      toast.error('Erro ao excluir solicitação do banco de dados.');
+    } finally {
+      setLoading(false);
+      setSolicitacaoParaDeletar(null);
+    }
+  };
+
+  const salvarParecerRegulacao = async (e) => {
+    e.preventDefault();
+
+    if (decisao === 'DIVERGENCIA ENCONTRADA' && !motivoDivergencia)
+      return toast.warning('Descreva a divergência encontrada.');
+    if (decisao === 'DUPLICIDADE' && (!sisregOriginal || !dataSisregOriginal))
+      return toast.warning('Informe o número do SISREG original e a data.');
+    if (
+      decisao === 'DELIBERAÇÃO 66/CIB/2018' &&
+      (!contraReferencia || !unidadeReferencia)
+    )
+      return toast.warning('Informe a contrarreferência e a unidade.');
+    if (decisao === 'AUTORIZADO MAPA CIRURGICO' && !numeroMapaEstado)
+      return toast.warning(
+        'Informe o número da solicitação no mapa do estado.'
+      );
+    if (decisao === 'NEGADO SES/SC' && !motivoNegativaSes)
+      return toast.warning('Informe o motivo da negativa da SES.');
+
+    setLoading(true);
+    try {
+      const dataHoraAtual = new Date().toLocaleString('pt-BR');
+      const solRef = doc(
+        db,
+        'nexus_eletivas_solicitacoes',
+        solicitacaoAtiva.id
+      );
+
+      // Define a 'situacao' macro baseada no status escolhido
+      let novaSituacao = 'ATIVA';
+      if (decisao === 'AUTORIZADO MAPA CIRURGICO') novaSituacao = 'CONCLUÍDA';
+      if (decisao === 'NEGADO SES/SC') novaSituacao = 'NEGADO';
+
+      const payloadAtualizacao = {
+        numeroSisreg: numeroSisreg.trim(),
+        status: decisao,
+        situacao: novaSituacao,
+      };
+
+      if (!solicitacaoAtiva.numeroSisreg && numeroSisreg.trim() !== '') {
+        payloadAtualizacao.dataInclusaoSisreg = dataHoraAtual;
+      }
+
+      // Adiciona os campos específicos da decisão
+      if (decisao === 'DIVERGENCIA ENCONTRADA')
+        payloadAtualizacao.motivoDivergencia = motivoDivergencia.trim();
+      if (decisao === 'DUPLICIDADE') {
+        payloadAtualizacao.sisregOriginal = sisregOriginal.trim();
+        payloadAtualizacao.dataSisregOriginal = dataSisregOriginal;
+      }
+      if (decisao === 'DELIBERAÇÃO 66/CIB/2018') {
+        payloadAtualizacao.contraReferencia = contraReferencia.trim();
+        payloadAtualizacao.unidadeReferencia = unidadeReferencia.trim();
+      }
+      if (decisao === 'AUTORIZADO MAPA CIRURGICO')
+        payloadAtualizacao.numeroMapaEstado = numeroMapaEstado.trim();
+      if (decisao === 'NEGADO SES/SC')
+        payloadAtualizacao.motivoNegativaSes = motivoNegativaSes.trim();
+
+      if (solicitacaoAtiva.status !== decisao) {
+        const historicoAntigo = solicitacaoAtiva.historico || [];
+
+        let detalhesExtra = '';
+        if (decisao === 'DIVERGENCIA ENCONTRADA')
+          detalhesExtra = `Motivo: ${motivoDivergencia.trim()}`;
+        if (decisao === 'DUPLICIDADE')
+          detalhesExtra = `SISREG Original: ${sisregOriginal}`;
+        if (decisao === 'DELIBERAÇÃO 66/CIB/2018')
+          detalhesExtra = `Olostech: ${contraReferencia} / Unid: ${unidadeReferencia}`;
+        if (decisao === 'AUTORIZADO MAPA CIRURGICO')
+          detalhesExtra = `Nº Mapa Estadual: ${numeroMapaEstado.trim()}`;
+        if (decisao === 'NEGADO SES/SC')
+          detalhesExtra = `Motivo SES: ${motivoNegativaSes.trim()}`;
+
+        const novaLinhaHistorico = {
+          dataHora: dataHoraAtual,
+          de: solicitacaoAtiva.status,
+          para: decisao,
+          usuario: 'Regulador',
+          detalhes: detalhesExtra,
+        };
+
+        payloadAtualizacao.historico = [...historicoAntigo, novaLinhaHistorico];
+      }
+
+      await updateDoc(solRef, payloadAtualizacao);
+      toast.success(
+        'Parecer salvo com sucesso! O paciente foi movido de fila.'
+      );
+      fecharSidebar();
+    } catch (error) {
+      toast.error('Erro ao salvar o parecer no banco de dados.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatarData = (d) => {
+    if (!d) return '';
+    const [ano, mes, dia] = d.split('-');
+    return `${dia}/${mes}/${ano}`;
+  };
+
+  return (
+    <div className="flex flex-col h-full relative pb-4 text-nexus-text">
+      <ToastContainer position="top-right" theme="colored" />
+
+      {/* OVERLAY DE CARREGAMENTO GLOBAL */}
+      {loading && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-nexus-bg/70 backdrop-blur-sm transition-opacity">
+          <div className="bg-nexus-card p-8 rounded-2xl shadow-2xl flex flex-col items-center max-w-sm w-full mx-4 animate-[fadeIn_0.2s_ease-in-out]">
+            <div className="w-14 h-14 border-4 border-nexus-border border-t-nexus-primary rounded-full animate-spin mb-4"></div>
+            <h3 className="text-lg font-bold text-nexus-text mb-1">
+              Processando...
+            </h3>
+            <p className="text-sm text-nexus-text/70 text-center">
+              Atualizando os dados no sistema, aguarde.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE DELEÇÃO CUSTOMIZADO */}
+      {showDeleteModal && solicitacaoParaDeletar && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-nexus-bg/70 backdrop-blur-sm transition-opacity">
+          <div className="bg-nexus-card border border-nexus-border rounded-2xl shadow-2xl max-w-md w-full p-6 mx-4 animate-[fadeIn_0.2s_ease-in-out]">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mb-4">
+                <svg
+                  className="w-8 h-8"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-nexus-text mb-2">
+                Excluir Solicitação?
+              </h3>
+              <p className="text-nexus-text/80 text-sm mb-6">
+                Tem certeza que deseja excluir a solicitação de{' '}
+                <span className="font-bold text-nexus-text uppercase">
+                  {solicitacaoParaDeletar.nomePaciente}
+                </span>
+                ? Essa ação não apaga o cadastro do paciente, mas a{' '}
+                <strong>solicitação será removida permanentemente</strong>.
+              </p>
+              <div className="flex w-full gap-3">
+                <button
+                  onClick={cancelarDelecao}
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-nexus-text font-medium py-2.5 rounded-xl transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmarDelecao}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 rounded-xl transition-shadow shadow-md shadow-red-600/20"
+                >
+                  Excluir Definitivamente
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-nexus-text">
+            Painel de Gestão e Pareceres
+          </h2>
+          <p className="text-sm text-nexus-text/70">
+            Listagem de solicitações ativas, concluídas e negadas agrupadas por
+            status.
+          </p>
+        </div>
+
+        <div className="relative w-full md:w-96 shrink-0">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg
+              className="h-5 w-5 text-slate-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </div>
+          <input
+            type="text"
+            placeholder="Buscar Nome, CNS ou SISREG..."
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            className="w-full bg-nexus-card border border-nexus-border text-nexus-text rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-nexus-primary/50 shadow-sm transition-shadow"
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 max-w-6xl mx-auto w-full">
+        {grupos.map((grupo, index) => {
+          const solicitacoesDoGrupo = solicitacoesFiltradas.filter((sol) =>
+            grupo.statusOriginais.includes(sol.status)
+          );
+          const isOpen = grupoAberto === grupo.titulo;
+
+          // As cores semânticas foram mantidas pois são essenciais para indicar a urgência/status do acordeão
+          const bgColors = {
+            amber:
+              'bg-amber-100/50 hover:bg-amber-100 text-amber-800 border-amber-200',
+            emerald:
+              'bg-emerald-100/50 hover:bg-emerald-100 text-emerald-800 border-emerald-200',
+            red: 'bg-red-100/50 hover:bg-red-100 text-red-800 border-red-200',
+            purple:
+              'bg-purple-100/50 hover:bg-purple-100 text-purple-800 border-purple-200',
+            blue: 'bg-blue-100/50 hover:bg-blue-100 text-blue-800 border-blue-200',
+            slate:
+              'bg-slate-100/50 hover:bg-slate-100 text-slate-800 border-slate-200',
+          };
+          const dotColors = {
+            amber: 'bg-amber-500',
+            emerald: 'bg-emerald-500',
+            red: 'bg-red-500',
+            purple: 'bg-purple-500',
+            blue: 'bg-blue-500',
+            slate: 'bg-slate-500',
+          };
+
+          return (
+            <div
+              key={index}
+              className="bg-nexus-card border border-nexus-border rounded-2xl overflow-hidden shadow-sm transition-all"
+            >
+              <button
+                onClick={() => setGrupoAberto(isOpen ? '' : grupo.titulo)}
+                className={`w-full px-6 py-4 flex items-center justify-between border-b transition-colors ${
+                  bgColors[grupo.cor]
+                } ${!isOpen && 'border-transparent'}`}
+              >
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`w-3 h-3 rounded-full ${
+                      dotColors[grupo.cor]
+                    } shadow-sm`}
+                  ></span>
+                  <h3 className="font-bold text-base uppercase tracking-wide">
+                    {grupo.titulo}
+                  </h3>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="bg-white/60 font-bold px-3 py-1 rounded-full text-sm backdrop-blur-sm">
+                    {solicitacoesDoGrupo.length}
+                  </span>
+                  <svg
+                    className={`w-5 h-5 transition-transform duration-300 ${
+                      isOpen ? 'rotate-180' : ''
+                    }`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              </button>
+
+              {isOpen && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm text-nexus-text whitespace-nowrap">
+                    <thead className="bg-slate-50 text-xs text-nexus-text/70 font-medium border-b border-nexus-border">
+                      <tr>
+                        <th className="px-6 py-3">Nome Completo / CNS</th>
+                        <th className="px-6 py-3">SISREG</th>
+                        <th className="px-6 py-3">Solicitado Em</th>
+                        <th className="px-6 py-3">Especialidade / Médico</th>
+                        <th className="px-6 py-3">Status Interno</th>
+                        <th className="px-6 py-3">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-nexus-border/50">
+                      {solicitacoesDoGrupo.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan="6"
+                            className="px-6 py-8 text-center text-nexus-text/50"
+                          >
+                            Nenhuma solicitação nesta etapa.
+                          </td>
+                        </tr>
+                      ) : (
+                        solicitacoesDoGrupo.map((sol) => (
+                          <tr
+                            key={sol.id}
+                            className="hover:bg-slate-50 transition-colors group cursor-pointer"
+                            onClick={() => abrirDetalhes(sol)}
+                          >
+                            <td className="px-6 py-3">
+                              <div className="font-bold text-nexus-text flex items-center gap-2">
+                                {sol.nomePaciente}
+                                {sol.prioridade === 'SIM' && (
+                                  <span className="bg-red-100 text-red-700 text-[9px] px-1.5 py-0.5 rounded animate-pulse">
+                                    URGENTE
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-nexus-text/50 font-mono mt-0.5">
+                                {sol.cns}
+                              </div>
+                            </td>
+                            <td className="px-6 py-3 font-mono font-bold text-nexus-text">
+                              {sol.numeroSisreg || (
+                                <span className="text-nexus-text/40 font-medium italic text-xs">
+                                  Pendente
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-6 py-3 text-nexus-text/70">
+                              {formatarData(sol.dataSolicitacao)}
+                            </td>
+                            <td className="px-6 py-3">
+                              <div className="font-medium text-nexus-text">
+                                {sol.especialidade}
+                              </div>
+                              <div className="text-[11px] text-nexus-text/60 line-clamp-1">
+                                {sol.medico}
+                              </div>
+                            </td>
+                            <td className="px-6 py-3">
+                              <span className="bg-slate-100 text-slate-600 font-bold px-2 py-1 rounded text-[10px] uppercase border border-slate-200">
+                                {sol.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-3 flex items-center gap-2">
+                              <button
+                                onClick={(e) => handleClickDeletar(e, sol)}
+                                className="text-slate-300 hover:text-red-500 p-1.5 transition-colors"
+                                title="Excluir"
+                              >
+                                <svg
+                                  className="w-5 h-5"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {sidebarAberto && (
+        <div
+          className="fixed inset-0 bg-nexus-bg/50 backdrop-blur-sm z-40 transition-opacity"
+          onClick={fecharSidebar}
+        ></div>
+      )}
+
+      <div
+        className={`fixed top-0 right-0 h-full w-full max-w-[480px] bg-nexus-card shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${
+          sidebarAberto ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        {solicitacaoAtiva && (
+          <>
+            <div className="px-6 py-4 border-b border-nexus-border flex justify-between items-center bg-slate-50">
+              <h3 className="font-bold text-nexus-text text-lg flex items-center gap-2">
+                <svg
+                  className="w-5 h-5 text-nexus-primary"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                Auditoria de AIH
+              </h3>
+              <button
+                onClick={fecharSidebar}
+                className="p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-700 rounded-full transition-colors"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-8 custom-scrollbar pb-8">
+              <section>
+                <h4 className="text-xs font-bold text-nexus-primary uppercase tracking-widest mb-3 border-b border-slate-100 pb-1 flex items-center gap-2">
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                  Informações do Paciente
+                </h4>
+                {dadosPacienteAtivo ? (
+                  <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div className="col-span-2">
+                      <p className="text-[10px] text-slate-500 uppercase">
+                        Nome Completo
+                      </p>
+                      <p className="font-bold text-nexus-text text-sm">
+                        {dadosPacienteAtivo.nome}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-slate-500 uppercase">
+                        Cartão SUS (CNS)
+                      </p>
+                      <p className="font-mono text-nexus-text text-sm">
+                        {dadosPacienteAtivo.cns}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-slate-500 uppercase">
+                        Nascimento
+                      </p>
+                      <p className="text-nexus-text text-sm">
+                        {formatarData(dadosPacienteAtivo.dataNascimento)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-slate-500 uppercase">
+                        Município
+                      </p>
+                      <p className="text-nexus-text text-sm">
+                        {dadosPacienteAtivo.cidade}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-slate-500 uppercase">
+                        Sexo
+                      </p>
+                      <p className="text-nexus-text text-sm">
+                        {dadosPacienteAtivo.sexo === 'M'
+                          ? 'MASCULINO'
+                          : 'FEMININO'}
+                      </p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-[10px] text-slate-500 uppercase">
+                        Nome da Mãe
+                      </p>
+                      <p className="text-nexus-text text-sm truncate">
+                        {dadosPacienteAtivo.nomeMae}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-slate-400 text-sm">
+                    Carregando paciente...
+                  </div>
+                )}
+              </section>
+
+              <section>
+                <h4 className="text-xs font-bold text-nexus-primary uppercase tracking-widest mb-3 border-b border-slate-100 pb-1 flex items-center gap-2">
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  Detalhes da Solicitação
+                </h4>
+                <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200 relative overflow-hidden">
+                  {solicitacaoAtiva.prioridade === 'SIM' && (
+                    <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg">
+                      URGENTE
+                    </div>
+                  )}
+                  <div className="col-span-2 mt-2">
+                    <p className="text-[10px] text-slate-500 uppercase">
+                      Procedimento (SIGTAP)
+                    </p>
+                    <p className="font-bold text-nexus-text text-sm leading-tight">
+                      {solicitacaoAtiva.codigoProcedimento} -{' '}
+                      {solicitacaoAtiva.descricaoProcedimento}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-500 uppercase">
+                      CID 10
+                    </p>
+                    <p className="font-mono text-nexus-text text-sm">
+                      {solicitacaoAtiva.cid}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-500 uppercase">
+                      Data do Pedido
+                    </p>
+                    <p className="text-nexus-text text-sm">
+                      {formatarData(solicitacaoAtiva.dataSolicitacao)}
+                    </p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-[10px] text-slate-500 uppercase">
+                      Origem
+                    </p>
+                    <p className="text-nexus-text text-sm">
+                      {solicitacaoAtiva.origem}
+                    </p>
+                  </div>
+                  {solicitacaoAtiva.origem !== 'PAM Boa Vista' && (
+                    <>
+                      <div>
+                        <p className="text-[10px] text-slate-500 uppercase">
+                          Prontuário
+                        </p>
+                        <p className="text-nexus-text text-sm">
+                          {solicitacaoAtiva.prontuario}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-slate-500 uppercase">
+                          Nº Consulta
+                        </p>
+                        <p className="text-nexus-text text-sm">
+                          {solicitacaoAtiva.consulta}
+                        </p>
+                      </div>
+                    </>
+                  )}
+                  <div className="col-span-2 pt-2 border-t border-slate-200">
+                    <p className="text-[10px] text-slate-500 uppercase">
+                      Médico e Especialidade
+                    </p>
+                    <p className="text-nexus-text text-sm font-medium">
+                      {solicitacaoAtiva.medico}{' '}
+                      <span className="text-slate-400 font-normal">
+                        | {solicitacaoAtiva.especialidade}
+                      </span>
+                    </p>
+                  </div>
+
+                  {/* Informações pós-decisão mostradas na leitura */}
+                  {solicitacaoAtiva.numeroMapaEstado && (
+                    <div className="col-span-2 pt-2 border-t border-slate-200">
+                      <p className="text-[10px] text-slate-500 uppercase">
+                        Nº Mapa Estadual (SES/SC)
+                      </p>
+                      <p className="text-nexus-primary font-mono font-bold text-sm">
+                        {solicitacaoAtiva.numeroMapaEstado}
+                      </p>
+                    </div>
+                  )}
+                  {solicitacaoAtiva.motivoNegativaSes && (
+                    <div className="col-span-2 pt-2 border-t border-slate-200">
+                      <p className="text-[10px] text-slate-500 uppercase">
+                        Motivo Negativa SES
+                      </p>
+                      <p className="text-red-600 font-medium text-sm">
+                        {solicitacaoAtiva.motivoNegativaSes}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <section>
+                <h4 className="text-xs font-bold text-nexus-primary uppercase tracking-widest mb-3 flex items-center gap-2 border-b border-slate-100 pb-1">
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  Linha do Tempo
+                </h4>
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 flex flex-col gap-3">
+                  {solicitacaoAtiva.historico &&
+                  solicitacaoAtiva.historico.length > 0 ? (
+                    solicitacaoAtiva.historico.map((hist, idx) => (
+                      <div
+                        key={idx}
+                        className="relative pl-4 border-l-2 border-slate-300"
+                      >
+                        <div className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-slate-400"></div>
+                        <p className="text-[10px] text-slate-400 font-mono">
+                          {hist.dataHora} • {hist.usuario}
+                        </p>
+                        <p className="text-xs font-medium text-nexus-text mt-0.5">
+                          <span className="text-slate-400 line-through mr-1">
+                            {hist.de}
+                          </span>{' '}
+                          ➔{' '}
+                          <span className="text-nexus-primary font-bold ml-1">
+                            {hist.para}
+                          </span>
+                        </p>
+                        {hist.detalhes && (
+                          <p className="text-[11px] text-red-600 mt-1 italic border-l-2 border-red-200 pl-2">
+                            {hist.detalhes}
+                          </p>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-slate-400 italic">
+                      Nenhum histórico registrado.
+                    </p>
+                  )}
+                </div>
+              </section>
+
+              <section className="mt-auto">
+                <h4 className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-3 flex items-center gap-2 border-b border-amber-100 pb-1">
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
+                  </svg>
+                  Ação / Parecer da Regulação
+                </h4>
+                <form
+                  onSubmit={salvarParecerRegulacao}
+                  className="bg-amber-50 p-5 rounded-xl border border-amber-200 flex flex-col gap-4 shadow-sm"
+                >
+                  <div>
+                    <label className="block text-xs font-bold text-amber-800 mb-1">
+                      Número do SISREG
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: 123456789"
+                      value={numeroSisreg}
+                      onChange={(e) =>
+                        setNumeroSisreg(e.target.value.replace(/\D/g, ''))
+                      }
+                      className="w-full bg-white border border-amber-300 text-nexus-text rounded-lg px-4 py-2 font-mono focus:ring-2 focus:ring-amber-500"
+                    />
+                    {solicitacaoAtiva.dataInclusaoSisreg && (
+                      <p className="text-[10px] text-amber-600 mt-1">
+                        Lançado em: {solicitacaoAtiva.dataInclusaoSisreg}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-amber-800 mb-1">
+                      Alterar Status do Pedido
+                    </label>
+                    <select
+                      value={decisao}
+                      onChange={(e) => setDecisao(e.target.value)}
+                      className="w-full bg-white border border-amber-300 rounded-lg px-3 py-2.5 text-sm font-medium text-nexus-text focus:ring-2 focus:ring-amber-500"
+                    >
+                      <option value="VALIDAÇÃO SISREG">
+                        PENDENTE - Validação SISREG
+                      </option>
+                      <option value="AGUARDA ENTRAR NO MAPA">
+                        APROVADA - Aguarda entrar no mapa
+                      </option>
+                      <option value="AUTORIZADO MAPA CIRURGICO">
+                        CONCLUÍDA - Autorizado Mapa SES/SC
+                      </option>
+                      <option value="NEGADO SES/SC">
+                        NEGADA - Rejeitada pela SES/SC
+                      </option>
+                      <option value="DUPLICIDADE">
+                        DEVOLVER - Duplicidade identificada
+                      </option>
+                      <option value="DIVERGENCIA ENCONTRADA">
+                        DEVOLVER - Divergência CID/Procedimento
+                      </option>
+                      <option value="DELIBERAÇÃO 66/CIB/2018">
+                        RETER - Deliberação 66/CIB/2018 (Anexo 1)
+                      </option>
+                      <option value="CONTINUIDADE DE ATENDIMENTO">
+                        RETER - Continuidade Atend. (Anexo 5)
+                      </option>
+                      <option value="TRAUMA-FRATURA">
+                        RETER - Trauma/Fratura (Anexo 4)
+                      </option>
+                    </select>
+                  </div>
+
+                  {decisao === 'DIVERGENCIA ENCONTRADA' && (
+                    <div className="animate-[fadeIn_0.2s_ease-in-out]">
+                      <label className="block text-xs font-bold text-red-700 mb-1">
+                        Detalhes da Divergência (Obrigatório)
+                      </label>
+                      <textarea
+                        required
+                        rows="2"
+                        placeholder="Descreva a divergência encontrada..."
+                        value={motivoDivergencia}
+                        onChange={(e) => setMotivoDivergencia(e.target.value)}
+                        className="w-full bg-white border border-red-300 text-nexus-text rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 resize-none"
+                      ></textarea>
+                    </div>
+                  )}
+
+                  {decisao === 'DUPLICIDADE' && (
+                    <div className="animate-[fadeIn_0.2s_ease-in-out] grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-red-700 mb-1">
+                          SISREG Original
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={sisregOriginal}
+                          onChange={(e) =>
+                            setSisregOriginal(e.target.value.replace(/\D/g, ''))
+                          }
+                          className="w-full bg-white border border-red-300 text-nexus-text rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500"
+                          placeholder="Nº Antigo"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-red-700 mb-1">
+                          Data Original
+                        </label>
+                        <input
+                          type="date"
+                          required
+                          value={dataSisregOriginal}
+                          onChange={(e) =>
+                            setDataSisregOriginal(e.target.value)
+                          }
+                          className="w-full bg-white border border-red-300 text-nexus-text rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {decisao === 'DELIBERAÇÃO 66/CIB/2018' && (
+                    <div className="animate-[fadeIn_0.2s_ease-in-out] grid grid-cols-1 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-purple-700 mb-1">
+                          Nº Contrarreferência (Olostech)
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={contraReferencia}
+                          onChange={(e) => setContraReferencia(e.target.value)}
+                          className="w-full bg-white border border-purple-300 text-nexus-text rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 uppercase"
+                          placeholder="Ex: 12345"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-purple-700 mb-1">
+                          Unidade de Referência
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={unidadeReferencia}
+                          onChange={(e) => setUnidadeReferencia(e.target.value)}
+                          className="w-full bg-white border border-purple-300 text-nexus-text rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 uppercase"
+                          placeholder="Ex: UBS Fátima"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Campos Dinâmicos: Mapa SES/SC */}
+                  {decisao === 'AUTORIZADO MAPA CIRURGICO' && (
+                    <div className="animate-[fadeIn_0.2s_ease-in-out]">
+                      <label className="block text-xs font-bold text-blue-700 mb-1">
+                        Nº da Solicitação no Mapa do Estado
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={numeroMapaEstado}
+                        onChange={(e) =>
+                          setNumeroMapaEstado(e.target.value.replace(/\D/g, ''))
+                        }
+                        className="w-full bg-white border border-blue-300 text-nexus-text rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                        placeholder="Ex: 987654"
+                      />
+                    </div>
+                  )}
+
+                  {decisao === 'NEGADO SES/SC' && (
+                    <div className="animate-[fadeIn_0.2s_ease-in-out]">
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Motivo da Negativa SES
+                      </label>
+                      <textarea
+                        required
+                        rows="2"
+                        placeholder="Descreva o motivo informado pela SES..."
+                        value={motivoNegativaSes}
+                        onChange={(e) => setMotivoNegativaSes(e.target.value)}
+                        className="w-full bg-white border border-slate-300 text-nexus-text rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-500 resize-none"
+                      ></textarea>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={
+                      loading ||
+                      (decisao === solicitacaoAtiva.status &&
+                        numeroSisreg === (solicitacaoAtiva.numeroSisreg || ''))
+                    }
+                    className="w-full bg-nexus-primary hover:bg-opacity-90 text-white font-bold py-3 mt-2 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading
+                      ? 'Salvando...'
+                      : decisao === solicitacaoAtiva.status
+                      ? 'Atualizar Número do SISREG'
+                      : 'Gravar Parecer e Mover Paciente'}
+                  </button>
+                </form>
+              </section>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
