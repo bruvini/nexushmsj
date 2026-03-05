@@ -52,6 +52,7 @@ export default function PainelKanban() {
   const [filtroRetaguarda, setFiltroRetaguarda] = useState(false);
   const [filtroAlta, setFiltroAlta] = useState(false);
   const [filtroTrauma, setFiltroTrauma] = useState(false);
+  const [filtroMedicacao, setFiltroMedicacao] = useState(false);
 
   // Estados dos Modais Interativos
   const [modalNotasPaciente, setModalNotasPaciente] = useState(null);
@@ -149,6 +150,18 @@ export default function PainelKanban() {
       p.diasInternado = dias;
       p.corKanban = pKanban;
 
+      // Adicionando a contagem de medicação proativamente para uso global 
+      let isAlertaMedicacao = false;
+      if (p.medicacoes_curso && p.medicacoes_curso.length > 0) {
+        isAlertaMedicacao = p.medicacoes_curso.some(med => {
+          const inicio = new Date(med.data_inicio + "T00:00:00");
+          const dif = Math.max(0, hoje - inicio);
+          const passados = Math.ceil(dif / (1000 * 60 * 60 * 24));
+          return passados >= med.duracao_dias;
+        });
+      }
+      p.isAlertaMedicacao = isAlertaMedicacao;
+
       const setorLimpo = String(p.setor).toUpperCase().trim();
       p.exigeSisreg = SETORES_URGENCIA.includes(setorLimpo);
       p.semSisreg = p.exigeSisreg && (!p.numeroSisreg || p.numeroSisreg.trim() === "");
@@ -170,6 +183,7 @@ export default function PainelKanban() {
       if (filtroRetaguarda && !p.perfil_retaguarda?.active) valid = false;
       if (filtroAlta && !p.provavel_alta?.active) valid = false;
       if (filtroTrauma && !p.fluxo_trauma?.active) valid = false;
+      if (filtroMedicacao && (!p.medicacoes_curso || p.medicacoes_curso.length === 0)) valid = false;
       if (dataInicio && dInt < new Date(dataInicio + "T00:00:00")) valid = false;
       if (dataFim && dInt > new Date(dataFim + "T23:59:59")) valid = false;
 
@@ -193,7 +207,7 @@ export default function PainelKanban() {
       setoresAgrupados: mapAgrupado,
       setoresDisponiveis: Array.from(listaSetores).sort()
     };
-  }, [pacientes, busca, filtroSetor, filtroKanban, dataInicio, dataFim, filtroSisreg, filtroNotas, filtroEmad, filtroRetaguarda, filtroAlta, filtroTrauma]);
+  }, [pacientes, busca, filtroSetor, filtroKanban, dataInicio, dataFim, filtroSisreg, filtroNotas, filtroEmad, filtroRetaguarda, filtroAlta, filtroTrauma, filtroMedicacao]);
 
   // 3. AÇÕES DE BANCO DE DADOS (NOTAS E SISREG)
   const salvarNota = async () => {
@@ -391,7 +405,7 @@ export default function PainelKanban() {
     <div className="flex flex-col h-full gap-6 text-nexus-text relative">
 
       {/* ToastContainer Configurado para Tema LIGHT (Sem o verde fluorescente) */}
-      <ToastContainer position="top-right" theme="light" />
+      <ToastContainer position="top-right" theme="light" className="!z-[99999]" />
 
       {/* Barra Superior */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -541,11 +555,11 @@ export default function PainelKanban() {
             </label>
             <label className="flex items-center cursor-pointer gap-2 group border-l pl-4 sm:pl-6 border-slate-200">
               <div className="relative">
-                <input type="checkbox" checked={filtroTrauma} onChange={() => setFiltroTrauma(!filtroTrauma)} className="sr-only" />
-                <div className={`block w-10 h-5 rounded-full transition-colors ${filtroTrauma ? 'bg-amber-500' : 'bg-slate-300'}`}></div>
-                <div className={`dot absolute left-1 top-0.5 bg-white w-4 h-4 rounded-full transition-transform ${filtroTrauma ? 'transform translate-x-4' : ''} shadow-sm`}></div>
+                <input type="checkbox" checked={filtroMedicacao} onChange={() => setFiltroMedicacao(!filtroMedicacao)} className="sr-only" />
+                <div className={`block w-10 h-5 rounded-full transition-colors ${filtroMedicacao ? 'bg-indigo-500' : 'bg-slate-300'}`}></div>
+                <div className={`dot absolute left-1 top-0.5 bg-white w-4 h-4 rounded-full transition-transform ${filtroMedicacao ? 'transform translate-x-4' : ''} shadow-sm`}></div>
               </div>
-              <span className={`text-[10px] font-black uppercase tracking-wider transition-colors ${filtroTrauma ? 'text-amber-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Fluxo Trauma</span>
+              <span className={`text-[10px] font-black uppercase tracking-wider transition-colors ${filtroMedicacao ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Com Medicação</span>
             </label>
           </div>
         </div>
@@ -607,14 +621,14 @@ export default function PainelKanban() {
                         </button>
 
                         {/* Botão de Monitoramento de Medicações */}
-                        <button onClick={() => setModalMedicacoesPaciente(p)} className={`flex items-center justify-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-lg text-[10px] sm:text-[10px] font-black transition-all border shadow-sm relative group ${p.medicacoes_curso?.length > 0 ? 'bg-indigo-50 text-indigo-700 border-indigo-300 ring-1 ring-indigo-100' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`} title="Medicações em Curso">
+                        <button onClick={() => setModalMedicacoesPaciente(p)} className={`flex items-center justify-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-lg text-[10px] sm:text-[10px] font-black transition-all border shadow-sm relative group ${p.medicacoes_curso?.length > 0 ? (p.isAlertaMedicacao ? 'bg-red-50 text-red-700 border-red-300 ring-1 ring-red-100 animate-pulse' : 'bg-indigo-50 text-indigo-700 border-indigo-300 ring-1 ring-indigo-100') : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`} title="Medicações em Curso">
                           <svg className="w-5 h-5 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.6 4.4a5 5 0 117.07 7.07l-6.26 6.26a5 5 0 11-7.07-7.07l6.26-6.26z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.5 15.5l7-7" />
                           </svg>
                           <span className="hidden sm:inline">MEDICAÇÕES</span>
                           {p.medicacoes_curso?.length > 0 && (
-                            <span className="absolute -top-1.5 -right-1.5 bg-indigo-500 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full shadow-sm ring-2 ring-indigo-50">{p.medicacoes_curso.length}</span>
+                            <span className={`absolute -top-1.5 -right-1.5 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full shadow-sm ring-2 ${p.isAlertaMedicacao ? 'bg-red-600 ring-red-50' : 'bg-indigo-500 ring-indigo-50'}`}>{p.medicacoes_curso.length}</span>
                           )}
                         </button>
                       </div>
@@ -1006,13 +1020,13 @@ export default function PainelKanban() {
                 <p className="text-slate-400 text-center italic text-sm py-8">Nenhuma medicação em curso.</p>
               ) : (
                 modalMedicacoesPaciente.medicacoes_curso.map((med, i) => {
-                  const diasPassados = calcularDiasPassados(med.data_inicio);
-                  // Progresso visual simples
-                  const percent = Math.min(100, Math.round((diasPassados / med.duracao_dias) * 100)) || 0;
-                  const isCritico = diasPassados >= med.duracao_dias;
+                  const passadosTotais = calcularDiasPassados(med.data_inicio);
+                  const diasExibidos = Math.min(passadosTotais, med.duracao_dias);
+                  const percent = Math.min(100, Math.round((passadosTotais / med.duracao_dias) * 100)) || 0;
+                  const isCritico = passadosTotais >= med.duracao_dias;
 
                   return (
-                    <div key={med.id || i} className={`p-3 sm:p-4 rounded-xl border-l-4 shadow-sm text-left relative group transition-colors ${formMedicacao.id === med.id ? 'bg-indigo-50 border-indigo-500' : 'bg-white border-indigo-400 hover:bg-slate-50'}`}>
+                    <div key={med.id || i} className={`p-3 sm:p-4 rounded-xl border-l-4 shadow-sm text-left relative group transition-colors ${formMedicacao.id === med.id ? 'bg-indigo-50 border-indigo-500' : 'bg-white border-indigo-400 hover:bg-slate-50'} ${isCritico && !formMedicacao.id ? '!border-red-400' : ''}`}>
                       <div className="flex justify-between items-start mb-2">
                         <div className="text-sm sm:text-base font-bold text-slate-800">{med.nome_medicacao}</div>
                         <div className="flex items-center gap-1 sm:gap-2 opacity-50 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
@@ -1028,7 +1042,7 @@ export default function PainelKanban() {
                       <div className="flex justify-between text-xs text-slate-500 mb-2">
                         <span>Acesso: <strong className="font-mono text-[10px]">{med.data_inicio.split('-').reverse().join('/')}</strong></span>
                         <span className={`font-bold ${isCritico ? 'text-rose-600' : 'text-indigo-600'}`}>
-                          {diasPassados} de {med.duracao_dias} dias
+                          {diasExibidos} de {med.duracao_dias} dias
                         </span>
                       </div>
 
