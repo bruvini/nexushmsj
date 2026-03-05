@@ -11,18 +11,13 @@ import FormDesfecho from './components/FormDesfecho'
 import FormContatos from './components/FormContatos'
 import FormEmail from './components/FormEmail'
 import FormPerfil from './components/FormPerfil'
+import FormEncerrar from './components/FormEncerrar'
+import DashboardAVC from './components/DashboardAVC'
 import ConfiguracoesAVC from './components/ConfiguracoesAVC'
 
 export default function TelemonitoramentoAVC() {
-    const [activeTab, setActiveTab] = useState('cadastro')
-    const [loading, setLoading] = useState(true)
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setLoading(false)
-        }, 800)
-        return () => clearTimeout(timer)
-    }, [])
+    const [activeTab, setActiveTab] = useState('painel')
+    const [loading, setLoading] = useState(false) // Removendo timer
 
     const iconeAVC = (
         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -40,6 +35,7 @@ export default function TelemonitoramentoAVC() {
         { id: 'ambulatorio', label: 'Lista Ambulatorial', icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M14 10.88v4.24a2 2 0 01-1 1.73l-2 .5-2-.5A2 2 0 018 15.12v-4.24a2 2 0 011-1.73l2-.5 2 .5a2 2 0 011 1.73z" /> },
         { id: 'desfecho', label: 'Registrar Desfecho', icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" /> },
         { id: 'contato', label: 'Registrar Contato', icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /> },
+        { id: 'encerrar', label: 'Óbito / Desistência', icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /> },
         { id: 'config', label: 'Configurações', icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /> },
     ]
 
@@ -89,6 +85,7 @@ export default function TelemonitoramentoAVC() {
                         </div>
                     ) : (
                         <div className="animate-fadeIn">
+                            {activeTab === 'painel' && <DashboardAVC />}
                             {activeTab === 'cadastro' && <FormCadastro />}
                             {activeTab === 'perfil' && <FormPerfil />}
                             {activeTab === 'triagem' && <FormAcolhimento />}
@@ -97,9 +94,10 @@ export default function TelemonitoramentoAVC() {
                             {activeTab === 'ambulatorio' && <FormEmail />}
                             {activeTab === 'desfecho' && <FormDesfecho />}
                             {activeTab === 'contato' && <FormContatos />}
+                            {activeTab === 'encerrar' && <FormEncerrar />}
                             {activeTab === 'config' && <ConfiguracoesAVC />}
 
-                            {activeTab !== 'cadastro' && activeTab !== 'perfil' && activeTab !== 'triagem' && activeTab !== 'exames' && activeTab !== 'agendar' && activeTab !== 'ambulatorio' && activeTab !== 'desfecho' && activeTab !== 'contato' && activeTab !== 'config' && (
+                            {activeTab !== 'painel' && activeTab !== 'cadastro' && activeTab !== 'perfil' && activeTab !== 'triagem' && activeTab !== 'exames' && activeTab !== 'agendar' && activeTab !== 'ambulatorio' && activeTab !== 'desfecho' && activeTab !== 'contato' && activeTab !== 'encerrar' && activeTab !== 'config' && (
                                 <div className="w-full h-64 border-2 border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center text-slate-400 bg-white/50">
                                     <svg className="w-12 h-12 mb-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />

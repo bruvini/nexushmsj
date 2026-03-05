@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, doc, setDoc, updateDoc, query, where, orderBy, serverTimestamp, getDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, setDoc, updateDoc, query, where, orderBy, serverTimestamp, getDoc, arrayUnion, arrayRemove, writeBatch, deleteDoc } from 'firebase/firestore';
 import { db } from '../../../services/firebase';
 
 const PACIENTES_COLLECTION = 'nexus_avc_pacientes';
@@ -946,6 +946,215 @@ export const getComprehensivePatientData = async (patientId) => {
 
     } catch (error) {
         console.error("Erro ao montar prontuário Eletrônico:", error);
+        return { success: false, error: error.message };
+    }
+};
+
+// ==========================================
+// ZONA DE PERIGO E ENCERRAMENTO (ÓBITO/DESISTÊNCIA)
+// ==========================================
+
+export const closeMonitoring = async (payload) => {
+    try {
+        const { id_paciente, motivo_encerramento, data_falecimento, observacoes } = payload;
+
+        if (!id_paciente || !motivo_encerramento) {
+            throw new Error("ID do Paciente e Motivo são obrigatórios.");
+        }
+
+        // 1. Atualizar Paciente
+        const pRef = doc(db, PACIENTES_COLLECTION, id_paciente);
+        await updateDoc(pRef, {
+            status_monitoramento_atual: motivo_encerramento === 'ÓBITO' ? 'ÓBITO' : 'DESISTÊNCIA',
+            data_encerramento: serverTimestamp(),
+            motivo_encerramento: motivo_encerramento,
+            data_falecimento: data_falecimento || null
+        });
+
+        // 2. Registrar no Desfecho para Histórico (com flag especial ADM_ENCERRAMENTO)
+        const dRef = collection(db, DESFECHOS_COLLECTION);
+        await addDoc(dRef, {
+            id_paciente,
+            id_consulta_ref: 'ADM_ENCERRAMENTO',
+            data_registro: serverTimestamp(),
+            resultado_consulta: motivo_encerramento,
+            observacoes: observacoes || `Encerramento administrativo por ${motivo_encerramento}.`
+        });
+
+        // 3. Log
+        await logOperation(
+            `ENCERRAMENTO_${motivo_encerramento}`,
+            `Paciente ${id_paciente} encerrado por ${motivo_encerramento}. Obs: ${observacoes || ''}`
+        );
+
+        return { success: true };
+    } catch (error) {
+        console.error("Erro ao encerrar monitoramento:", error);
+        return { success: false, error: error.message };
+    }
+};
+
+export const deletePatientCompletely = async (patientId) => {
+    try {
+        if (!patientId) throw new Error("ID do paciente é obrigatório para exclusão.");
+
+        const batch = writeBatch(db);
+
+        // 1. Delete Patient Document
+        const pRef = doc(db, PACIENTES_COLLECTION, patientId);
+        batch.delete(pRef);
+
+        // Funções auxiliares para buscar e deletar documentos em sub-coleções
+        const deleteLinkedDocs = async (collectionName) => {
+            const q = query(collection(db, collectionName), where('id_paciente', '==', patientId));
+            const snap = await getDocs(q);
+            snap.docs.forEach(d => {
+                batch.delete(d.ref);
+            });
+        };
+
+        // 2. Add DELETES to batch for all related collections
+        await deleteLinkedDocs(EXAMES_COLLECTION);
+        await deleteLinkedDocs(CONSULTAS_COLLECTION);
+        await deleteLinkedDocs('nexus_avc_contatos');
+        await deleteLinkedDocs(DESFECHOS_COLLECTION);
+
+        // 3. Commit Atomic Batch (All or nothing)
+        await batch.commit();
+
+        // 4. Log the deletion ATTEMPT and SUCCESS (Audit Trail - Never delete the log)
+        await logOperation(
+            'EXCLUSAO_PACIENTE',
+            `Paciente ID ${patientId} e todos os seus registros (${EXAMES_COLLECTION}, ${CONSULTAS_COLLECTION}, contatos, desfechos) foram EXCLUÍDOS PERMANENTEMENTE do banco.`
+        );
+
+        return { success: true };
+    } catch (error) {
+        console.error("Erro crítico na Zona de Perigo (Exclusão):", error);
+        return { success: false, error: error.message };
+    }
+};
+
+// ==========================================
+// PAINEL GERAL E KANBAN (DASHBOARD)
+// ==========================================
+
+export const getDashboardData = async () => {
+    try {
+        // Buscar todos os pacientes
+        const pacientesSnap = await getDocs(collection(db, PACIENTES_COLLECTION));
+        const todosPacientes = pacientesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // Buscar Contatos totais
+        const contatosSnap = await getDocs(collection(db, 'nexus_avc_contatos'));
+        const totalContatos = contatosSnap.size;
+
+        // Buscar Consultas futuras (agendadas mas não confirmadas/realizadas - simplificando, vamos buscar todas e filtrar no código)
+        const consultasSnap = await getDocs(collection(db, CONSULTAS_COLLECTION));
+        const todasConsultas = consultasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        const now = new Date();
+        const consultasFuturas = todasConsultas.filter(c => {
+            if (c.status !== 'AGENDADO') return false;
+
+            let dataAgendamento;
+            if (c.data_agendamento && c.data_agendamento.toDate) {
+                dataAgendamento = c.data_agendamento.toDate();
+            } else if (c.data_agendamento) {
+                // assume string YYYY-MM-DD
+                dataAgendamento = new Date(c.data_agendamento + 'T23:59:59'); // end of day 
+            } else {
+                return false;
+            }
+            return dataAgendamento >= new Date(now.setHours(0, 0, 0, 0));
+        });
+
+        // ==========================
+        // 1. KPIs
+        // ==========================
+        const kpis = {
+            cadastrados: todosPacientes.length,
+            ativos: todosPacientes.filter(p => !['ÓBITO', 'DESISTÊNCIA', 'MONITORAMENTO CONCLUÍDO', 'ENCAMINHADO PARA EMAD'].includes(p.status_monitoramento_atual)).length,
+            contatos: totalContatos,
+            agendados: consultasFuturas.length,
+            concluidos: todosPacientes.filter(p => ['MONITORAMENTO CONCLUÍDO', 'ENCAMINHADO PARA EMAD'].includes(p.status_monitoramento_atual)).length
+        };
+
+        // ==========================
+        // 2. KANBAN CATEGORIES
+        // ==========================
+        const kanban = {
+            acolhimento: [],
+            exames: [],
+            agendar: [],
+            proximas: [],
+            desfecho: []
+        };
+
+        // Populate Kanban (Only active patients)
+        const pacientesAtivos = todosPacientes.filter(p => !['ÓBITO', 'DESISTÊNCIA', 'MONITORAMENTO CONCLUÍDO', 'ENCAMINHADO PARA EMAD'].includes(p.status_monitoramento_atual));
+
+        for (const p of pacientesAtivos) {
+
+            // Format basic card data
+            const cardData = {
+                id: p.id,
+                nome: p.nome,
+                prontuario: p.prontuario || 'N/I',
+                data_nascimento: p.data_nascimento, // para idade depois
+                status: p.status_monitoramento_atual,
+                telefone: p.telefone || p.telefone2 || 'Sem telefone',
+                resumo: ''
+            };
+
+            switch (p.status_monitoramento_atual) {
+                case 'REALIZAR ACOLHIMENTO':
+                    cardData.resumo = 'Aguardando contato inicial';
+                    kanban.acolhimento.push(cardData);
+                    break;
+                case 'VERIFICAR EXAMES':
+                    // Contar exames pendentes
+                    // Note: Num sistema massivo isso precisaria de otimização, mas como são exames de poucos pacientes ativos, fazemos query leve filtrando do que temos se quisermos ou buscar especifico
+                    cardData.resumo = `Checar exames em andamento`;
+                    kanban.exames.push(cardData);
+                    break;
+                case 'AGENDAR CONSULTA':
+                    cardData.resumo = 'Prioridade: Marcar retorno';
+                    kanban.agendar.push(cardData);
+                    break;
+                case 'AGUARDANDO CONSULTA':
+                    // Finding their specific appointment
+                    const consultaProj = consultasFuturas.find(c => c.id_paciente === p.id);
+                    if (consultaProj) {
+                        cardData.resumo = `Consulta em ${consultaProj.data_agendamento}`;
+                        cardData.data_ordenacao = consultaProj.data_agendamento; // Para reordenar a coluna
+                    } else {
+                        cardData.resumo = `Consulta futura agendada`;
+                        cardData.data_ordenacao = '9999-12-31';
+                    }
+                    kanban.proximas.push(cardData);
+                    break;
+                case 'VERIFICAR DESFECHO':
+                    cardData.resumo = 'Realizou consulta, aguardando parecer';
+                    kanban.desfecho.push(cardData);
+                    break;
+                default:
+                    // Outros status menores, se caírem aqui, não vão pro Kanban pra não poluir.
+                    break;
+            }
+        }
+
+        // Sort "Proximas" by date closest to today
+        kanban.proximas.sort((a, b) => a.data_ordenacao?.localeCompare(b.data_ordenacao));
+
+        return {
+            success: true,
+            kpis,
+            kanban
+        };
+
+    } catch (error) {
+        console.error("Erro ao carregar Dashboard Kanban:", error);
         return { success: false, error: error.message };
     }
 };
