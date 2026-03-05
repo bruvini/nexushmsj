@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { getAgendamentoPatients, getAppointmentByPatient, countDailyAppointments, saveAppointment } from '../services/avcService';
 
@@ -22,35 +22,9 @@ export default function FormAgendamento() {
 
     const [lotacao, setLotacao] = useState(null);
 
-    // Timer Operacional
-    const [seconds, setSeconds] = useState(0);
-    const [timerRunning, setTimerRunning] = useState(true);
-    const timerRef = useRef(null);
-
     useEffect(() => {
         fetchInitialData();
-        startTimer();
-        return () => clearInterval(timerRef.current);
     }, []);
-
-    const startTimer = () => {
-        if (timerRef.current) clearInterval(timerRef.current);
-        timerRef.current = setInterval(() => {
-            setSeconds(prev => prev + 1);
-        }, 1000);
-        setTimerRunning(true);
-    };
-
-    const stopTimer = () => {
-        if (timerRef.current) clearInterval(timerRef.current);
-        setTimerRunning(false);
-    };
-
-    const formatTimer = (totalSeconds) => {
-        const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
-        const s = (totalSeconds % 60).toString().padStart(2, '0');
-        return `${m}:${s}`;
-    };
 
     const fetchInitialData = async () => {
         setLoadingInitial(true);
@@ -134,11 +108,9 @@ export default function FormAgendamento() {
             ...formData
         };
 
-        const res = await saveAppointment(appointmentData, action, seconds);
+        const res = await saveAppointment(appointmentData, action, 0);
 
         if (res.success) {
-            stopTimer(); // Timer stops on success
-
             let successMessage = 'Agendamento salvo com sucesso!';
             if (action === 'CONFIRMAR') successMessage = '🎉 Consulta confirmada! Paciente movido para Desfecho.';
             if (action === 'CANCELAR') successMessage = 'Consulta cancelada. Status revertido.';
@@ -151,13 +123,6 @@ export default function FormAgendamento() {
             // Clear selection to force user to pick again or show updated state
             setSelectedPacienteId('');
             setConsultaAtual(null);
-
-            // Restart timer for next operation if needed, or leave stopped.
-            // Let's restart it after a brief pause so they can see it stopped.
-            setTimeout(() => {
-                setSeconds(0);
-                startTimer();
-            }, 3000);
         } else {
             toast.error('Erro ao salvar agendamento.');
         }
@@ -183,15 +148,6 @@ export default function FormAgendamento() {
 
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 max-w-5xl mx-auto animate-fadeIn min-h-[500px] relative">
-
-            {/* Timer Badge */}
-            <div className={`absolute top-6 right-8 flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-mono font-bold transition-colors ${timerRunning ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'}`}>
-                <svg className={`w-4 h-4 ${timerRunning ? 'animate-pulse text-sky-500' : 'text-emerald-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                {formatTimer(seconds)}
-            </div>
-
             <div className="mb-8 border-b border-slate-100 pb-4">
                 <h2 className="text-2xl font-semibold text-slate-800 tracking-tight">Agendamento de Consulta</h2>
                 <p className="text-sm text-slate-500 mt-1 font-light">Coordenação do retorno ambulatorial com trava de lotação integrada.</p>

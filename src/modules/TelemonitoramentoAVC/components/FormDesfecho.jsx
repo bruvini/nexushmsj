@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { getPatientsForOutcome, saveOutcome, getAVCConfigs } from '../services/avcService';
 
@@ -13,11 +13,6 @@ export default function FormDesfecho() {
     // Opções do Select
     const [opcoesExames, setOpcoesExames] = useState([]);
 
-    // Timer Operacional
-    const [seconds, setSeconds] = useState(0);
-    const [timerRunning, setTimerRunning] = useState(true);
-    const timerRef = useRef(null);
-
     // States do Formulário
     const [atendimentoRealizado, setAtendimentoRealizado] = useState(true);
     const [resultadoConsulta, setResultadoConsulta] = useState('');
@@ -26,28 +21,7 @@ export default function FormDesfecho() {
 
     useEffect(() => {
         fetchInitialData();
-        startTimer();
-        return () => clearInterval(timerRef.current);
     }, []);
-
-    const startTimer = () => {
-        if (timerRef.current) clearInterval(timerRef.current);
-        timerRef.current = setInterval(() => {
-            setSeconds(prev => prev + 1);
-        }, 1000);
-        setTimerRunning(true);
-    };
-
-    const stopTimer = () => {
-        if (timerRef.current) clearInterval(timerRef.current);
-        setTimerRunning(false);
-    };
-
-    const formatTimer = (totalSeconds) => {
-        const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
-        const s = (totalSeconds % 60).toString().padStart(2, '0');
-        return `${m}:${s}`;
-    };
 
     const fetchInitialData = async () => {
         setLoadingInitial(true);
@@ -119,20 +93,14 @@ export default function FormDesfecho() {
             observacoes: observacoes
         };
 
-        const res = await saveOutcome(outcomeData, seconds);
+        const res = await saveOutcome(outcomeData, 0);
 
         if (res.success) {
-            stopTimer();
             toast.success(`Desfecho registrado! Paciente movido para a aba: ${res.novaFase}`);
 
             await fetchInitialData();
             setSelectedPacienteId('');
             setPacienteAtivo(null);
-
-            setTimeout(() => {
-                setSeconds(0);
-                startTimer();
-            }, 3500);
         } else {
             toast.error('Ocorreu um erro ao salvar o desfecho.');
         }
@@ -156,15 +124,6 @@ export default function FormDesfecho() {
 
     return (
         <div className="bg-slate-50 rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 max-w-5xl mx-auto animate-fadeIn min-h-[500px] relative">
-
-            {/* Timer Badge */}
-            <div className={`absolute top-6 right-8 flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-mono font-bold transition-colors ${timerRunning ? 'bg-white text-slate-600 border-slate-300' : 'bg-purple-100 text-purple-800 border-purple-300 shadow-md'}`}>
-                <svg className={`w-4 h-4 ${timerRunning ? 'animate-pulse text-purple-500' : 'text-purple-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                {formatTimer(seconds)}
-            </div>
-
             <div className="mb-8 border-b border-slate-200 pb-4">
                 <h2 className="text-2xl font-semibold text-slate-800 tracking-tight">Registro de Desfecho Clínico</h2>
                 <p className="text-sm text-slate-500 mt-1 font-light">Determine o fim da linha de cuidado, reinicie ciclos de imagem ou agende retornos.</p>
