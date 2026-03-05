@@ -1,8 +1,14 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import Footer from "../components/Footer";
 
 export default function Home() {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    document.title = "NEXUS HMSJ | Hub Central";
+  }, []);
 
   const modules = [
     {
@@ -107,7 +113,12 @@ export default function Home() {
       <div className="absolute bottom-[-10%] right-[-10%] w-[300px] lg:w-[500px] h-[300px] lg:h-[500px] bg-purple-500/10 rounded-full blur-[80px] lg:blur-[120px] pointer-events-none"></div>
 
       {/* Conteúdo Principal (Centralizado verticalmente e adaptável) */}
-      <main className="flex-1 flex flex-col lg:flex-row items-center justify-center p-4 sm:p-8 lg:p-12 gap-8 lg:gap-16 z-10 w-full max-w-[1400px] mx-auto mt-6 lg:mt-0">
+      <motion.main
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="flex-1 flex flex-col lg:flex-row items-center justify-center p-4 sm:p-8 lg:p-12 gap-8 lg:gap-16 z-10 w-full max-w-[1400px] mx-auto mt-6 lg:mt-0"
+      >
 
         {/* Coluna Esquerda: Informações e Correlação */}
         <div className="flex flex-col items-center lg:items-start justify-center w-full lg:w-2/5 shrink-0 text-center lg:text-left">
@@ -213,7 +224,7 @@ export default function Home() {
             </div>
           </div>
         </div>
-      </main>
+      </motion.main>
 
       <Footer />
     </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { getDashboardData } from '../services/avcService';
+import { subscribeDashboardData } from '../services/avcService';
 
 export default function DashboardAVC() {
     const [loading, setLoading] = useState(true);
@@ -8,19 +8,18 @@ export default function DashboardAVC() {
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
-        loadData();
-    }, []);
+        const unsubscribe = subscribeDashboardData((res) => {
+            if (res.success) {
+                setDashboardData(res);
+            } else {
+                toast.error(res.error || 'Erro ao sincronizar Dashboard Kanban.');
+            }
+            setLoading(false);
+        });
 
-    const loadData = async () => {
-        setLoading(true);
-        const res = await getDashboardData();
-        if (res.success) {
-            setDashboardData(res);
-        } else {
-            toast.error(res.error || 'Erro ao carregar Dashboard Kanban.');
-        }
-        setLoading(false);
-    };
+        // Cleanup listener when unmounting
+        return () => unsubscribe();
+    }, []);
 
     // Filtro reativo
     const filterKanban = (list) => {
@@ -53,8 +52,8 @@ export default function DashboardAVC() {
     return (
         <div className="animate-fadeIn min-h-[700px] flex flex-col font-sans">
 
-            {/* SEARCH BAR (TOPO) */}
-            <div className="mb-6">
+            {/* SEARCH BAR (TOPO) - Sticky no Mobile */}
+            <div className="mb-6 sticky top-0 z-20 bg-[#F8F9FA]/90 backdrop-blur-md pt-2 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:bg-transparent sm:backdrop-blur-none sm:static sm:pt-0 sm:pb-0">
                 <div className="relative max-w-2xl">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                         <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -71,8 +70,8 @@ export default function DashboardAVC() {
                 </div>
             </div>
 
-            {/* LINHA DE KPIs */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+            {/* LINHA DE KPIs (Oculto no Mobile) */}
+            <div className="hidden md:grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
                 {/* Cadastrados */}
                 <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200 flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 shrink-0">
@@ -129,8 +128,8 @@ export default function DashboardAVC() {
                 </div>
             </div>
 
-            {/* GRID KANBAN */}
-            <div className="flex-1 flex gap-4 overflow-x-auto pb-4 custom-scrollbar items-start">
+            {/* GRID KANBAN RESPONSIVO */}
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 pb-4 items-start">
 
                 {/* COL 1: Acolhimento */}
                 <KanbanColumn
@@ -190,7 +189,7 @@ function KanbanColumn({ title, icon, colorTheme, items }) {
     const theme = themeMaps[colorTheme] || themeMaps.blue;
 
     return (
-        <div className={`flex flex-col flex-shrink-0 w-80 rounded-xl border border-slate-200 ${theme.bg} shadow-sm max-h-full h-full`}>
+        <div className={`flex flex-col w-full rounded-xl border border-slate-200 ${theme.bg} shadow-sm`}>
             {/* Header da Coluna */}
             <div className={`p-4 border-b border-slate-200 border-t-4 ${theme.borderTop} rounded-t-xl bg-white/60 backdrop-blur flex justify-between items-center`}>
                 <h3 className="font-bold text-slate-700 text-sm flex items-center gap-2">
@@ -202,10 +201,10 @@ function KanbanColumn({ title, icon, colorTheme, items }) {
                 </span>
             </div>
 
-            {/* Area de scroll dos cartões */}
-            <div className="p-3 flex-1 overflow-y-auto custom-scrollbar space-y-3">
+            {/* Area de scroll dos cartões no Desktop, altura auto no Mobile */}
+            <div className="p-3 flex-1 lg:max-h-[60vh] overflow-y-auto custom-scrollbar space-y-3">
                 {items.length === 0 ? (
-                    <div className="h-full min-h-[100px] flex items-center justify-center text-slate-400 text-xs italic border-2 border-dashed border-slate-200/50 rounded-lg">
+                    <div className="min-h-[100px] flex items-center justify-center text-slate-400 text-xs italic border-2 border-dashed border-slate-200/50 rounded-lg">
                         Vazio
                     </div>
                 ) : (

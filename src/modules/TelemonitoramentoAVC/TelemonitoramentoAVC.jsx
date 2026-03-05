@@ -17,7 +17,12 @@ import ConfiguracoesAVC from './components/ConfiguracoesAVC'
 
 export default function TelemonitoramentoAVC() {
     const [activeTab, setActiveTab] = useState('painel')
-    const [loading, setLoading] = useState(false) // Removendo timer
+    const [loading, setLoading] = useState(false)
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
+    useEffect(() => {
+        document.title = "NEXUS HMSJ | Telemonitoramento AVC"
+    }, [])
 
     const iconeAVC = (
         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -60,18 +65,49 @@ export default function TelemonitoramentoAVC() {
     ]
 
     return (
-        <div className="min-h-screen flex flex-col font-sans bg-[#F8F9FA]">
-            <Header
-                title="Telemonitoramento AVC (Pós-Alta)"
-                icon={iconeAVC}
-                badge="Módulo Clínico"
-                description="Acompanhamento contínuo e preventivo de pacientes pós-AVC"
-            />
+        <div className="min-h-screen flex flex-col font-sans bg-[#F8F9FA] relative">
+            {/* Banner Neurológico Topo */}
+            <div className="absolute top-0 left-0 w-full h-48 bg-sky-900/5 overflow-hidden pointer-events-none z-0">
+                <svg className="absolute -top-24 -right-12 w-96 h-96 text-sky-500/10 opacity-50" fill="currentColor" viewBox="0 0 100 100">
+                    <path d="M50 0C22.4 0 0 22.4 0 50s22.4 50 50 50 50-22.4 50-50S77.6 0 50 0zm0 90c-22.1 0-40-17.9-40-40s17.9-40 40-40 40 17.9 40 40-17.9 40-40 40z" />
+                    <circle cx="50" cy="50" r="15" />
+                    <path d="M50 20v15M80 50H65M50 80V65M20 50h15M30 30l10 10M70 30L60 40M70 70L60 60M30 70l10-10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+            </div>
 
-            <div className="flex flex-1 overflow-hidden relative">
-                {/* Sidebar Esquerda (Light Theme) */}
-                <aside className="w-64 bg-white border-r border-slate-200 flex flex-col shadow-sm hidden md:flex z-10">
-                    <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+            <div className="relative z-10 flex flex-col w-full">
+                <Header
+                    title="Telemonitoramento AVC (Pós-Alta)"
+                    icon={iconeAVC}
+                    badge="Módulo Clínico"
+                    description="Acompanhamento contínuo e preventivo de pacientes pós-AVC"
+                />
+            </div>
+
+            <div className="flex flex-1 overflow-hidden relative z-10">
+
+                {/* Overlay Background para Mobile */}
+                {isMobileMenuOpen && (
+                    <div
+                        className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                    ></div>
+                )}
+
+                {/* Sidebar Esquerda (Drawer no Mobile, Fixo no Desktop) */}
+                <aside className={`fixed inset-y-0 left-0 w-64 bg-white border-r border-slate-200 flex flex-col shadow-xl z-50 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+
+                    {/* Header Sidebar Mobile */}
+                    <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between md:hidden">
+                        <span className="font-bold text-sky-700 text-sm">Menu Nexus</span>
+                        <button onClick={() => setIsMobileMenuOpen(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div className="p-4 border-b border-slate-100 bg-slate-50/50 hidden md:block">
                         <h3 className="text-xs font-bold tracking-widest text-slate-400 uppercase">Menu de Navegação</h3>
                     </div>
                     <nav className="flex-1 overflow-y-auto pt-2 pb-6 custom-scrollbar">
@@ -84,15 +120,18 @@ export default function TelemonitoramentoAVC() {
                                     {group.items.map((item) => (
                                         <button
                                             key={item.id}
-                                            onClick={() => setActiveTab(item.id)}
+                                            onClick={() => {
+                                                setActiveTab(item.id);
+                                                setIsMobileMenuOpen(false); // Fecha menu mobile ao clicar
+                                            }}
                                             className={`group w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === item.id
-                                                    ? (item.danger ? 'bg-rose-50 text-rose-700 shadow-sm border border-rose-100' : 'bg-sky-50 text-sky-700 shadow-sm border border-sky-100')
-                                                    : (item.danger ? 'text-slate-600 hover:bg-rose-50 hover:text-rose-700 border border-transparent' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent')
+                                                ? (item.danger ? 'bg-rose-50 text-rose-700 shadow-sm border border-rose-100' : 'bg-sky-50 text-sky-700 shadow-sm border border-sky-100')
+                                                : (item.danger ? 'text-slate-600 hover:bg-rose-50 hover:text-rose-700 border border-transparent' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent')
                                                 }`}
                                         >
                                             <svg className={`w-5 h-5 ${activeTab === item.id
-                                                    ? (item.danger ? 'text-rose-500' : 'text-sky-500')
-                                                    : (item.danger ? 'text-slate-400 group-hover:text-rose-400' : 'text-slate-400')
+                                                ? (item.danger ? 'text-rose-500' : 'text-sky-500')
+                                                : (item.danger ? 'text-slate-400 group-hover:text-rose-400' : 'text-slate-400')
                                                 }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 {item.icon}
                                             </svg>
@@ -106,9 +145,24 @@ export default function TelemonitoramentoAVC() {
                 </aside>
 
                 {/* Conteúdo Principal Adaptativo */}
-                <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-[#F8F9FA]">
+                <main className="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8 bg-transparent">
+                    {/* Botão de Hambúrguer Mobile */}
+                    <div className="md:hidden flex items-center mb-4 bg-white p-3 rounded-xl shadow-sm border border-slate-200">
+                        <button
+                            onClick={() => setIsMobileMenuOpen(true)}
+                            className="p-2 mr-3 text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors focus:ring-2 focus:ring-sky-500"
+                        >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </button>
+                        <h2 className="font-semibold text-slate-700 text-sm tracking-wide flex-1 text-center pr-10">
+                            {menuGroups.flatMap(g => g.items).find(i => i.id === activeTab)?.label || 'Telemonitoramento'}
+                        </h2>
+                    </div>
+
                     {loading ? (
-                        <div className="flex flex-col items-center justify-center h-full gap-4 text-sky-500">
+                        <div className="flex flex-col items-center justify-center h-full gap-4 text-sky-500 mt-10">
                             <svg className="w-10 h-10 animate-spin" fill="none" viewBox="0 0 24 24">
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -134,7 +188,7 @@ export default function TelemonitoramentoAVC() {
                                     <svg className="w-12 h-12 mb-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                     </svg>
-                                    <p className="text-sm font-medium">Área "<strong>{menuItems.find(i => i.id === activeTab)?.label}</strong>" em constução.</p>
+                                    <p className="text-sm font-medium text-center px-4">Área "<strong>{menuGroups.flatMap(g => g.items).find(i => i.id === activeTab)?.label}</strong>" em construção.</p>
                                 </div>
                             )}
                         </div>

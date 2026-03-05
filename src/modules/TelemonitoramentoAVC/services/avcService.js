@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, doc, setDoc, updateDoc, query, where, orderBy, serverTimestamp, getDoc, arrayUnion, arrayRemove, writeBatch, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, setDoc, updateDoc, query, where, orderBy, serverTimestamp, getDoc, arrayUnion, arrayRemove, writeBatch, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../services/firebase';
 
 const PACIENTES_COLLECTION = 'nexus_avc_pacientes';
@@ -1157,6 +1157,124 @@ export const getDashboardData = async () => {
         console.error("Erro ao carregar Dashboard Kanban:", error);
         return { success: false, error: error.message };
     }
+};
+
+export const subscribeDashboardData = (callback) => {
+    let todosPacientes = [];
+    let todosContatosSize = 0;
+    let todasConsultas = [];
+
+    let isPacientesLoaded = false;
+    let isContatosLoaded = false;
+    let isConsultasLoaded = false;
+
+    const emitIfReady = () => {
+        if (!isPacientesLoaded || !isContatosLoaded || !isConsultasLoaded) return;
+
+        const now = new Date();
+        const consultasFuturas = todasConsultas.filter(c => {
+            if (c.status !== 'AGENDADO') return false;
+            let dataAgendamento;
+            if (c.data_agendamento && c.data_agendamento.toDate) {
+                dataAgendamento = c.data_agendamento.toDate();
+            } else if (c.data_agendamento) {
+                dataAgendamento = new Date(c.data_agendamento + 'T23:59:59');
+            } else {
+                return false;
+            }
+            return dataAgendamento >= new Date(now.setHours(0, 0, 0, 0));
+        });
+
+        const kpis = {
+            cadastrados: todosPacientes.length,
+            ativos: todosPacientes.filter(p => !['ÓBITO', 'DESISTÊNCIA', 'MONITORAMENTO CONCLUÍDO', 'ENCAMINHADO PARA EMAD'].includes(p.status_monitoramento_atual)).length,
+            contatos: todosContatosSize,
+            agendados: consultasFuturas.length,
+            concluidos: todosPacientes.filter(p => ['MONITORAMENTO CONCLUÍDO', 'ENCAMINHADO PARA EMAD'].includes(p.status_monitoramento_atual)).length
+        };
+
+        const kanban = { acolhimento: [], exames: [], agendar: [], proximas: [], desfecho: [] };
+        const pacientesAtivos = todosPacientes.filter(p => !['ÓBITO', 'DESISTÊNCIA', 'MONITORAMENTO CONCLUÍDO', 'ENCAMINHADO PARA EMAD'].includes(p.status_monitoramento_atual));
+
+        for (const p of pacientesAtivos) {
+            const cardData = {
+                id: p.id,
+                nome: p.nome,
+                prontuario: p.prontuario || 'N/I',
+                data_nascimento: p.data_nascimento,
+                status: p.status_monitoramento_atual,
+                telefone: p.telefone || p.telefone2 || 'Sem telefone',
+                resumo: ''
+            };
+
+            switch (p.status_monitoramento_atual) {
+                case 'REALIZAR ACOLHIMENTO':
+                    cardData.resumo = 'Aguardando contato inicial';
+                    kanban.acolhimento.push(cardData);
+                    break;
+                case 'VERIFICAR EXAMES':
+                    cardData.resumo = `Checar exames em andamento`;
+                    kanban.exames.push(cardData);
+                    break;
+                case 'AGENDAR CONSULTA':
+                    cardData.resumo = 'Prioridade: Marcar retorno';
+                    kanban.agendar.push(cardData);
+                    break;
+                case 'AGUARDANDO CONSULTA':
+                    const consultaProj = consultasFuturas.find(c => c.id_paciente === p.id);
+                    if (consultaProj) {
+                        cardData.resumo = `Consulta em ${consultaProj.data_agendamento}`;
+                        cardData.data_ordenacao = consultaProj.data_agendamento;
+                    } else {
+                        cardData.resumo = `Consulta futura agendada`;
+                        cardData.data_ordenacao = '9999-12-31';
+                    }
+                    kanban.proximas.push(cardData);
+                    break;
+                case 'VERIFICAR DESFECHO':
+                    cardData.resumo = 'Realizou consulta, aguardando parecer';
+                    kanban.desfecho.push(cardData);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        kanban.proximas.sort((a, b) => a.data_ordenacao?.localeCompare(b.data_ordenacao));
+
+        callback({ success: true, kpis, kanban });
+    };
+
+    const unsubPacientes = onSnapshot(collection(db, PACIENTES_COLLECTION), (snap) => {
+        todosPacientes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        isPacientesLoaded = true;
+        emitIfReady();
+    }, (error) => {
+        console.error("Erro pacientes onSnapshot:", error);
+        callback({ success: false, error: error.message });
+    });
+
+    const unsubContatos = onSnapshot(collection(db, 'nexus_avc_contatos'), (snap) => {
+        todosContatosSize = snap.size;
+        isContatosLoaded = true;
+        emitIfReady();
+    }, (error) => {
+        console.error("Erro contatos onSnapshot:", error);
+    });
+
+    const unsubConsultas = onSnapshot(collection(db, CONSULTAS_COLLECTION), (snap) => {
+        todasConsultas = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        isConsultasLoaded = true;
+        emitIfReady();
+    }, (error) => {
+        console.error("Erro consultas onSnapshot:", error);
+    });
+
+    return () => {
+        unsubPacientes();
+        unsubContatos();
+        unsubConsultas();
+    };
 };
 
 // ==========================================
