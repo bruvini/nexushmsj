@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { getConfirmedDates, getDailySchedulePreview, getAVCConfigs, triggerEmailSend } from '../services/avcService';
+import { getConfirmedDates, getDailySchedulePreview, getAVCConfigs, triggerEmailSend, generateEmailHtml } from '../services/avcService';
 
 export default function FormEmail() {
     const [loadingInitial, setLoadingInitial] = useState(true);
@@ -58,69 +58,7 @@ export default function FormEmail() {
         setLoadingPreview(false);
     };
 
-    const generateHtmlBody = () => {
-        let htmlStr = `
-            <div style="font-family: Arial, sans-serif; color: #333; max-w-4xl mx-auto;">
-                <h2 style="color: #2563eb; border-bottom: 2px solid #bfdbfe; padding-bottom: 10px;">Nexus HMSJ: Lista Ambulatorial de Telemonitoramento AVC</h2>
-                <p><strong>Data da Agenda:</strong> ${selectedDate.split('-').reverse().join('/')}</p>
-                <p><strong>Responsável pelo Envio:</strong> ${responsavel || 'Equipe AVC'}</p>
-                <br/>
-                <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
-                    <thead>
-                        <tr style="background-color: #f1f5f9; border-bottom: 2px solid #cbd5e1; text-align: left;">
-                            <th style="padding: 12px; font-size: 14px;">HORA</th>
-                            <th style="padding: 12px; font-size: 14px;">PACIENTE</th>
-                            <th style="padding: 12px; font-size: 14px;">IDADE</th>
-                            <th style="padding: 12px; font-size: 14px;">PRONTUÁRIO</th>
-                            <th style="padding: 12px; font-size: 14px;">STATUS EXAMES</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
-
-        if (previewList.length === 0) {
-            htmlStr += `<tr><td colspan="5" style="padding: 15px; text-align: center; font-style: italic;">Nenhum paciente agendado.</td></tr>`;
-        }
-
-        previewList.forEach((item, index) => {
-            const bg = index % 2 === 0 ? '#ffffff' : '#f8fafc';
-
-            // Render exames with icons
-            let examesHtml = '<ul style="margin: 0; padding-left: 20px; font-size: 12px;">';
-            if (item.exames && item.exames.length > 0) {
-                item.exames.forEach(ex => {
-                    const icone = ex.status === 'CONCLUÍDO' ? '✅' : (ex.status === 'CANCELADO' ? '⛔' : '❌');
-                    examesHtml += `<li>${icone} ${ex.nome}</li>`;
-                });
-            } else {
-                examesHtml += `<li><span style="color: #94a3b8;">Sem exames atrelados</span></li>`;
-            }
-            examesHtml += '</ul>';
-
-            htmlStr += `
-                <tr style="background-color: ${bg}; border-bottom: 1px solid #e2e8f0;">
-                    <td style="padding: 12px; font-weight: bold; font-size: 14px;">${item.hora}</td>
-                    <td style="padding: 12px; font-size: 14px;">${item.nome}</td>
-                    <td style="padding: 12px; font-size: 14px;">${item.idade}</td>
-                    <td style="padding: 12px; font-size: 14px;">${item.prontuario}</td>
-                    <td style="padding: 12px;">${examesHtml}</td>
-                </tr>
-            `;
-        });
-
-        htmlStr += `
-                    </tbody>
-                </table>
-                <br/>
-                <p style="font-size: 12px; color: #64748b; margin-top: 30px;">
-                    E-mail gerado automaticamente pelo Nexus Hub de Inteligência Hospitalar.<br/>
-                    Hospital Municipal São José.
-                </p>
-            </div>
-        `;
-
-        return htmlStr;
-    };
+    // generateHtmlBody removido. Agora utilizamos generateEmailHtml() importado de avcService.js
 
     const handleSendEmail = async () => {
         if (!selectedDate) {
@@ -146,11 +84,11 @@ export default function FormEmail() {
 
         setEnviando(true);
 
-        const htmlBody = generateHtmlBody();
         const dateBr = selectedDate.split('-').reverse().join('/');
+        const htmlBody = generateEmailHtml({ dateBr, responsavel, previewList });
 
         const payload = {
-            assunto: `[NEXUS-AVC] Lista Ambulatorial - Agenda: ${dateBr}`,
+            assunto: `📋 Agenda Monitoramento AVC - ${dateBr}`,
             remetente_nome: `Nexus AVC (${responsavel})`,
             destinatarios: emailsDestino,
             corpo_html: htmlBody,

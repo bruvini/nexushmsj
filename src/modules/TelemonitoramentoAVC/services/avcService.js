@@ -1158,3 +1158,121 @@ export const getDashboardData = async () => {
         return { success: false, error: error.message };
     }
 };
+
+// ==========================================
+// TEMPLATE DE E-MAIL INSTITUCIONAL
+// ==========================================
+
+export const generateEmailHtml = (data) => {
+    const { dateBr, responsavel, previewList } = data;
+
+    let htmlStr = `
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; color: #334155; max-width: 800px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+            <!-- Header Institucional -->
+            <div style="background-color: #0f172a; color: white; padding: 25px 30px; border-bottom: 4px solid #3b82f6;">
+                <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">Hospital Municipal São José</h1>
+                <h2 style="margin: 5px 0 0 0; font-size: 16px; font-weight: 400; color: #94a3b8;">Nexus Hub - Telemonitoramento AVC (Pós-Alta)</h2>
+            </div>
+            
+            <!-- Resumo da Agenda -->
+            <div style="padding: 25px 30px; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                <h3 style="margin: 0 0 15px 0; color: #1e293b; font-size: 18px; display: flex; align-items: center;">
+                    📋 Prévia da Agenda Ambulatorial
+                </h3>
+                <table style="width: 100%; font-size: 14px;">
+                    <tr>
+                        <td style="padding: 5px 0; color: #64748b; width: 150px;"><strong>Data da Consulta:</strong></td>
+                        <td style="padding: 5px 0; font-weight: 600; color: #0f172a;">${dateBr}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px 0; color: #64748b;"><strong>Responsável:</strong></td>
+                        <td style="padding: 5px 0; font-weight: 600; color: #0f172a;">${responsavel || 'Equipe AVC'}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px 0; color: #64748b;"><strong>Total de Pacientes:</strong></td>
+                        <td style="padding: 5px 0; font-weight: 600; color: #0f172a;">${previewList.length}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Tabela de Pacientes -->
+            <div style="padding: 30px;">
+                <table style="width: 100%; border-collapse: collapse; margin-top: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    <thead>
+                        <tr style="background-color: #f1f5f9; border-top: 1px solid #cbd5e1; border-bottom: 2px solid #cbd5e1; text-align: left;">
+                            <th style="padding: 12px 15px; font-size: 13px; color: #475569; font-weight: 700; text-transform: uppercase;">Hora</th>
+                            <th style="padding: 12px 15px; font-size: 13px; color: #475569; font-weight: 700; text-transform: uppercase;">Paciente</th>
+                            <th style="padding: 12px 15px; font-size: 13px; color: #475569; font-weight: 700; text-transform: uppercase;">Nasc. (Idade)</th>
+                            <th style="padding: 12px 15px; font-size: 13px; color: #475569; font-weight: 700; text-transform: uppercase; width: 100px;">Prontuário</th>
+                            <th style="padding: 12px 15px; font-size: 13px; color: #475569; font-weight: 700; text-transform: uppercase;">Status Exames Base</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+
+    if (previewList.length === 0) {
+        htmlStr += `<tr><td colspan="5" style="padding: 20px; text-align: center; color: #94a3b8; font-style: italic; background-color: #fff;">Nenhum paciente agendado para esta data.</td></tr>`;
+    }
+
+    const examesIconMap = {
+        'CONCLUÍDO': 'https://raw.githubusercontent.com/google/material-design-icons/master/png/action/done/materialicons/24dp/2x/baseline_done_black_24dp.png',
+        'PENDENTE': 'https://raw.githubusercontent.com/google/material-design-icons/master/png/alert/error_outline/materialicons/24dp/2x/baseline_error_outline_black_24dp.png',
+        'CANCELADO': 'https://raw.githubusercontent.com/google/material-design-icons/master/png/content/block/materialicons/24dp/2x/baseline_block_black_24dp.png'
+    };
+
+    previewList.forEach((item, index) => {
+        const bg = index % 2 === 0 ? '#ffffff' : '#f8fafc';
+
+        // Render exames list
+        let examesHtml = '<ul style="margin: 0; padding-left: 0; list-style-type: none; font-size: 12px;">';
+        if (item.exames && item.exames.length > 0) {
+            item.exames.forEach(ex => {
+                let statusColor = '#cbd5e1'; // DEFAULT (cancelado)
+                let statusText = 'Cancelado';
+
+                if (ex.status === 'CONCLUÍDO') {
+                    statusColor = '#22c55e'; // GREEN
+                    statusText = 'Feito';
+                } else if (ex.status === 'PENDENTE') {
+                    statusColor = '#ef4444'; // RED
+                    statusText = 'Pendente';
+                }
+
+                examesHtml += `
+                    <li style="margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: ${statusColor};"></span>
+                        <strong style="color: ${statusColor};">${statusText}</strong>: ${ex.nome}
+                    </li>
+                `;
+            });
+        } else {
+            examesHtml += `<li><span style="color: #94a3b8; font-style: italic;">Sem exames atrelados</span></li>`;
+        }
+        examesHtml += '</ul>';
+
+        htmlStr += `
+            <tr style="background-color: ${bg}; border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 15px; font-weight: 700; font-size: 14px; color: #0f172a;">${item.hora}</td>
+                <td style="padding: 15px; font-size: 14px; font-weight: 500; color: #1e293b;">${item.nome}</td>
+                <td style="padding: 15px; font-size: 13px; color: #64748b;">${item.idade}</td>
+                <td style="padding: 15px; font-size: 13px; font-family: monospace; color: #475569; letter-spacing: 0.5px;">${item.prontuario}</td>
+                <td style="padding: 15px;">${examesHtml}</td>
+            </tr>
+        `;
+    });
+
+    htmlStr += `
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Footer -->
+            <div style="background-color: #f1f5f9; padding: 20px 30px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 12px; color: #64748b;">
+                <p style="margin: 0 0 5px 0;">Este é um e-mail automático gerado pelo <strong>Nexus Hub de Inteligência Hospitalar</strong>.</p>
+                <p style="margin: 0;">Por favor, não responda a este e-mail.</p>
+            </div>
+        </div>
+    `;
+
+    return htmlStr;
+};
