@@ -1,0 +1,73 @@
+import { doc, updateDoc, serverTimestamp, deleteField } from 'firebase/firestore';
+import { db } from '../../../services/firebase';
+
+/**
+ * Adiciona ou remove uma tag clínica simples (ex: EMAD, Retaguarda) de um paciente.
+ * 
+ * @param {string} patientId ID do paciente no Firestore
+ * @param {string} tagName Nome da tag a ser configurada (ex: 'perfil_emad', 'perfil_retaguarda')
+ * @param {boolean} active Status true para adicionar, false para remover
+ */
+export const toggleClinicalTag = async (patientId, tagName, active) => {
+    if (!patientId || !tagName) return;
+    const patientRef = doc(db, 'nexus_kanban_pacientes', patientId);
+
+    try {
+        const payload = {};
+        if (active) {
+            payload[tagName] = {
+                active: true,
+                timestamp: serverTimestamp()
+            };
+        } else {
+            payload[tagName] = deleteField();
+        }
+        await updateDoc(patientRef, payload);
+    } catch (error) {
+        console.error(`Erro ao atualizar tag ${tagName}:`, error);
+        throw error;
+    }
+};
+
+/**
+ * Adiciona ou atualiza a marcação de 'Provável Alta' com a pendência informada.
+ * 
+ * @param {string} patientId ID do paciente no Firestore
+ * @param {string} pendencia Texto justificando o entrave/pendência para a alta
+ */
+export const updateProvavelAlta = async (patientId, pendencia) => {
+    if (!patientId || !pendencia) return;
+    const patientRef = doc(db, 'nexus_kanban_pacientes', patientId);
+
+    try {
+        await updateDoc(patientRef, {
+            provavel_alta: {
+                active: true,
+                pendencia: pendencia,
+                timestamp: serverTimestamp()
+            }
+        });
+    } catch (error) {
+        console.error(`Erro ao atualizar Provável Alta:`, error);
+        throw error;
+    }
+};
+
+/**
+ * Remove a marcação de 'Provável Alta' de um paciente.
+ * 
+ * @param {string} patientId ID do paciente no Firestore
+ */
+export const removeProvavelAlta = async (patientId) => {
+    if (!patientId) return;
+    const patientRef = doc(db, 'nexus_kanban_pacientes', patientId);
+
+    try {
+        await updateDoc(patientRef, {
+            provavel_alta: deleteField()
+        });
+    } catch (error) {
+        console.error(`Erro ao remover Provável Alta:`, error);
+        throw error;
+    }
+};

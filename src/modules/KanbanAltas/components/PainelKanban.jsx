@@ -4,12 +4,13 @@ import { db } from '../../../services/firebase';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ImportacaoCenso from './ImportacaoCenso';
+import { toggleClinicalTag, updateProvavelAlta, removeProvavelAlta } from '../services/kanbanService';
 import { gerarRelatorioRondas } from './utils/GeradorPDF';
 
 const SETORES_URGENCIA = [
-  "PS DECISÃO CIRURGICA", 
-  "PS DECISÃO CLINICA", 
-  "SALA DE EMERGENCIA", 
+  "PS DECISÃO CIRURGICA",
+  "PS DECISÃO CLINICA",
+  "SALA DE EMERGENCIA",
   "SALA LARANJA"
 ];
 
@@ -47,15 +48,23 @@ export default function PainelKanban() {
   const [filtroSisreg, setFiltroSisreg] = useState(false);
   const [filtroNotas, setFiltroNotas] = useState(false);
 
+  const [filtroEmad, setFiltroEmad] = useState(false);
+  const [filtroRetaguarda, setFiltroRetaguarda] = useState(false);
+  const [filtroAlta, setFiltroAlta] = useState(false);
+
   // Estados dos Modais Interativos
   const [modalNotasPaciente, setModalNotasPaciente] = useState(null);
   const [novaNota, setNovaNota] = useState('');
   const [notaEmEdicao, setNotaEmEdicao] = useState(null);
   const [notaParaApagar, setNotaParaApagar] = useState(null);
-  
+
   const [modalSisregPaciente, setModalSisregPaciente] = useState(null);
   const [formSisreg, setFormSisreg] = useState({ data: new Date().toISOString().split('T')[0], numero: '' });
   const [confirmarApagarSisreg, setConfirmarApagarSisreg] = useState(false);
+
+  const [modalProvavelAlta, setModalProvavelAlta] = useState(null);
+  const [pendenciaAlta, setPendenciaAlta] = useState('');
+  const [modalDetalhesAlta, setModalDetalhesAlta] = useState(null);
 
   // 1. BUSCA EM TEMPO REAL NO FIREBASE
   useEffect(() => {
@@ -63,12 +72,12 @@ export default function PainelKanban() {
     const unsubPacientes = onSnapshot(qPacientes, (snap) => {
       const lista = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setPacientes(lista);
-      
+
       setModalNotasPaciente(prev => {
         if (!prev) return null;
         const pAtualizado = lista.find(p => p.id === prev.id);
         if (pAtualizado) {
-          try { pAtualizado.notasArray = JSON.parse(pAtualizado.historicoJson || "[]"); } catch(e){ pAtualizado.notasArray = []; }
+          try { pAtualizado.notasArray = JSON.parse(pAtualizado.historicoJson || "[]"); } catch (e) { pAtualizado.notasArray = []; }
           return pAtualizado;
         }
         return null;
@@ -109,7 +118,7 @@ export default function PainelKanban() {
       const dInt = parseDate(p.dataInternacao);
       dInt.setHours(0, 0, 0, 0);
       const dias = Math.floor((hoje - dInt) / (1000 * 60 * 60 * 24));
-      
+
       let pKanban = "verde";
       if (dias >= 2 && dias <= 3) pKanban = "amarelo";
       else if (dias > 3 && dias <= 7) pKanban = "vermelho";
@@ -119,13 +128,13 @@ export default function PainelKanban() {
 
       p.diasInternado = dias;
       p.corKanban = pKanban;
-      
+
       const setorLimpo = String(p.setor).toUpperCase().trim();
       p.exigeSisreg = SETORES_URGENCIA.includes(setorLimpo);
       p.semSisreg = p.exigeSisreg && (!p.numeroSisreg || p.numeroSisreg.trim() === "");
-      
+
       let notasArray = [];
-      try { notasArray = JSON.parse(p.historicoJson || "[]"); } catch(e){}
+      try { notasArray = JSON.parse(p.historicoJson || "[]"); } catch (e) { }
       p.temNotas = notasArray.length > 0;
       p.notasArray = notasArray;
 
@@ -137,6 +146,9 @@ export default function PainelKanban() {
       if (filtroKanban && pKanban !== filtroKanban) valid = false;
       if (filtroSisreg && !p.semSisreg) valid = false;
       if (filtroNotas && !p.temNotas) valid = false;
+      if (filtroEmad && !p.perfil_emad?.active) valid = false;
+      if (filtroRetaguarda && !p.perfil_retaguarda?.active) valid = false;
+      if (filtroAlta && !p.provavel_alta?.active) valid = false;
       if (dataInicio && dInt < new Date(dataInicio + "T00:00:00")) valid = false;
       if (dataFim && dInt > new Date(dataFim + "T23:59:59")) valid = false;
 
@@ -205,9 +217,9 @@ export default function PainelKanban() {
       novasNotas.splice(notaParaApagar, 1);
       await updateDoc(docRef, { historicoJson: JSON.stringify(novasNotas) });
       toast.success("Nota apagada.");
-      if(notaEmEdicao === notaParaApagar) cancelarEdicaoNota();
-    } catch (error) { 
-      toast.error("Erro ao apagar nota."); 
+      if (notaEmEdicao === notaParaApagar) cancelarEdicaoNota();
+    } catch (error) {
+      toast.error("Erro ao apagar nota.");
     } finally {
       setNotaParaApagar(null);
     }
@@ -264,10 +276,10 @@ export default function PainelKanban() {
 
   return (
     <div className="flex flex-col h-full gap-6 text-nexus-text relative">
-      
+
       {/* ToastContainer Configurado para Tema LIGHT (Sem o verde fluorescente) */}
       <ToastContainer position="top-right" theme="light" />
-      
+
       {/* Barra Superior */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
         <div className="text-center sm:text-left w-full sm:w-auto">
@@ -281,7 +293,7 @@ export default function PainelKanban() {
             </span>
           </div>
         </div>
-        
+
         <div className="hidden sm:flex items-center gap-3">
           <button onClick={() => gerarRelatorioRondas(pacientes)} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shrink-0">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
@@ -364,11 +376,11 @@ export default function PainelKanban() {
           <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Até:</label>
           <input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} className="w-full p-2 sm:p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50 outline-none" />
         </div>
-        
+
         {/* Toggles Interativos com visual de Switch */}
-        <div className="col-span-2 md:col-span-1 border-t pt-3 md:border-none md:pt-0">
+        <div className="col-span-2 md:col-span-6 border-t pt-3 md:pt-4">
           <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Filtros Rápidos</label>
-          <div className="flex flex-row md:flex-col gap-3">
+          <div className="flex flex-wrap gap-4 sm:gap-6">
             <label className="flex items-center cursor-pointer gap-2 group">
               <div className="relative">
                 <input type="checkbox" checked={filtroSisreg} onChange={() => setFiltroSisreg(!filtroSisreg)} className="sr-only" />
@@ -384,6 +396,31 @@ export default function PainelKanban() {
                 <div className={`dot absolute left-1 top-0.5 bg-white w-4 h-4 rounded-full transition-transform ${filtroNotas ? 'transform translate-x-4' : ''} shadow-sm`}></div>
               </div>
               <span className={`text-[10px] font-black uppercase tracking-wider transition-colors ${filtroNotas ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Com Notas</span>
+            </label>
+
+            <label className="flex items-center cursor-pointer gap-2 group border-l pl-4 sm:pl-6 border-slate-200">
+              <div className="relative">
+                <input type="checkbox" checked={filtroEmad} onChange={() => setFiltroEmad(!filtroEmad)} className="sr-only" />
+                <div className={`block w-10 h-5 rounded-full transition-colors ${filtroEmad ? 'bg-sky-500' : 'bg-slate-300'}`}></div>
+                <div className={`dot absolute left-1 top-0.5 bg-white w-4 h-4 rounded-full transition-transform ${filtroEmad ? 'transform translate-x-4' : ''} shadow-sm`}></div>
+              </div>
+              <span className={`text-[10px] font-black uppercase tracking-wider transition-colors ${filtroEmad ? 'text-sky-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Perfil EMAD</span>
+            </label>
+            <label className="flex items-center cursor-pointer gap-2 group">
+              <div className="relative">
+                <input type="checkbox" checked={filtroRetaguarda} onChange={() => setFiltroRetaguarda(!filtroRetaguarda)} className="sr-only" />
+                <div className={`block w-10 h-5 rounded-full transition-colors ${filtroRetaguarda ? 'bg-purple-500' : 'bg-slate-300'}`}></div>
+                <div className={`dot absolute left-1 top-0.5 bg-white w-4 h-4 rounded-full transition-transform ${filtroRetaguarda ? 'transform translate-x-4' : ''} shadow-sm`}></div>
+              </div>
+              <span className={`text-[10px] font-black uppercase tracking-wider transition-colors ${filtroRetaguarda ? 'text-purple-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Retaguarda</span>
+            </label>
+            <label className="flex items-center cursor-pointer gap-2 group">
+              <div className="relative">
+                <input type="checkbox" checked={filtroAlta} onChange={() => setFiltroAlta(!filtroAlta)} className="sr-only" />
+                <div className={`block w-10 h-5 rounded-full transition-colors ${filtroAlta ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
+                <div className={`dot absolute left-1 top-0.5 bg-white w-4 h-4 rounded-full transition-transform ${filtroAlta ? 'transform translate-x-4' : ''} shadow-sm`}></div>
+              </div>
+              <span className={`text-[10px] font-black uppercase tracking-wider transition-colors ${filtroAlta ? 'text-emerald-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Provável Alta</span>
             </label>
           </div>
         </div>
@@ -403,11 +440,11 @@ export default function PainelKanban() {
                 <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest">{setor}</h3>
                 <span className="bg-slate-200 text-slate-600 text-[10px] px-2 py-0.5 rounded-full font-bold ml-2">{setoresAgrupados[setor].length}</span>
               </div>
-              
+
               <div className="grid grid-cols-1 gap-3">
                 {setoresAgrupados[setor].map(p => (
                   <div key={p.id} className={`border-y border-r border-l-[12px] shadow-sm rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:shadow-md transition-all ${coresMap[p.status === 'SINALIZADA' ? 'alta' : p.corKanban]}`}>
-                    
+
                     <div className="flex-1 w-full">
                       <div className="flex flex-wrap items-center gap-2 mb-1">
                         <span className="bg-slate-800 text-white text-[11px] font-black px-2.5 py-0.5 rounded shadow-sm shrink-0">{p.leito}</span>
@@ -421,8 +458,27 @@ export default function PainelKanban() {
                           {p.diasInternado} dias internado
                         </span>
                       </div>
+
+                      {/* Botões de Ações Rápidas Resumidos */}
+                      <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-100/50 w-full">
+                        <button onClick={() => toggleClinicalTag(p.id, 'perfil_emad', !p.perfil_emad?.active)} className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black transition-all border shadow-sm ${p.perfil_emad?.active ? 'bg-sky-50 text-sky-700 border-sky-300 ring-1 ring-sky-100' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                          EMAD
+                        </button>
+
+                        <button onClick={() => toggleClinicalTag(p.id, 'perfil_retaguarda', !p.perfil_retaguarda?.active)} className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black transition-all border shadow-sm ${p.perfil_retaguarda?.active ? 'bg-purple-50 text-purple-700 border-purple-300 ring-1 ring-purple-100' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                          RETAGUARDA
+                        </button>
+
+                        <button onClick={() => { p.provavel_alta?.active ? setModalDetalhesAlta(p) : setModalProvavelAlta(p) }} className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black transition-all border shadow-sm ${p.provavel_alta?.active ? 'bg-emerald-50 text-emerald-700 border-emerald-300 ring-1 ring-emerald-100' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                          PROVÁVEL ALTA
+                        </button>
+                      </div>
+
                     </div>
-                    
+
                     <div className="flex items-center gap-2 w-full md:w-auto justify-end shrink-0">
                       {p.exigeSisreg && (
                         p.semSisreg ? (
@@ -441,7 +497,7 @@ export default function PainelKanban() {
                           </button>
                         )
                       )}
-                      
+
                       <button onClick={() => setModalNotasPaciente(p)} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white hover:bg-sky-50 text-sky-600 px-4 py-2 rounded-lg transition-all text-[10px] font-black shadow-sm relative border border-sky-200">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                         <span>NOTAS DA EQUIPE</span>
@@ -463,7 +519,7 @@ export default function PainelKanban() {
       {/* Modal Incluir/Editar SISREG */}
       {modalSisregPaciente && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-          
+
           {/* Modal Sobreposto de Confirmação de Exclusão do SISREG */}
           {confirmarApagarSisreg && (
             <div className="absolute inset-0 z-[10010] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 rounded-2xl animate-[fadeIn_0.2s_ease-in-out]">
@@ -492,20 +548,20 @@ export default function PainelKanban() {
                 </button>
               )}
             </div>
-            
+
             <p className="text-xs text-slate-500 mb-4">Paciente: <strong className="text-slate-800">{modalSisregPaciente.nome}</strong></p>
-            
+
             <div className="space-y-4 mb-6">
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Data da Solicitação</label>
-                <input type="date" value={formSisreg.data} onChange={e => setFormSisreg({...formSisreg, data: e.target.value})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none text-sm bg-slate-50" />
+                <input type="date" value={formSisreg.data} onChange={e => setFormSisreg({ ...formSisreg, data: e.target.value })} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none text-sm bg-slate-50" />
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Número do SISREG</label>
-                <input type="text" placeholder="Ex: 123456789" value={formSisreg.numero} onChange={e => setFormSisreg({...formSisreg, numero: e.target.value.replace(/\D/g,'')})} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-mono tracking-widest bg-slate-50" />
+                <input type="text" placeholder="Ex: 123456789" value={formSisreg.numero} onChange={e => setFormSisreg({ ...formSisreg, numero: e.target.value.replace(/\D/g, '') })} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-mono tracking-widest bg-slate-50" />
               </div>
             </div>
-            
+
             <div className="flex gap-3">
               <button onClick={() => setModalSisregPaciente(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2.5 rounded-xl transition-colors">Cancelar</button>
               <button onClick={salvarSisreg} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl transition-shadow shadow-md">Salvar</button>
@@ -514,10 +570,90 @@ export default function PainelKanban() {
         </div>
       )}
 
+      {/* Modal Registrar Provável Alta */}
+      {modalProvavelAlta && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-[fadeIn_0.2s_ease-in-out]">
+            <h3 className="text-lg font-bold text-slate-800 border-b pb-3 mb-4">Registrar Provável Alta</h3>
+            <p className="text-xs text-slate-500 mb-4">Paciente: <strong className="text-slate-800">{modalProvavelAlta.nome}</strong></p>
+
+            <div className="mb-6">
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Pendência para a alta</label>
+              <textarea
+                value={pendenciaAlta}
+                onChange={(e) => setPendenciaAlta(e.target.value)}
+                placeholder="Ex: Aguardando exames laboratoriais..."
+                className="w-full p-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50 resize-none h-24"
+              ></textarea>
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={() => { setModalProvavelAlta(null); setPendenciaAlta(''); }} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2.5 rounded-xl transition-colors">Cancelar</button>
+              <button
+                onClick={async () => {
+                  if (!pendenciaAlta.trim()) { return toast.warning("Informe a pendência da alta."); }
+                  try {
+                    await updateProvavelAlta(modalProvavelAlta.id, pendenciaAlta.trim());
+                    toast.success("Provável alta registrada!");
+                    setModalProvavelAlta(null);
+                    setPendenciaAlta('');
+                  } catch (e) { }
+                }}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl transition-shadow shadow-md"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Detalhes Provável Alta */}
+      {modalDetalhesAlta && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-[fadeIn_0.2s_ease-in-out]">
+            <div className="flex justify-between items-center border-b pb-3 mb-4">
+              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <svg className="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                Provável Alta
+              </h3>
+              <button onClick={() => setModalDetalhesAlta(null)} className="text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-1.5 rounded-full transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <p className="text-xs text-slate-500 mb-4">Paciente: <strong className="text-slate-800">{modalDetalhesAlta.nome}</strong></p>
+
+            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 mb-6">
+              <p className="text-[10px] font-bold text-emerald-600 uppercase mb-1">Pendência Registrada:</p>
+              <p className="text-sm text-slate-700 whitespace-pre-wrap">{modalDetalhesAlta.provavel_alta?.pendencia || 'Nenhuma pendência especificada.'}</p>
+              {modalDetalhesAlta.provavel_alta?.timestamp && (
+                <p className="text-[9px] text-slate-400 mt-2 text-right">
+                  Registrado em: {modalDetalhesAlta.provavel_alta.timestamp?.toDate ? modalDetalhesAlta.provavel_alta.timestamp.toDate().toLocaleString('pt-BR') : 'Tempo real'}
+                </p>
+              )}
+            </div>
+
+            <button
+              onClick={async () => {
+                try {
+                  await removeProvavelAlta(modalDetalhesAlta.id);
+                  toast.success("Tag de alta removida!");
+                  setModalDetalhesAlta(null);
+                } catch (e) { }
+              }}
+              className="w-full bg-red-50 hover:bg-red-600 text-red-600 hover:text-white font-bold py-2.5 rounded-xl transition-colors border border-red-200 hover:border-red-600 flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              Remover Tag de Alta
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Modal Notas da Equipe */}
       {modalNotasPaciente && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-          
+
           {/* Modal Sobreposto de Confirmação de Exclusão da Nota */}
           {notaParaApagar !== null && (
             <div className="absolute inset-0 z-[10010] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 rounded-2xl animate-[fadeIn_0.2s_ease-in-out]">
@@ -547,7 +683,7 @@ export default function PainelKanban() {
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
-            
+
             <div className="p-4 sm:p-5 overflow-y-auto custom-scrollbar flex-1 bg-slate-100/50 space-y-3">
               {modalNotasPaciente.notasArray.length === 0 ? (
                 <p className="text-slate-400 text-center italic text-sm py-8">Nenhuma anotação registrada.</p>
@@ -556,10 +692,10 @@ export default function PainelKanban() {
                   <div key={i} className={`p-3 sm:p-4 rounded-xl border-l-4 shadow-sm text-left relative group transition-colors ${notaEmEdicao === i ? 'bg-sky-50 border-sky-500' : 'bg-white border-sky-400 hover:bg-slate-50'}`}>
                     <div className="flex justify-between items-start mb-2">
                       <div className="text-[9px] sm:text-[10px] text-sky-600 font-bold uppercase flex items-center gap-1.5">
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg> 
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                         {nota.usuario}
                       </div>
-                      
+
                       <div className="flex items-center gap-2">
                         <span className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest text-right">
                           {nota.data} {nota.editadaEm && <span className="text-amber-500 italic ml-1" title={`Editada em ${nota.editadaEm}`}>(Editada)</span>}
@@ -590,9 +726,9 @@ export default function PainelKanban() {
                   <button onClick={cancelarEdicaoNota} className="text-[10px] text-slate-500 hover:text-slate-700 underline">Cancelar Edição</button>
                 )}
               </div>
-              
+
               <textarea value={novaNota} onChange={e => setNovaNota(e.target.value)} className={`w-full p-3 border rounded-xl text-sm outline-none focus:ring-2 h-20 sm:h-24 mb-3 resize-none custom-scrollbar ${notaEmEdicao !== null ? 'bg-amber-50 border-amber-300 focus:ring-amber-500' : 'bg-slate-50 border-slate-300 focus:ring-sky-500'}`} placeholder="Digite a evolução, entrave para alta ou pedido gerado..."></textarea>
-              
+
               <button onClick={salvarNota} className={`w-full text-white font-bold py-2.5 sm:py-3 rounded-xl transition-shadow shadow-md flex justify-center items-center gap-2 ${notaEmEdicao !== null ? 'bg-amber-500 hover:bg-amber-600' : 'bg-sky-600 hover:bg-sky-700'}`}>
                 {notaEmEdicao !== null ? (
                   <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> Salvar Edição</>
