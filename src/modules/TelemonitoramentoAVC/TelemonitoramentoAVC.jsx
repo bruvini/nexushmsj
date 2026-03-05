@@ -5,6 +5,7 @@ import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import FormCadastro from './components/FormCadastro'
 import FormAcolhimento from './components/FormAcolhimento'
+import FormExames from './components/FormExames'
 import ConfiguracoesAVC from './components/ConfiguracoesAVC'
 
 export default function TelemonitoramentoAVC() {
@@ -83,9 +84,10 @@ export default function TelemonitoramentoAVC() {
                         <div className="animate-fadeIn">
                             {activeTab === 'cadastro' && <FormCadastro />}
                             {activeTab === 'triagem' && <FormAcolhimento />}
+                            {activeTab === 'exames' && <FormExames />}
                             {activeTab === 'config' && <ConfiguracoesAVC />}
 
-                            {activeTab !== 'cadastro' && activeTab !== 'triagem' && activeTab !== 'config' && (
+                            {activeTab !== 'cadastro' && activeTab !== 'triagem' && activeTab !== 'exames' && activeTab !== 'config' && (
                                 <div className="w-full h-64 border-2 border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center text-slate-400 bg-white/50">
                                     <svg className="w-12 h-12 mb-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
