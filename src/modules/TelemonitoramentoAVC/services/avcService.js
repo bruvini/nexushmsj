@@ -741,3 +741,128 @@ export const saveContact = async (contactData) => {
         return { success: false, error: error.message };
     }
 };
+
+// ==========================================
+// MAILING / LISTA AMBULATORIAL
+// ==========================================
+
+export const getConfirmedDates = async () => {
+    try {
+        const q = query(
+            collection(db, CONSULTAS_COLLECTION),
+            where('status', '==', 'CONFIRMADO')
+        );
+        const snapshot = await getDocs(q);
+
+        const dates = new Set();
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.data_agendamento) {
+                dates.add(data.data_agendamento);
+            }
+        });
+
+        // Ordenar as datas decrescente ou crescente
+        const sortedDates = Array.from(dates).sort((a, b) => new Date(a) - new Date(b));
+
+        return { success: true, data: sortedDates };
+    } catch (error) {
+        console.error('Erro ao buscar datas confirmadas:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+export const getDailySchedulePreview = async (date) => {
+    try {
+        // 1. Get Consultas on the date
+        const qConsultas = query(
+            collection(db, CONSULTAS_COLLECTION),
+            where('data_agendamento', '==', date),
+            where('status', '==', 'CONFIRMADO')
+        );
+        const consultasSnap = await getDocs(qConsultas);
+
+        const previewList = [];
+
+        for (const cDoc of consultasSnap.docs) {
+            const consultaData = cDoc.data();
+            const pacienteId = consultaData.id_paciente;
+
+            if (!pacienteId) continue;
+
+            // 2. Get Paciente
+            const pRef = doc(db, PACIENTES_COLLECTION, pacienteId);
+            const pSnap = await getDoc(pRef);
+            let pData = { nome: 'Desconhecido', data_nascimento: null, prontuario: 'N/A' };
+            if (pSnap.exists()) {
+                pData = pSnap.data();
+            }
+
+            // Calcula Idade
+            let idade = 0;
+            if (pData.data_nascimento) {
+                const birthDate = new Date(pData.data_nascimento);
+                const today = new Date();
+                idade = today.getFullYear() - birthDate.getFullYear();
+                const m = today.getMonth() - birthDate.getMonth();
+                if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                    idade--;
+                }
+            }
+
+            // 3. Get Exames
+            const qExames = query(
+                collection(db, EXAMES_COLLECTION),
+                where('id_paciente', '==', pacienteId)
+            );
+            const examesSnap = await getDocs(qExames);
+            const exames = examesSnap.docs.map(e => {
+                const eData = e.data();
+                return {
+                    nome: eData.exame_nome || eData.nome || 'Desconhecido',
+                    status: eData.status // 'PENDENTE', 'CONCLUÍDO', 'CANCELADO'
+                };
+            });
+
+            previewList.push({
+                hora: consultaData.hora_agendamento || '00:00',
+                nome: pData.nome,
+                idade: `${idade} anos`,
+                prontuario: pData.prontuario || 'N/A',
+                exames: exames
+            });
+        }
+
+        // Sort by Time
+        previewList.sort((a, b) => a.hora.localeCompare(b.hora));
+
+        return { success: true, data: previewList };
+    } catch (error) {
+        console.error('Erro ao montar preview diário:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+export const triggerEmailSend = async (payload) => {
+    try {
+        const queueRef = doc(collection(db, 'nexus_avc_mail_queue'));
+
+        await setDoc(queueRef, {
+            ...payload,
+            status: 'PENDING',
+            created_at: serverTimestamp()
+        });
+
+        // Registrar Log Operacional
+        await logOperation('DISPARO DE E-MAIL (QUEUE)', {
+            assunto: payload.assunto,
+            destinatarios: payload.destinatarios,
+            referencia_data: payload.data_alvo
+        });
+
+        return { success: true, queueId: queueRef.id };
+    } catch (error) {
+        console.error('Erro ao enfileirar email:', error);
+        return { success: false, error: error.message };
+    }
+};
