@@ -673,3 +673,71 @@ export const saveOutcome = async (outcomeData, timerSeconds) => {
         return { success: false, error };
     }
 };
+
+// ==========================================
+// CENTRAL DE CONTATO (CRM)
+// ==========================================
+
+export const getPatientsForCRM = async () => {
+    try {
+        const q = query(
+            collection(db, PACIENTES_COLLECTION),
+            where('status_monitoramento_atual', 'not-in', ['NÃO ELEGÍVEL', 'MONITORAMENTO CONCLUÍDO', 'ENCERRADO - ÓBITO', 'ENCERRADO - ABANDONO', 'ENCERRADO - REINTERNAÇÃO'])
+        );
+
+        const snapshot = await getDocs(q);
+        const data = snapshot.docs.map(doc => {
+            const docData = doc.data();
+
+            // Collect the 3 potential phones
+            const telefones = [];
+            if (docData.telefone) telefones.push(docData.telefone);
+            if (docData.telefone2) telefones.push(docData.telefone2);
+            if (docData.telefone3) telefones.push(docData.telefone3);
+
+            return {
+                id: doc.id,
+                nome: docData.nome || 'Sem Nome',
+                status_monitoramento_atual: docData.status_monitoramento_atual || 'DESCONHECIDO',
+                telefones: telefones
+            };
+        });
+
+        // Ordenar alfabeticamente
+        data.sort((a, b) => a.nome.localeCompare(b.nome));
+
+        return { success: true, data };
+    } catch (error) {
+        console.error('Erro ao buscar pacientes para CRM:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+export const saveContact = async (contactData) => {
+    try {
+        const contatoRef = doc(collection(db, 'nexus_avc_contatos'));
+
+        await setDoc(contatoRef, {
+            id_paciente: contactData.id_paciente || null,
+            meio_contato: contactData.meio_contato || '',
+            data_contato: serverTimestamp(),
+            hora_inicio: contactData.hora_inicio || '',
+            hora_fim: contactData.hora_fim || '',
+            duracao_minutos: contactData.duracao_minutos || 0,
+            categoria_desfecho: contactData.categoria_desfecho || '',
+            observacoes: contactData.observacoes || ''
+        });
+
+        // Registrar Log Operacional
+        await logOperation('REGISTRO DE CONTATO CRM', {
+            pacienteId: contactData.id_paciente,
+            detalhes: `Via ${contactData.meio_contato}: ${contactData.categoria_desfecho}. Duração: ${contactData.duracao_minutos}min.`,
+            tempo_gasto_segundos: contactData.duracao_minutos * 60
+        });
+
+        return { success: true, contatoid: contatoRef.id };
+    } catch (error) {
+        console.error('Erro ao salvar contato:', error);
+        return { success: false, error: error.message };
+    }
+};
