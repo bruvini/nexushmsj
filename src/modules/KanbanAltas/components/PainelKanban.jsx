@@ -44,8 +44,7 @@ export default function PainelKanban() {
   const [busca, setBusca] = useState('');
   const [filtroSetor, setFiltroSetor] = useState('');
   const [filtroKanban, setFiltroKanban] = useState('');
-  const [dataInicio, setDataInicio] = useState('');
-  const [dataFim, setDataFim] = useState('');
+  const [filtroEspecialidade, setFiltroEspecialidade] = useState('');
   const [filtroSisreg, setFiltroSisreg] = useState(false);
   const [filtroNotas, setFiltroNotas] = useState(false);
 
@@ -147,15 +146,16 @@ export default function PainelKanban() {
   }, []);
 
   // 2. LÓGICA DE PROCESSAMENTO E FILTROS
-  const { filtrados, kpis, setoresAgrupados, setoresDisponiveis } = useMemo(() => {
+  const { filtrados, kpis, contadoresRapidos, setoresAgrupados, setoresDisponiveis } = useMemo(() => {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
     const counts = { verde: 0, amarelo: 0, vermelho: 0, laranja: 0, roxo: 0, preto: 0, sisreg: 0 };
+    const contadoresFiltros = { sisreg: 0, notas: 0, emad: 0, retaguarda: 0, alta: 0, trauma: 0, medicacao: 0 };
     const listaSetores = new Set();
     const mapAgrupado = {};
 
-    let dadosFiltrados = pacientes.filter(p => {
+    let dadosFiltradosBase = pacientes.filter(p => {
       if (SETORES_OCULTOS.includes(p.setor)) return false;
 
       const dInt = parseDate(p.dataInternacao);
@@ -172,7 +172,6 @@ export default function PainelKanban() {
       p.diasInternado = dias;
       p.corKanban = pKanban;
 
-      // Adicionando a contagem de medicação proativamente para uso global 
       let isAlertaMedicacao = false;
       if (p.medicacoes_curso && p.medicacoes_curso.length > 0) {
         isAlertaMedicacao = p.medicacoes_curso.some(med => {
@@ -195,10 +194,32 @@ export default function PainelKanban() {
 
       listaSetores.add(p.setor);
 
+      let validBase = true;
+      if (busca && !p.nome.toLowerCase().includes(busca.toLowerCase()) && !String(p.leito).toLowerCase().includes(busca.toLowerCase())) validBase = false;
+      if (filtroSetor && p.setor !== filtroSetor) validBase = false;
+      if (filtroKanban && pKanban !== filtroKanban) validBase = false;
+
+      if (filtroEspecialidade) {
+        const isPrincipal = p.especialidade_gestao?.principal === filtroEspecialidade || p.especialidade === filtroEspecialidade;
+        const inAdicionais = p.especialidade_gestao?.adicionais?.includes(filtroEspecialidade) || false;
+        if (!isPrincipal && !inAdicionais) validBase = false;
+      }
+
+      if (validBase) {
+        if (p.semSisreg) contadoresFiltros.sisreg++;
+        if (p.temNotas) contadoresFiltros.notas++;
+        if (p.perfil_emad?.active) contadoresFiltros.emad++;
+        if (p.perfil_retaguarda?.active) contadoresFiltros.retaguarda++;
+        if (p.provavel_alta?.active) contadoresFiltros.alta++;
+        if (p.fluxo_trauma?.active) contadoresFiltros.trauma++;
+        if (p.medicacoes_curso && p.medicacoes_curso.length > 0) contadoresFiltros.medicacao++;
+      }
+
+      return validBase;
+    });
+
+    let dadosFiltrados = dadosFiltradosBase.filter(p => {
       let valid = true;
-      if (busca && !p.nome.toLowerCase().includes(busca.toLowerCase()) && !String(p.leito).toLowerCase().includes(busca.toLowerCase())) valid = false;
-      if (filtroSetor && p.setor !== filtroSetor) valid = false;
-      if (filtroKanban && pKanban !== filtroKanban) valid = false;
       if (filtroSisreg && !p.semSisreg) valid = false;
       if (filtroNotas && !p.temNotas) valid = false;
       if (filtroEmad && !p.perfil_emad?.active) valid = false;
@@ -206,14 +227,11 @@ export default function PainelKanban() {
       if (filtroAlta && !p.provavel_alta?.active) valid = false;
       if (filtroTrauma && !p.fluxo_trauma?.active) valid = false;
       if (filtroMedicacao && (!p.medicacoes_curso || p.medicacoes_curso.length === 0)) valid = false;
-      if (dataInicio && dInt < new Date(dataInicio + "T00:00:00")) valid = false;
-      if (dataFim && dInt > new Date(dataFim + "T23:59:59")) valid = false;
 
       if (valid) {
-        counts[pKanban]++;
+        counts[p.corKanban]++;
         if (p.semSisreg) counts.sisreg++;
       }
-
       return valid;
     });
 
@@ -226,10 +244,11 @@ export default function PainelKanban() {
     return {
       filtrados: dadosFiltrados,
       kpis: counts,
+      contadoresRapidos: contadoresFiltros,
       setoresAgrupados: mapAgrupado,
       setoresDisponiveis: Array.from(listaSetores).sort()
     };
-  }, [pacientes, busca, filtroSetor, filtroKanban, dataInicio, dataFim, filtroSisreg, filtroNotas, filtroEmad, filtroRetaguarda, filtroAlta, filtroTrauma, filtroMedicacao]);
+  }, [pacientes, busca, filtroSetor, filtroEspecialidade, filtroKanban, filtroSisreg, filtroNotas, filtroEmad, filtroRetaguarda, filtroAlta, filtroTrauma, filtroMedicacao]);
 
   // 3. AÇÕES DE BANCO DE DADOS (NOTAS E SISREG)
   const salvarNota = async () => {
@@ -547,67 +566,80 @@ export default function PainelKanban() {
             <option value="preto">⚫ &gt; 30 dias de int.</option>
           </select>
         </div>
-        <div className="col-span-1 md:col-span-1">
-          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Internação De:</label>
-          <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} className="w-full p-2 sm:p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50 outline-none" />
-        </div>
-        <div className="col-span-1 md:col-span-1">
-          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Até:</label>
-          <input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} className="w-full p-2 sm:p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50 outline-none" />
+        <div className="col-span-2 md:col-span-2">
+          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Especialidade Clínica</label>
+          <select value={filtroEspecialidade} onChange={e => setFiltroEspecialidade(e.target.value)} className="w-full p-2 sm:p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50 outline-none">
+            <option value="">Todas as Especialidades</option>
+            {PROFISSIONAL_ESPECIALIDADES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
         </div>
 
         {/* Toggles Interativos com visual de Switch */}
         <div className="col-span-2 md:col-span-6 border-t pt-3 md:pt-4">
           <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Filtros Rápidos</label>
-          <div className="flex flex-wrap gap-4 sm:gap-6">
-            <label className="flex items-center cursor-pointer gap-2 group">
+          <div className="flex flex-wrap gap-4 sm:gap-6 items-center">
+
+            <label className={`flex items-center gap-2 group transition-all ${contadoresRapidos?.sisreg === 0 ? 'opacity-40 grayscale cursor-not-allowed' : 'cursor-pointer'}`}>
               <div className="relative">
-                <input type="checkbox" checked={filtroSisreg} onChange={() => setFiltroSisreg(!filtroSisreg)} className="sr-only" />
+                <input type="checkbox" disabled={contadoresRapidos?.sisreg === 0} checked={filtroSisreg} onChange={() => setFiltroSisreg(!filtroSisreg)} className="sr-only" />
                 <div className={`block w-10 h-5 rounded-full transition-colors ${filtroSisreg ? 'bg-rose-500' : 'bg-slate-300'}`}></div>
                 <div className={`dot absolute left-1 top-0.5 bg-white w-4 h-4 rounded-full transition-transform ${filtroSisreg ? 'transform translate-x-4' : ''} shadow-sm`}></div>
               </div>
-              <span className={`text-[10px] font-black uppercase tracking-wider transition-colors ${filtroSisreg ? 'text-rose-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Sem Sisreg</span>
+              <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-colors ${filtroSisreg ? 'text-rose-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Sem Sisreg <span className="text-[10px] ml-0.5 opacity-80">({contadoresRapidos?.sisreg || 0})</span></span>
             </label>
-            <label className="flex items-center cursor-pointer gap-2 group">
+
+            <label className={`flex items-center gap-2 group transition-all ${contadoresRapidos?.notas === 0 ? 'opacity-40 grayscale cursor-not-allowed' : 'cursor-pointer'}`}>
               <div className="relative">
-                <input type="checkbox" checked={filtroNotas} onChange={() => setFiltroNotas(!filtroNotas)} className="sr-only" />
+                <input type="checkbox" disabled={contadoresRapidos?.notas === 0} checked={filtroNotas} onChange={() => setFiltroNotas(!filtroNotas)} className="sr-only" />
                 <div className={`block w-10 h-5 rounded-full transition-colors ${filtroNotas ? 'bg-blue-500' : 'bg-slate-300'}`}></div>
                 <div className={`dot absolute left-1 top-0.5 bg-white w-4 h-4 rounded-full transition-transform ${filtroNotas ? 'transform translate-x-4' : ''} shadow-sm`}></div>
               </div>
-              <span className={`text-[10px] font-black uppercase tracking-wider transition-colors ${filtroNotas ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Com Notas</span>
+              <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-colors ${filtroNotas ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Com Notas <span className="text-[10px] ml-0.5 opacity-80">({contadoresRapidos?.notas || 0})</span></span>
             </label>
 
-            <label className="flex items-center cursor-pointer gap-2 group border-l pl-4 sm:pl-6 border-slate-200">
+            <label className={`flex items-center gap-2 group border-l pl-4 sm:pl-6 border-slate-200 transition-all ${contadoresRapidos?.emad === 0 ? 'opacity-40 grayscale cursor-not-allowed' : 'cursor-pointer'}`}>
               <div className="relative">
-                <input type="checkbox" checked={filtroEmad} onChange={() => setFiltroEmad(!filtroEmad)} className="sr-only" />
+                <input type="checkbox" disabled={contadoresRapidos?.emad === 0} checked={filtroEmad} onChange={() => setFiltroEmad(!filtroEmad)} className="sr-only" />
                 <div className={`block w-10 h-5 rounded-full transition-colors ${filtroEmad ? 'bg-sky-500' : 'bg-slate-300'}`}></div>
                 <div className={`dot absolute left-1 top-0.5 bg-white w-4 h-4 rounded-full transition-transform ${filtroEmad ? 'transform translate-x-4' : ''} shadow-sm`}></div>
               </div>
-              <span className={`text-[10px] font-black uppercase tracking-wider transition-colors ${filtroEmad ? 'text-sky-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Perfil EMAD</span>
+              <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-colors ${filtroEmad ? 'text-sky-600' : 'text-slate-400 group-hover:text-slate-600'}`}>EMAD <span className="text-[10px] ml-0.5 opacity-80">({contadoresRapidos?.emad || 0})</span></span>
             </label>
-            <label className="flex items-center cursor-pointer gap-2 group">
+
+            <label className={`flex items-center gap-2 group transition-all ${contadoresRapidos?.retaguarda === 0 ? 'opacity-40 grayscale cursor-not-allowed' : 'cursor-pointer'}`}>
               <div className="relative">
-                <input type="checkbox" checked={filtroRetaguarda} onChange={() => setFiltroRetaguarda(!filtroRetaguarda)} className="sr-only" />
+                <input type="checkbox" disabled={contadoresRapidos?.retaguarda === 0} checked={filtroRetaguarda} onChange={() => setFiltroRetaguarda(!filtroRetaguarda)} className="sr-only" />
                 <div className={`block w-10 h-5 rounded-full transition-colors ${filtroRetaguarda ? 'bg-purple-500' : 'bg-slate-300'}`}></div>
                 <div className={`dot absolute left-1 top-0.5 bg-white w-4 h-4 rounded-full transition-transform ${filtroRetaguarda ? 'transform translate-x-4' : ''} shadow-sm`}></div>
               </div>
-              <span className={`text-[10px] font-black uppercase tracking-wider transition-colors ${filtroRetaguarda ? 'text-purple-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Retaguarda</span>
+              <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-colors ${filtroRetaguarda ? 'text-purple-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Retaguarda <span className="text-[10px] ml-0.5 opacity-80">({contadoresRapidos?.retaguarda || 0})</span></span>
             </label>
-            <label className="flex items-center cursor-pointer gap-2 group">
+
+            <label className={`flex items-center gap-2 group transition-all ${contadoresRapidos?.alta === 0 ? 'opacity-40 grayscale cursor-not-allowed' : 'cursor-pointer'}`}>
               <div className="relative">
-                <input type="checkbox" checked={filtroAlta} onChange={() => setFiltroAlta(!filtroAlta)} className="sr-only" />
+                <input type="checkbox" disabled={contadoresRapidos?.alta === 0} checked={filtroAlta} onChange={() => setFiltroAlta(!filtroAlta)} className="sr-only" />
                 <div className={`block w-10 h-5 rounded-full transition-colors ${filtroAlta ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
                 <div className={`dot absolute left-1 top-0.5 bg-white w-4 h-4 rounded-full transition-transform ${filtroAlta ? 'transform translate-x-4' : ''} shadow-sm`}></div>
               </div>
-              <span className={`text-[10px] font-black uppercase tracking-wider transition-colors ${filtroAlta ? 'text-emerald-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Provável Alta</span>
+              <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-colors ${filtroAlta ? 'text-emerald-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Alta <span className="text-[10px] ml-0.5 opacity-80">({contadoresRapidos?.alta || 0})</span></span>
             </label>
-            <label className="flex items-center cursor-pointer gap-2 group border-l pl-4 sm:pl-6 border-slate-200">
+
+            <label className={`flex items-center gap-2 group transition-all ${contadoresRapidos?.trauma === 0 ? 'opacity-40 grayscale cursor-not-allowed' : 'cursor-pointer'}`}>
               <div className="relative">
-                <input type="checkbox" checked={filtroMedicacao} onChange={() => setFiltroMedicacao(!filtroMedicacao)} className="sr-only" />
+                <input type="checkbox" disabled={contadoresRapidos?.trauma === 0} checked={filtroTrauma} onChange={() => setFiltroTrauma(!filtroTrauma)} className="sr-only" />
+                <div className={`block w-10 h-5 rounded-full transition-colors ${filtroTrauma ? 'bg-amber-500' : 'bg-slate-300'}`}></div>
+                <div className={`dot absolute left-1 top-0.5 bg-white w-4 h-4 rounded-full transition-transform ${filtroTrauma ? 'transform translate-x-4' : ''} shadow-sm`}></div>
+              </div>
+              <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-colors ${filtroTrauma ? 'text-amber-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Trauma <span className="text-[10px] ml-0.5 opacity-80">({contadoresRapidos?.trauma || 0})</span></span>
+            </label>
+
+            <label className={`flex items-center gap-2 group border-l pl-4 sm:pl-6 border-slate-200 transition-all ${contadoresRapidos?.medicacao === 0 ? 'opacity-40 grayscale cursor-not-allowed' : 'cursor-pointer'}`}>
+              <div className="relative">
+                <input type="checkbox" disabled={contadoresRapidos?.medicacao === 0} checked={filtroMedicacao} onChange={() => setFiltroMedicacao(!filtroMedicacao)} className="sr-only" />
                 <div className={`block w-10 h-5 rounded-full transition-colors ${filtroMedicacao ? 'bg-indigo-500' : 'bg-slate-300'}`}></div>
                 <div className={`dot absolute left-1 top-0.5 bg-white w-4 h-4 rounded-full transition-transform ${filtroMedicacao ? 'transform translate-x-4' : ''} shadow-sm`}></div>
               </div>
-              <span className={`text-[10px] font-black uppercase tracking-wider transition-colors ${filtroMedicacao ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Com Medicação</span>
+              <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-colors ${filtroMedicacao ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Medicação <span className="text-[10px] ml-0.5 opacity-80">({contadoresRapidos?.medicacao || 0})</span></span>
             </label>
           </div>
         </div>
@@ -1063,7 +1095,7 @@ export default function PainelKanban() {
                     <option value={formEspecialidade.principal}>{formEspecialidade.principal}</option>
                   )}
                 </select>
-                <p className="text-[10px] text-slate-400 mt-1 italic">* Substitui a especialidade primária que é importada pelo Sisreg.</p>
+                <p className="text-[10px] text-slate-400 mt-1 italic">* Substitui a especialidade primária que é importada pelo relatório do MV.</p>
               </div>
 
               <div className="border-t border-slate-100 pt-5">
