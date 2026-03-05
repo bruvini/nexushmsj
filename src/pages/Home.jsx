@@ -104,6 +104,24 @@ export default function Home() {
         </svg>
       ),
     },
+    {
+      title: "Indicadores",
+      active: false,
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+      ),
+    },
+    {
+      title: "Plano Operativo Anual (POA)",
+      active: false,
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+        </svg>
+      ),
+    },
   ];
 
   return (
@@ -128,9 +146,7 @@ export default function Home() {
             className="w-48 sm:w-64 lg:w-80 object-contain drop-shadow-2xl mb-4 lg:mb-6"
           />
           <p className="text-slate-300 text-xs sm:text-sm font-light leading-relaxed tracking-wide mb-6 lg:mb-8 px-2 sm:px-8 lg:px-0">
-            Hub central de inteligência hospitalar. Uma plataforma unificada para
-            conectar dados, otimizar processos assistenciais e facilitar a
-            interoperabilidade.
+            O Nexus é o coração tecnológico do Hospital Municipal São José. Mais do que uma plataforma, ele é o elo que une cada profissional e cada dado, garantindo que a jornada do paciente seja fluida, segura e inteligente, do momento da internação até o cuidado em casa.
           </p>
 
           {/* Bloco de Correlação (Glassmorphism sutil) */}
@@ -143,13 +159,7 @@ export default function Home() {
               Sincronicidade de Dados
             </h3>
             <p className="text-slate-400 text-[11px] sm:text-xs leading-relaxed text-justify">
-              O Ecossistema Nexus elimina silos de informação conectando diretamente
-              a <strong>Regulação de Leitos</strong> ao{" "}
-              <strong>Centro Cirúrgico</strong> e aos setores de apoio (como{" "}
-              <strong>Higienização</strong> e <strong>Serviço Social</strong>).
-              Quando uma AIH é aprovada ou um leito de UTI é liberado, todos os
-              módulos refletem o status em tempo real via FHIR, garantindo que o
-              paciente seja o centro do cuidado e reduzindo gargalos operacionais.
+              No HMSJ, nada acontece isolado. Imagine que quando uma cirurgia é marcada no módulo de Eletivas, a Higienização já se prepara para o próximo leito e o Serviço Social organiza o apoio para a alta. O Nexus funciona como um fio invisível que conecta todos esses pontos: se uma vaga se abre na UTI ou um exame fica pronto, o hospital inteiro 'ouve' e reage em tempo real. Assim, o paciente não fica parado em filas invisíveis e o cuidado nunca sofre interrupções.
             </p>
           </div>
         </div>
