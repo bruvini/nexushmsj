@@ -866,3 +866,86 @@ export const triggerEmailSend = async (payload) => {
         return { success: false, error: error.message };
     }
 };
+
+// ==========================================
+// PRONTUÁRIO ELETRÔNICO (PERFIL 360)
+// ==========================================
+
+export const getComprehensivePatientData = async (patientId) => {
+    try {
+        if (!patientId) throw new Error("ID do Paciente is required.");
+
+        // Referências das consultas
+        const pRef = doc(db, PACIENTES_COLLECTION, patientId);
+        const qExames = query(collection(db, EXAMES_COLLECTION), where('id_paciente', '==', patientId));
+        const qConsultas = query(collection(db, CONSULTAS_COLLECTION), where('id_paciente', '==', patientId));
+        const qContatos = query(collection(db, 'nexus_avc_contatos'), where('id_paciente', '==', patientId));
+        const qDesfechos = query(collection(db, DESFECHOS_COLLECTION), where('id_paciente', '==', patientId));
+
+        // Busca Paralela
+        const [pSnap, examesSnap, consultasSnap, contatosSnap, desfechosSnap] = await Promise.all([
+            getDoc(pRef),
+            getDocs(qExames),
+            getDocs(qConsultas),
+            getDocs(qContatos),
+            getDocs(qDesfechos)
+        ]);
+
+        if (!pSnap.exists()) {
+            return { success: false, error: "Paciente não encontrado." };
+        }
+
+        const pacienteData = { id: pSnap.id, ...pSnap.data() };
+
+        // Calcular Idade
+        let idade = 'N/I';
+        if (pacienteData.data_nascimento) {
+            const birth = new Date(pacienteData.data_nascimento);
+            const today = new Date();
+            let age = today.getFullYear() - birth.getFullYear();
+            const m = today.getMonth() - birth.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+                age--;
+            }
+            idade = age;
+        }
+
+        const exames = examesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const consultas = consultasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const contatos = contatosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const desfechos = desfechosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // Check Anticoagulante in Patient Data or Configs?
+        // Medicacao de alta is usually an array or string
+        let usaAnticoagulante = false;
+        if (pacienteData.medicacao_alta) {
+            const anticoagulantesList = [
+                'ENOXAPARINA', 'RIVAROXABANA', 'APIXABANA', 'MAREVAN',
+                'VARFARINA', 'EDOXABANA', 'DABIGATRANA', 'ACENOCUMAROL',
+                'HEPARINA NÃO FRACIONADA', 'HEPARINA DE BAIXO PESO MOLECULAR',
+                'FONDAPARINUX', 'ELIQUIS'
+            ];
+
+            const meds = typeof pacienteData.medicacao_alta === 'string'
+                ? pacienteData.medicacao_alta.split(',').map(m => m.trim().toUpperCase())
+                : (Array.isArray(pacienteData.medicacao_alta) ? pacienteData.medicacao_alta.map(m => typeof m === 'string' ? m.toUpperCase() : '') : []);
+
+            usaAnticoagulante = meds.some(m => anticoagulantesList.includes(m));
+        }
+
+        return {
+            success: true,
+            data: {
+                paciente: { ...pacienteData, idade, usaAnticoagulante },
+                exames,
+                consultas,
+                contatos,
+                desfechos
+            }
+        };
+
+    } catch (error) {
+        console.error("Erro ao montar prontuário Eletrônico:", error);
+        return { success: false, error: error.message };
+    }
+};
