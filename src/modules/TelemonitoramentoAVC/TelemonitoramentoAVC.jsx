@@ -4,6 +4,8 @@ import Footer from '../../components/Footer'
 import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import FormCadastro from './components/FormCadastro'
+import FormAcolhimento from './components/FormAcolhimento'
+import ConfiguracoesAVC from './components/ConfiguracoesAVC'
 
 export default function TelemonitoramentoAVC() {
     const [activeTab, setActiveTab] = useState('cadastro')
@@ -54,8 +56,8 @@ export default function TelemonitoramentoAVC() {
                                 key={item.id}
                                 onClick={() => setActiveTab(item.id)}
                                 className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === item.id
-                                        ? 'bg-sky-50 text-sky-700 shadow-sm border border-sky-100'
-                                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent'
+                                    ? 'bg-sky-50 text-sky-700 shadow-sm border border-sky-100'
+                                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent'
                                     }`}
                             >
                                 <svg className={`w-5 h-5 ${activeTab === item.id ? 'text-sky-500' : 'text-slate-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -80,8 +82,10 @@ export default function TelemonitoramentoAVC() {
                     ) : (
                         <div className="animate-fadeIn">
                             {activeTab === 'cadastro' && <FormCadastro />}
+                            {activeTab === 'triagem' && <FormAcolhimento />}
+                            {activeTab === 'config' && <ConfiguracoesAVC />}
 
-                            {activeTab !== 'cadastro' && (
+                            {activeTab !== 'cadastro' && activeTab !== 'triagem' && activeTab !== 'config' && (
                                 <div className="w-full h-64 border-2 border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center text-slate-400 bg-white/50">
                                     <svg className="w-12 h-12 mb-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
