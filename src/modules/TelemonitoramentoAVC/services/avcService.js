@@ -263,6 +263,125 @@ export const updateConfigList = async (tipo, acao, valor) => {
     }
 };
 
+const CONSULTAS_COLLECTION = 'nexus_avc_consultas';
+
+/**
+ * Busca pacientes para a tela de Agendamento
+ */
+export const getAgendamentoPatients = async () => {
+    try {
+        const q = query(
+            collection(db, PACIENTES_COLLECTION),
+            where("status_monitoramento_atual", "in", ["VERIFICAR EXAMES", "AGENDAR CONSULTA", "AGUARDANDO CONSULTA", "VERIFICAR DESFECHO"]),
+            orderBy("createdAt", "asc")
+        );
+        const querySnapshot = await getDocs(q);
+        const pacientes = [];
+        querySnapshot.forEach((doc) => {
+            pacientes.push({ id: doc.id, ...doc.data() });
+        });
+        return { success: true, data: pacientes };
+    } catch (error) {
+        console.error("Erro ao buscar pacientes para agendamento:", error);
+        return { success: false, error };
+    }
+};
+
+/**
+ * Buscar a consulta ativa mais recente do paciente
+ */
+export const getAppointmentByPatient = async (patientId) => {
+    try {
+        const q = query(
+            collection(db, CONSULTAS_COLLECTION),
+            where("id_paciente", "==", patientId),
+            orderBy("createdAt", "desc")
+        );
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+            // Retorna a mais recente
+            const docSnap = querySnapshot.docs[0];
+            return { success: true, data: { id: docSnap.id, ...docSnap.data() } };
+        }
+        return { success: true, data: null };
+    } catch (error) {
+        console.error("Erro ao buscar consulta do paciente:", error);
+        return { success: false, error };
+    }
+};
+
+/**
+ * Conta quantos profissionais/pacientes estão agendados para a data
+ */
+export const countDailyAppointments = async (date) => {
+    try {
+        const q = query(
+            collection(db, CONSULTAS_COLLECTION),
+            where("data_agendamento", "==", date),
+            where("status", "in", ["PRE_AGENDADO", "CONFIRMADO"])
+        );
+        const querySnapshot = await getDocs(q);
+        return { success: true, count: querySnapshot.size };
+    } catch (error) {
+        console.error("Erro ao contar agendamentos do dia:", error);
+        return { success: false, error };
+    }
+};
+
+/**
+ * Salva ou atualiza a consulta
+ */
+export const saveAppointment = async (appointmentData, action, timerSeconds = 0) => {
+    try {
+        const patientRef = doc(db, PACIENTES_COLLECTION, appointmentData.id_paciente);
+        let novoStatusPaciente = appointmentData.status_monitoramento_atual;
+
+        if (action === "PRE_AGENDAR") {
+            if (novoStatusPaciente !== "VERIFICAR EXAMES") {
+                novoStatusPaciente = "AGUARDANDO CONSULTA";
+            }
+        } else if (action === "CONFIRMAR") {
+            novoStatusPaciente = "VERIFICAR DESFECHO";
+        } else if (action === "CANCELAR") {
+            novoStatusPaciente = "AGENDAR CONSULTA";
+        }
+
+        const dataToSave = {
+            ...appointmentData,
+            status: action === "CANCELAR" ? "CANCELADO" : (action === "CONFIRMAR" ? "CONFIRMADO" : "PRE_AGENDADO"),
+            updatedAt: serverTimestamp()
+        };
+
+        if (appointmentData.id) {
+            const docRef = doc(db, CONSULTAS_COLLECTION, appointmentData.id);
+            await updateDoc(docRef, dataToSave);
+        } else {
+            dataToSave.createdAt = serverTimestamp();
+            const docRef = await addDoc(collection(db, CONSULTAS_COLLECTION), dataToSave);
+            appointmentData.id = docRef.id;
+        }
+
+        // Atualiza paciente
+        await updateDoc(patientRef, {
+            status_monitoramento_atual: novoStatusPaciente,
+            updatedAt: serverTimestamp()
+        });
+
+        await logOperation('AGENDAMENTO_CONSULTA', {
+            pacienteId: appointmentData.id_paciente,
+            acao: action,
+            novaFase: novoStatusPaciente,
+            tempo_gasto_segundos: timerSeconds
+        });
+
+        return { success: true, novoStatusPaciente };
+    } catch (error) {
+        console.error("Erro ao salvar agendamento:", error);
+        return { success: false, error };
+    }
+};
+
 /**
  * Busca pacientes aguardando Checagem de Exames
  */
