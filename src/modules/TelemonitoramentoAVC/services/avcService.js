@@ -551,3 +551,125 @@ export const updateExamStatus = async (examId, newStatus, patientId) => {
         return { success: false, error };
     }
 };
+
+const DESFECHOS_COLLECTION = 'nexus_avc_desfechos';
+
+/**
+ * Busca pacientes na fase de Desfecho, cruzando com os dados da consulta original
+ */
+export const getPatientsForOutcome = async () => {
+    try {
+        const q = query(
+            collection(db, PACIENTES_COLLECTION),
+            where("status_monitoramento_atual", "==", "VERIFICAR DESFECHO"),
+            orderBy("createdAt", "desc")
+        );
+        const querySnapshot = await getDocs(q);
+        const pacientes = [];
+
+        // Fazer um loop paralelo para buscar a consulta
+        for (const docSnap of querySnapshot.docs) {
+            const pData = docSnap.data();
+            const pId = docSnap.id;
+
+            let consultaData = null;
+            try {
+                const qC = query(
+                    collection(db, CONSULTAS_COLLECTION),
+                    where("id_paciente", "==", pId),
+                    where("status", "==", "CONFIRMADO"),
+                    orderBy("createdAt", "desc")
+                );
+                const cSnap = await getDocs(qC);
+                if (!cSnap.empty) {
+                    consultaData = { id: cSnap.docs[0].id, ...cSnap.docs[0].data() };
+                }
+            } catch (e) {
+                console.warn("Nenhuma consulta confirmada atrelada encontrada para", pId);
+            }
+
+            pacientes.push({ id: pId, ...pData, consulta_ref: consultaData });
+        }
+
+        return { success: true, data: pacientes };
+    } catch (error) {
+        console.error("Erro ao buscar pacientes para desfecho:", error);
+        return { success: false, error };
+    }
+};
+
+/**
+ * Salva o Desfecho Clínico
+ */
+export const saveOutcome = async (outcomeData, timerSeconds) => {
+    try {
+        const { id_paciente, consulta_id, resultado_consulta, exames_solicitados, observacoes, atendimento_realizado } = outcomeData;
+
+        // 1. Gravar Desfecho
+        const dataToSave = {
+            id_paciente,
+            consulta_id: consulta_id || null,
+            resultado_consulta,
+            exames_solicitados: exames_solicitados || [],
+            observacoes,
+            atendimento_realizado,
+            createdAt: serverTimestamp()
+        };
+        const outcomeRef = await addDoc(collection(db, DESFECHOS_COLLECTION), dataToSave);
+
+        // 2. Transição de Status do Paciente
+        const patientRef = doc(db, PACIENTES_COLLECTION, id_paciente);
+        let novoStatusPaciente = "VERIFICAR DESFECHO"; // Fallback
+
+        // Mapeamento de Regras do Formulário para Status
+        if (resultado_consulta === "ALTA") novoStatusPaciente = "MONITORAMENTO CONCLUÍDO";
+        else if (resultado_consulta === "ALTA_EMAD") novoStatusPaciente = "ENCAMINHADO PARA EMAD";
+        else if (resultado_consulta === "RETORNO_MEDICO" || resultado_consulta === "FALTA_REAGENDAR") novoStatusPaciente = "AGENDAR CONSULTA";
+        else if (resultado_consulta === "RETORNO_EXAMES") novoStatusPaciente = "VERIFICAR EXAMES";
+        else if (resultado_consulta === "FALTA_ENCERRAR") novoStatusPaciente = "ENCERRADO - ABANDONO";
+
+        await updateDoc(patientRef, {
+            status_monitoramento_atual: novoStatusPaciente,
+            updatedAt: serverTimestamp()
+        });
+
+        // 3. Atualizar Status da Consulta Atrelada (para as estatisticas)
+        if (consulta_id) {
+            const consultRef = doc(db, CONSULTAS_COLLECTION, consulta_id);
+            await updateDoc(consultRef, {
+                status: atendimento_realizado ? "REALIZADA" : "NAO_COMPARECEU", // Pelo form do gas, sabemos se não compareceu e encerrou.
+                desfecho_atrelado: outcomeRef.id,
+                updatedAt: serverTimestamp()
+            });
+        }
+
+        // 4. Se SOLICITOU_EXAMES (Retorno Exames), popular novos na coleção
+        if (resultado_consulta === "RETORNO_EXAMES" && exames_solicitados && exames_solicitados.length > 0) {
+            for (const exameNome of exames_solicitados) {
+                const newExam = {
+                    id_paciente: id_paciente,
+                    nome: exameNome,
+                    status: 'PENDENTE',
+                    origem: 'Consulta de Retorno',
+                    createdAt: serverTimestamp(),
+                    data_checagem: null
+                };
+                await addDoc(collection(db, EXAMES_COLLECTION), newExam);
+            }
+        }
+
+        // 5. Registrar Log Operacional
+        await logOperation('REGISTRAR_DESFECHO', {
+            pacienteId: id_paciente,
+            resultado: resultado_consulta,
+            novaFase_paciente: novoStatusPaciente,
+            tempo_gasto_segundos: timerSeconds
+        });
+
+        return { success: true, novaFase: novoStatusPaciente };
+
+    } catch (error) {
+        console.error("Erro ao registrar o desfecho clínico:", error);
+        return { success: false, error };
+    }
+};
