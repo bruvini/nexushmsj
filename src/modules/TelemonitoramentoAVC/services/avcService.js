@@ -22,26 +22,38 @@ const logOperation = async (action, details, user = "Sistema") => {
 };
 
 /**
- * Busca listas de exames e medicações (Configurações Iniciais)
+ * Busca listas de exames e medicações (Configurações Iniciais unificadas)
  */
 export const getInitialConfigs = async () => {
     try {
-        // Tentativa de ler do config. Como pode não existir ainda, retornamos um default mockado em caso de erro.
-        const examesDocRef = doc(db, CONFIG_COLLECTION, 'exames');
-        const examesSnap = await getDoc(examesDocRef);
+        const docRef = doc(db, CONFIG_COLLECTION, 'settings');
+        const docSnap = await getDoc(docRef);
 
         let examesList = [];
-        if (examesSnap.exists()) {
-            examesList = examesSnap.data().lista || [];
+        if (docSnap.exists()) {
+            examesList = docSnap.data().exames || [];
         } else {
-            // Default Fallback
-            examesList = [
-                "TC de Crânio", "Angio TC", "RM de Crânio", "Ecocardiograma",
-                "Doppler de Carótidas", "Holter 24h", "Eletrocardiograma (ECG)", "Eletroencefalograma (EEG)",
-                "Exames Laboratoriais (Gerais)"
-            ];
-            // Opcional: já inicializar o documento no firestore para o futuro
-            await setDoc(examesDocRef, { lista: examesList });
+            const defaultData = {
+                exames: [
+                    "RAIO-X", "ECOCARDIOGRAMA TRANSTORACICO", "ECOCARDIOGRAMA TRANSESOFÁGICO",
+                    "ELETROCARDIOGRAMA", "HOLTER 24H", "DOPPLER DE CARÓTIDAS", "DOPPLER TRANSTORÁCICO",
+                    "LABORATORIAIS", "ANGIORNM DE CRÂNIO", "ANGIORNM CERVICAL", "ANGIOTC",
+                    "RNM CRANIO", "A PEDIDO MÉDICO", "ANTICOAGULAÇÃO", "TOMOGRAFIA DE CRANIO",
+                    "RNM CERVICAL"
+                ],
+                medicacoes: [
+                    "ENOXAPARINA", "RIVAROXABANA", "APIXABANA", "MAREVAN", "VARFARINA", "AAS",
+                    "CLOPIDROGREL", "EDOXABANA", "DABIGATRANA", "ACENOCUMAROL", "HEPARINA NÃO FRACIONADA",
+                    "HEPARINA DE BAIXO PESO MOLECULAR", "FONDAPARINUX", "ELIQUIS"
+                ],
+                emails: [
+                    "alice.torres@joinville.sc.gov.br", "antonia.silva@joinville.sc.gov.br",
+                    "jucelena.holtz@joinville.sc.gov.br", "karin.bar@joinville.sc.gov.br",
+                    "simone.josino@joinville.sc.gov.br"
+                ]
+            };
+            await setDoc(docRef, defaultData);
+            examesList = defaultData.exames;
         }
 
         return { success: true, configs: { exames: examesList } };
@@ -183,7 +195,7 @@ export const saveAcolhimento = async (patientId, acolhimentoData) => {
 };
 
 /**
- * Lê o documento de configurações (settings) inteiro
+ * Lê o documento de configurações (settings) inteiro e injeta mocks default se vazio
  */
 export const getAVCConfigs = async () => {
     try {
@@ -193,8 +205,26 @@ export const getAVCConfigs = async () => {
         if (docSnap.exists()) {
             return { success: true, data: docSnap.data() };
         } else {
-            // Documento não existe, retorna chaves default
-            const defaultData = { exames: [], medicacoes: [], emails: [] };
+            // Seed de Dados (Configurações Iniciais)
+            const defaultData = {
+                exames: [
+                    "RAIO-X", "ECOCARDIOGRAMA TRANSTORACICO", "ECOCARDIOGRAMA TRANSESOFÁGICO",
+                    "ELETROCARDIOGRAMA", "HOLTER 24H", "DOPPLER DE CARÓTIDAS", "DOPPLER TRANSTORÁCICO",
+                    "LABORATORIAIS", "ANGIORNM DE CRÂNIO", "ANGIORNM CERVICAL", "ANGIOTC",
+                    "RNM CRANIO", "A PEDIDO MÉDICO", "ANTICOAGULAÇÃO", "TOMOGRAFIA DE CRANIO",
+                    "RNM CERVICAL"
+                ],
+                medicacoes: [
+                    "ENOXAPARINA", "RIVAROXABANA", "APIXABANA", "MAREVAN", "VARFARINA", "AAS",
+                    "CLOPIDROGREL", "EDOXABANA", "DABIGATRANA", "ACENOCUMAROL", "HEPARINA NÃO FRACIONADA",
+                    "HEPARINA DE BAIXO PESO MOLECULAR", "FONDAPARINUX", "ELIQUIS"
+                ],
+                emails: [
+                    "alice.torres@joinville.sc.gov.br", "antonia.silva@joinville.sc.gov.br",
+                    "jucelena.holtz@joinville.sc.gov.br", "karin.bar@joinville.sc.gov.br",
+                    "simone.josino@joinville.sc.gov.br"
+                ]
+            };
             await setDoc(docRef, defaultData);
             return { success: true, data: defaultData };
         }

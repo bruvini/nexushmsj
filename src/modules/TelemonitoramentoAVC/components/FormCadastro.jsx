@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { savePatient, checkPatientDuplicity, getInitialConfigs } from '../services/avcService';
+import { savePatient, checkPatientDuplicity, getInitialConfigs, updateConfigList } from '../services/avcService';
 
 export default function FormCadastro() {
     const [loading, setLoading] = useState(false);
     const [loadingConfigs, setLoadingConfigs] = useState(true);
     const [examesDisponiveis, setExamesDisponiveis] = useState([]);
+
+    // Novo Exame On-the-fly
+    const [showNewExameInput, setShowNewExameInput] = useState(false);
+    const [novoExameTexto, setNovoExameTexto] = useState('');
 
     // Controle do Modal de Duplicidade
     const [showDuplicityModal, setShowDuplicityModal] = useState(false);
@@ -90,6 +94,37 @@ export default function FormCadastro() {
                 setDuplicatedPatients(data);
                 setShowDuplicityModal(true);
             }
+        }
+    };
+
+    const handleAdicionarExame = async () => {
+        const exame = novoExameTexto.trim().toUpperCase();
+        if (!exame) {
+            setShowNewExameInput(false);
+            return;
+        }
+
+        if (examesDisponiveis.includes(exame)) {
+            toast.warn('Este exame já está na lista.');
+            return;
+        }
+
+        // Salvar localmente e no Firebase (on-the-fly)
+        setExamesDisponiveis(prev => [...prev, exame]);
+        setNovoExameTexto('');
+        setShowNewExameInput(false);
+
+        // Atualizar lista de marcados do paciente atual com o novo exame
+        setFormData(prev => ({
+            ...prev,
+            examesMarcados: [...prev.examesMarcados, exame]
+        }));
+
+        const { success } = await updateConfigList('exames', 'add', exame);
+        if (success) {
+            toast.success(`Exame "${exame}" adicionado à lista global!`);
+        } else {
+            toast.error('O exame foi usado localmente, mas houve erro ao salvar na nuvem.');
         }
     };
 
@@ -239,7 +274,51 @@ export default function FormCadastro() {
 
                     {formData.elegivelMonitoramento ? (
                         <div className="mt-4 p-5 border border-slate-200 rounded-xl bg-white shadow-sm animate-fadeIn">
-                            <h4 className="text-xs font-semibold text-slate-500 uppercase mb-4">Exames Solicitados/Realizados</h4>
+                            <div className="flex items-center justify-between mb-4">
+                                <h4 className="text-xs font-semibold text-slate-500 uppercase">Exames Solicitados/Realizados</h4>
+
+                                {!showNewExameInput ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowNewExameInput(true)}
+                                        className="text-xs font-semibold text-sky-600 hover:text-sky-800 flex items-center gap-1 transition-colors px-2 py-1 rounded-md hover:bg-sky-50"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                        </svg>
+                                        Novo Exame
+                                    </button>
+                                ) : (
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="text"
+                                            value={novoExameTexto}
+                                            onChange={(e) => setNovoExameTexto(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAdicionarExame())}
+                                            placeholder="NOME DO EXAME"
+                                            className="px-2 py-1 text-xs border border-sky-300 rounded focus:outline-none focus:ring-1 focus:ring-sky-500 uppercase"
+                                            autoFocus
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={handleAdicionarExame}
+                                            className="text-white bg-sky-600 hover:bg-sky-700 px-2 py-1 rounded text-xs font-medium transition-colors"
+                                        >
+                                            Salvar
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowNewExameInput(false)}
+                                            className="text-slate-500 hover:text-slate-700 px-1"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                                 {examesDisponiveis.map(exame => (
                                     <label key={exame} className="flex items-start gap-2 cursor-pointer group">
