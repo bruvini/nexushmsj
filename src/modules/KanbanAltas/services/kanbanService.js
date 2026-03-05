@@ -71,3 +71,46 @@ export const removeProvavelAlta = async (patientId) => {
         throw error;
     }
 };
+
+/**
+ * Adiciona ou atualiza a marcação de 'Fluxo Trauma' com a descrição informada.
+ * 
+ * @param {string} patientId ID do paciente no Firestore
+ * @param {string} descricao Texto descrevendo o trauma
+ */
+export const updateFluxoTrauma = async (patientId, descricao) => {
+    if (!patientId || !descricao) return;
+    const patientRef = doc(db, 'nexus_kanban_pacientes', patientId);
+
+    try {
+        await updateDoc(patientRef, {
+            fluxo_trauma: {
+                active: true,
+                descricao: descricao,
+                timestamp: serverTimestamp()
+            }
+        });
+    } catch (error) {
+        console.error(`Erro ao atualizar Fluxo Trauma:`, error);
+        throw error;
+    }
+};
+
+/**
+ * Remove a marcação de 'Fluxo Trauma' de um paciente.
+ * 
+ * @param {string} patientId ID do paciente no Firestore
+ */
+export const removeFluxoTrauma = async (patientId) => {
+    if (!patientId) return;
+    const patientRef = doc(db, 'nexus_kanban_pacientes', patientId);
+
+    try {
+        await updateDoc(patientRef, {
+            fluxo_trauma: deleteField()
+        });
+    } catch (error) {
+        console.error(`Erro ao remover Fluxo Trauma:`, error);
+        throw error;
+    }
+};
