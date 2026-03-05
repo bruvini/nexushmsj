@@ -54,7 +54,8 @@ export default function Home() {
     },
     {
       title: "Telemonitoramento AVC",
-      active: false,
+      active: true,
+      path: "/telemonitoramento-avc",
       icon: (
         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -107,7 +108,7 @@ export default function Home() {
 
       {/* Conteúdo Principal (Centralizado verticalmente e adaptável) */}
       <main className="flex-1 flex flex-col lg:flex-row items-center justify-center p-4 sm:p-8 lg:p-12 gap-8 lg:gap-16 z-10 w-full max-w-[1400px] mx-auto mt-6 lg:mt-0">
-        
+
         {/* Coluna Esquerda: Informações e Correlação */}
         <div className="flex flex-col items-center lg:items-start justify-center w-full lg:w-2/5 shrink-0 text-center lg:text-left">
           <img
