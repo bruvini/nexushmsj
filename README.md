@@ -98,6 +98,22 @@ Para mais detalhes, veja o arquivo LICENSE do repositório ou acesse [GNU GPLv3]
 
 ---
 
+## 👤 Autor e Desenvolvedor
+
+**Bruno Vinicius da Silva**
+
+- **Formação:** Enfermeiro (PUCPR, 2021) | Analista de Sistemas (PUCPR, 2024).
+- **Especializações:** Saúde da Família (SMS Florianópolis, 2023), Gestão Hospitalar (PUCPR, 2025) e Ciência de Dados Aplicada à Saúde (PUCMINAS, 2026).
+- **Atuação:** Servidor Público na Prefeitura de Joinville, lotado como Enfermeiro no Núcleo Interno de Regulação (NIR) do Hospital Municipal São José.
+
+### Contatos:
+- LinkedIn: [linkedin.com/in/enfbrunovinicius](https://www.linkedin.com/in/enfbrunovinicius/)
+- GitHub: [github.com/bruvini](https://github.com/bruvini)
+- Email Pessoal: bruvini.silva12@gmail.com
+- Email Institucional: bruno.vinicius@joinville.sc.gov.br
+
+---
+
 <p align="center">
   Desenvolvido com 💡 para o <b>Hospital Municipal São José</b>.
 </p>

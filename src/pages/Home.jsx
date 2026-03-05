@@ -165,7 +165,7 @@ export default function Home() {
         </div>
 
         {/* Coluna Direita: Grid de Módulos */}
-        <div className="w-full lg:w-3/5 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl lg:rounded-[2rem] p-4 sm:p-6 lg:p-8 shadow-2xl flex flex-col lg:max-h-[85vh]">
+        <div className="w-full lg:w-3/5 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl lg:rounded-[2rem] p-4 sm:p-6 lg:p-8 shadow-2xl flex flex-col">
           <div className="flex items-center justify-between mb-4 sm:mb-6 px-1 sm:px-2">
             <h2 className="text-[10px] sm:text-xs font-medium text-sky-400 uppercase tracking-widest opacity-80">
               Ecossistema Nexus
@@ -174,7 +174,7 @@ export default function Home() {
           </div>
 
           {/* Grid responsivo: 2 colunas no celular, 3 no tablet/desktop */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 overflow-y-auto pr-1 sm:pr-2 custom-scrollbar pb-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 pb-2">
             {modules.map((module, index) =>
               module.active ? (
                 /* Card Ativo */
