@@ -114,3 +114,31 @@ export const removeFluxoTrauma = async (patientId) => {
         throw error;
     }
 };
+
+/**
+ * Atualiza o array de medicações em curso do paciente.
+ * Garante que cada medicação tenha um ID único e data de modificação.
+ * 
+ * @param {string} patientId ID do paciente no Firestore
+ * @param {Array} medicationsArray Array de objetos de medicação
+ */
+export const updateMedications = async (patientId, medicationsArray) => {
+    if (!patientId) return;
+    const patientRef = doc(db, 'nexus_kanban_pacientes', patientId);
+
+    try {
+        // Assegurar que os itens tenham um id (se criados no client, já devem ter, mas garantimos)
+        const parsedArray = medicationsArray.map(med => ({
+            ...med,
+            id: med.id || crypto.randomUUID(),
+        }));
+
+        await updateDoc(patientRef, {
+            medicacoes_curso: parsedArray,
+            medicacoes_updated_at: serverTimestamp()
+        });
+    } catch (error) {
+        console.error(`Erro ao atualizar Medicações:`, error);
+        throw error;
+    }
+};

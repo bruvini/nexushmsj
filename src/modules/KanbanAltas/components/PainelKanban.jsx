@@ -4,7 +4,7 @@ import { db } from '../../../services/firebase';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ImportacaoCenso from './ImportacaoCenso';
-import { toggleClinicalTag, updateProvavelAlta, removeProvavelAlta, updateFluxoTrauma, removeFluxoTrauma } from '../services/kanbanService';
+import { toggleClinicalTag, updateProvavelAlta, removeProvavelAlta, updateFluxoTrauma, removeFluxoTrauma, updateMedications } from '../services/kanbanService';
 import { gerarRelatorioRondas } from './utils/GeradorPDF';
 
 const SETORES_URGENCIA = [
@@ -71,6 +71,16 @@ export default function PainelKanban() {
   const [descricaoTrauma, setDescricaoTrauma] = useState('');
   const [modalDetalhesTrauma, setModalDetalhesTrauma] = useState(null);
 
+  // Estados dos Modais de Medicação
+  const [modalMedicacoesPaciente, setModalMedicacoesPaciente] = useState(null);
+  const [formMedicacao, setFormMedicacao] = useState({
+    id: '',
+    nome_medicacao: '',
+    data_inicio: new Date().toISOString().split('T')[0],
+    duracao_dias: ''
+  });
+  const [medicacaoParaApagar, setMedicacaoParaApagar] = useState(null);
+
   // 1. BUSCA EM TEMPO REAL NO FIREBASE
   useEffect(() => {
     const qPacientes = query(collection(db, 'nexus_kanban_pacientes'));
@@ -86,6 +96,11 @@ export default function PainelKanban() {
           return pAtualizado;
         }
         return null;
+      });
+
+      setModalMedicacoesPaciente(prev => {
+        if (!prev) return null;
+        return lista.find(p => p.id === prev.id) || null;
       });
 
       setLoading(false);
@@ -268,6 +283,98 @@ export default function PainelKanban() {
       setModalSisregPaciente(null);
       setConfirmarApagarSisreg(false);
     } catch (error) { toast.error("Erro ao apagar SISREG."); }
+  };
+
+  // 4. AÇÕES DE BANCO DE DADOS (MEDICAÇÕES)
+  const salvarMedicacao = async () => {
+    if (!formMedicacao.nome_medicacao.trim() || !formMedicacao.data_inicio || !formMedicacao.duracao_dias) {
+      return toast.warning("Preencha todos os campos da medicação.");
+    }
+
+    try {
+      const p = pacientes.find(pat => pat.id === modalMedicacoesPaciente.id);
+      if (!p) return;
+
+      let currentMedications = p.medicacoes_curso || [];
+      let newMedications;
+
+      if (formMedicacao.id) {
+        // Edição
+        newMedications = currentMedications.map(med =>
+          med.id === formMedicacao.id ? { ...med, ...formMedicacao } : med
+        );
+      } else {
+        // Inclusão
+        newMedications = [
+          ...currentMedications,
+          {
+            id: crypto.randomUUID(),
+            nome_medicacao: formMedicacao.nome_medicacao.trim(),
+            data_inicio: formMedicacao.data_inicio,
+            duracao_dias: parseInt(formMedicacao.duracao_dias)
+          }
+        ];
+      }
+
+      await updateMedications(modalMedicacoesPaciente.id, newMedications);
+      toast.success(formMedicacao.id ? "Medicação atualizada!" : "Medicação salva com sucesso!");
+
+      // Reset form
+      setFormMedicacao({
+        id: '',
+        nome_medicacao: '',
+        data_inicio: new Date().toISOString().split('T')[0],
+        duracao_dias: ''
+      });
+
+    } catch (error) {
+      toast.error("Erro ao salvar medicação.");
+    }
+  };
+
+  const iniciarEdicaoMedicacao = (med) => {
+    setFormMedicacao({
+      id: med.id,
+      nome_medicacao: med.nome_medicacao,
+      data_inicio: med.data_inicio,
+      duracao_dias: med.duracao_dias
+    });
+  };
+
+  const cancelarEdicaoMedicacao = () => {
+    setFormMedicacao({
+      id: '',
+      nome_medicacao: '',
+      data_inicio: new Date().toISOString().split('T')[0],
+      duracao_dias: ''
+    });
+  };
+
+  const confirmarApagarMedicacao = async () => {
+    if (!medicacaoParaApagar) return;
+    try {
+      const p = pacientes.find(pat => pat.id === modalMedicacoesPaciente.id);
+      if (!p) return;
+
+      const newMedications = (p.medicacoes_curso || []).filter(med => med.id !== medicacaoParaApagar.id);
+
+      await updateMedications(modalMedicacoesPaciente.id, newMedications);
+      toast.success("Medicação apagada com sucesso.");
+
+    } catch (error) {
+      toast.error("Erro ao apagar medicação.");
+    } finally {
+      setMedicacaoParaApagar(null);
+    }
+  };
+
+  const calcularDiasPassados = (dataInicio) => {
+    const inicio = new Date(dataInicio + "T00:00:00");
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const diffTime = Math.max(0, hoje - inicio);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
   };
 
   const coresMap = {
@@ -497,6 +604,18 @@ export default function PainelKanban() {
                         <button onClick={() => { p.fluxo_trauma?.active ? setModalDetalhesTrauma(p) : setModalFluxoTrauma(p) }} className={`flex items-center justify-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-lg text-[10px] sm:text-[10px] font-black transition-all border shadow-sm ${p.fluxo_trauma?.active ? 'bg-amber-50 text-amber-700 border-amber-300 ring-1 ring-amber-100' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`} title="Fluxo Trauma">
                           <svg className="w-5 h-5 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                           <span className="hidden sm:inline">TRAUMA</span>
+                        </button>
+
+                        {/* Botão de Monitoramento de Medicações */}
+                        <button onClick={() => setModalMedicacoesPaciente(p)} className={`flex items-center justify-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-lg text-[10px] sm:text-[10px] font-black transition-all border shadow-sm relative group ${p.medicacoes_curso?.length > 0 ? 'bg-indigo-50 text-indigo-700 border-indigo-300 ring-1 ring-indigo-100' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`} title="Medicações em Curso">
+                          <svg className="w-5 h-5 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.6 4.4a5 5 0 117.07 7.07l-6.26 6.26a5 5 0 11-7.07-7.07l6.26-6.26z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.5 15.5l7-7" />
+                          </svg>
+                          <span className="hidden sm:inline">MEDICAÇÕES</span>
+                          {p.medicacoes_curso?.length > 0 && (
+                            <span className="absolute -top-1.5 -right-1.5 bg-indigo-500 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full shadow-sm ring-2 ring-indigo-50">{p.medicacoes_curso.length}</span>
+                          )}
                         </button>
                       </div>
 
@@ -840,6 +959,121 @@ export default function PainelKanban() {
                   <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> Salvar Edição</>
                 ) : (
                   <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg> Registrar Nota</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Monitoramento de Medicações */}
+      {modalMedicacoesPaciente && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+
+          {/* Modal Sobreposto de Confirmação de Exclusão da Medicação */}
+          {medicacaoParaApagar !== null && (
+            <div className="absolute inset-0 z-[10010] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 rounded-2xl animate-[fadeIn_0.2s_ease-in-out]">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
+                <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                </div>
+                <h3 className="text-xl font-bold text-slate-800 mb-2">Excluir Medicação?</h3>
+                <p className="text-slate-500 text-sm mb-6">
+                  Tem certeza que deseja excluir esta medicação? A exclusão não poderá ser desfeita.
+                </p>
+                <div className="flex w-full gap-3">
+                  <button onClick={() => setMedicacaoParaApagar(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2.5 rounded-xl transition-colors">Cancelar</button>
+                  <button onClick={confirmarApagarMedicacao} className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 rounded-xl transition-shadow shadow-md shadow-red-600/20">Excluir</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh] animate-[fadeIn_0.2s_ease-in-out] relative w-full sm:w-[500px]">
+            <div className="p-4 sm:p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-2xl">
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-slate-800 leading-tight">Monitoramento de Medicações</h3>
+                <p className="text-[10px] sm:text-xs text-slate-500">{modalMedicacoesPaciente.nome}</p>
+              </div>
+              <button onClick={() => { setModalMedicacoesPaciente(null); cancelarEdicaoMedicacao(); }} className="text-slate-400 hover:text-slate-700 bg-slate-200/50 hover:bg-slate-200 p-2 rounded-full transition-colors">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            {/* Lista de Medicações Ativas */}
+            <div className="p-4 sm:p-5 overflow-y-auto custom-scrollbar flex-1 bg-slate-100/50 space-y-3">
+              {(!modalMedicacoesPaciente.medicacoes_curso || modalMedicacoesPaciente.medicacoes_curso.length === 0) ? (
+                <p className="text-slate-400 text-center italic text-sm py-8">Nenhuma medicação em curso.</p>
+              ) : (
+                modalMedicacoesPaciente.medicacoes_curso.map((med, i) => {
+                  const diasPassados = calcularDiasPassados(med.data_inicio);
+                  // Progresso visual simples
+                  const percent = Math.min(100, Math.round((diasPassados / med.duracao_dias) * 100)) || 0;
+                  const isCritico = diasPassados >= med.duracao_dias;
+
+                  return (
+                    <div key={med.id || i} className={`p-3 sm:p-4 rounded-xl border-l-4 shadow-sm text-left relative group transition-colors ${formMedicacao.id === med.id ? 'bg-indigo-50 border-indigo-500' : 'bg-white border-indigo-400 hover:bg-slate-50'}`}>
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="text-sm sm:text-base font-bold text-slate-800">{med.nome_medicacao}</div>
+                        <div className="flex items-center gap-1 sm:gap-2 opacity-50 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => iniciarEdicaoMedicacao(med)} className="text-slate-400 hover:text-indigo-500 p-1 rounded transition-colors" title="Editar Medicação">
+                            <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                          </button>
+                          <button onClick={() => setMedicacaoParaApagar(med)} className="text-slate-400 hover:text-red-500 p-1 rounded transition-colors" title="Apagar Medicação">
+                            <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between text-xs text-slate-500 mb-2">
+                        <span>Acesso: <strong className="font-mono text-[10px]">{med.data_inicio.split('-').reverse().join('/')}</strong></span>
+                        <span className={`font-bold ${isCritico ? 'text-rose-600' : 'text-indigo-600'}`}>
+                          {diasPassados} de {med.duracao_dias} dias
+                        </span>
+                      </div>
+
+                      {/* Barra de Progresso */}
+                      <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                        <div className={`h-1.5 rounded-full ${isCritico ? 'bg-rose-500' : 'bg-indigo-500'}`} style={{ width: `${percent}%` }}></div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Formulário Inclusão / Edição */}
+            <div className="p-4 sm:p-5 border-t border-slate-200 bg-white rounded-b-2xl">
+              <div className="flex justify-between items-center mb-3">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase">
+                  {formMedicacao.id ? <span className="text-indigo-600 flex items-center gap-1"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg> Editando Medicação</span> : 'Nova Medicação'}
+                </label>
+                {formMedicacao.id && (
+                  <button onClick={cancelarEdicaoMedicacao} className="text-[10px] text-slate-500 hover:text-slate-700 underline">Cancelar Edição</button>
+                )}
+              </div>
+
+              <div className="space-y-3 mb-4">
+                <div>
+                  <input type="text" placeholder="Nome do Antibiótico / Medicação" value={formMedicacao.nome_medicacao} onChange={e => setFormMedicacao({ ...formMedicacao, nome_medicacao: e.target.value })} className={`w-full p-2.5 sm:p-3 border rounded-xl text-sm outline-none focus:ring-2 bg-slate-50 ${formMedicacao.id ? 'border-indigo-300 focus:ring-indigo-500' : 'border-slate-300 focus:ring-indigo-500'}`} />
+                </div>
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <label className="block text-[9px] font-bold text-slate-400 uppercase pl-1 mb-1">Início</label>
+                    <input type="date" value={formMedicacao.data_inicio} onChange={e => setFormMedicacao({ ...formMedicacao, data_inicio: e.target.value })} className="w-full p-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-[9px] font-bold text-slate-400 uppercase pl-1 mb-1">Duração Total (Dias)</label>
+                    <input type="number" min="1" placeholder="Ex: 7" value={formMedicacao.duracao_dias} onChange={e => setFormMedicacao({ ...formMedicacao, duracao_dias: e.target.value })} className="w-full p-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50" />
+                  </div>
+                </div>
+              </div>
+
+              <button onClick={salvarMedicacao} className={`w-full text-white font-bold py-2.5 sm:py-3 rounded-xl transition-shadow shadow-md flex justify-center items-center gap-2 ${formMedicacao.id ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}>
+                {formMedicacao.id ? (
+                  <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> Salvar Alterações</>
+                ) : (
+                  <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg> Adicionar Medicação</>
                 )}
               </button>
             </div>
