@@ -125,7 +125,7 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-[#001730] to-[#002B54] flex flex-col relative overflow-x-hidden font-sans">
+    <div className="min-h-screen w-full bg-gradient-to-br from-[#001730] to-[#002B54] flex flex-col relative overflow-x-hidden overflow-y-auto font-sans">
       {/* Luzes de Fundo responsivas */}
       <div className="absolute top-[-10%] left-[-10%] w-[300px] lg:w-[500px] h-[300px] lg:h-[500px] bg-sky-500/10 rounded-full blur-[80px] lg:blur-[120px] pointer-events-none"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[300px] lg:w-[500px] h-[300px] lg:h-[500px] bg-purple-500/10 rounded-full blur-[80px] lg:blur-[120px] pointer-events-none"></div>
@@ -135,11 +135,11 @@ export default function Home() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="flex-1 flex flex-col lg:flex-row items-center justify-center p-4 sm:p-8 lg:p-12 gap-8 lg:gap-16 z-10 w-full max-w-[1400px] mx-auto mt-6 lg:mt-0"
+        className="min-h-[80vh] flex flex-col lg:flex-row items-center justify-center p-4 sm:p-8 lg:p-12 gap-8 lg:gap-16 z-10 w-full max-w-[1400px] mx-auto mt-6 lg:mt-0"
       >
 
         {/* Coluna Esquerda: Informações e Correlação */}
-        <div className="flex flex-col items-center lg:items-start justify-center w-full lg:w-2/5 shrink-0 text-center lg:text-left">
+        <div className="flex flex-col items-center justify-center w-full lg:w-2/5 shrink-0 text-center lg:text-left">
           <img
             src="/Nexus_Logo_Completo.png"
             alt="Nexus Hub Logo"
@@ -165,7 +165,7 @@ export default function Home() {
         </div>
 
         {/* Coluna Direita: Grid de Módulos */}
-        <div className="w-full lg:w-3/5 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl lg:rounded-[2rem] p-4 sm:p-6 lg:p-8 shadow-2xl flex flex-col">
+        <div className="w-full lg:w-3/5 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl lg:rounded-[2rem] p-4 sm:p-6 lg:p-8 shadow-2xl">
           <div className="flex items-center justify-between mb-4 sm:mb-6 px-1 sm:px-2">
             <h2 className="text-[10px] sm:text-xs font-medium text-sky-400 uppercase tracking-widest opacity-80">
               Ecossistema Nexus
@@ -174,14 +174,14 @@ export default function Home() {
           </div>
 
           {/* Grid responsivo: 2 colunas no celular, 3 no tablet/desktop */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 pb-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
             {modules.map((module, index) =>
               module.active ? (
                 /* Card Ativo */
                 <button
                   key={index}
                   onClick={() => navigate(module.path)}
-                  className="group relative overflow-hidden bg-white/10 backdrop-blur-md rounded-xl p-3 sm:p-4 text-left transition-all duration-300 hover:-translate-y-1 hover:bg-white border border-white/20 hover:border-sky-400 hover:shadow-[0_10px_20px_-5px_rgba(2,132,199,0.4)] flex flex-col items-center justify-center h-24 sm:h-32"
+                  className="group relative overflow-hidden bg-white/10 backdrop-blur-md rounded-xl p-2.5 sm:p-3 text-left transition-all duration-300 hover:-translate-y-1 hover:bg-white border border-white/20 hover:border-sky-400 hover:shadow-[0_10px_20px_-5px_rgba(2,132,199,0.4)] flex flex-col items-center justify-center h-24 sm:h-28"
                 >
                   <div className="relative z-10 flex flex-col items-center gap-1.5 sm:gap-2 w-full">
                     <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-sky-500/20 border border-sky-400/50 flex items-center justify-center text-sky-300 group-hover:scale-110 group-hover:bg-sky-500 group-hover:text-white transition-all duration-300">
@@ -196,7 +196,7 @@ export default function Home() {
                 /* Card Suspenso/Futuro */
                 <div
                   key={index}
-                  className="group relative overflow-hidden bg-white/5 backdrop-blur-sm rounded-xl p-3 sm:p-4 text-left transition-all duration-500 border border-white/5 flex flex-col items-center justify-center h-24 sm:h-32 cursor-default"
+                  className="group relative overflow-hidden bg-white/5 backdrop-blur-sm rounded-xl p-2.5 sm:p-3 text-left transition-all duration-500 border border-white/5 flex flex-col items-center justify-center h-24 sm:h-28 cursor-default"
                 >
                   <div className="relative z-10 flex flex-col items-center gap-1.5 sm:gap-2 w-full transition-all duration-500 group-hover:opacity-10 group-hover:blur-[2px]">
                     <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-400/60 transition-all duration-300">
@@ -220,7 +220,7 @@ export default function Home() {
             )}
 
             {/* Botão de "Novos Módulos" */}
-            <div className="group relative overflow-hidden bg-transparent border-2 border-dashed border-sky-500/30 rounded-xl p-3 sm:p-4 text-left transition-all duration-300 flex flex-col items-center justify-center h-24 sm:h-32 cursor-default">
+            <div className="group relative overflow-hidden bg-transparent border-2 border-dashed border-sky-500/30 rounded-xl p-2.5 sm:p-3 text-left transition-all duration-300 flex flex-col items-center justify-center h-24 sm:h-28 cursor-default">
               <div className="relative z-10 flex flex-col items-center gap-1.5 sm:gap-2 w-full">
                 <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-sky-500/10 border border-sky-400/30 flex items-center justify-center text-sky-400/80 group-hover:scale-110 group-hover:bg-sky-500/20 transition-all duration-300">
                   <svg className="w-4 h-4 sm:w-6 sm:h-6 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
