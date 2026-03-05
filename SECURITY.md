@@ -39,11 +39,13 @@ Valorizamos muito a comunidade de desenvolvedores e auditores de segurança que 
 
 ---
 
-## 🔒 Boas Práticas de Arquitetura
+## 🔒 Boas Práticas de Arquitetura e Privacidade Hospitalar
 
-O Nexus foi construído seguindo os princípios de *Security by Design*:
-- **Autenticação:** O sistema utiliza os provedores de autenticação robustos do Google Cloud/Firebase.
-- **Autorização (Regras de Banco de Dados):** O acesso aos dados no Firestore é blindado por Regras de Segurança estritas, garantindo que apenas usuários logados e autorizados pelo hospital possam ler ou gravar informações.
-- **Tratamento de Dados:** Dados importados de sistemas de terceiros (como o Soul MV e Tasy) são tratados no *front-end* e sanitizados antes de qualquer inserção no banco de dados.
+O Nexus foi construído seguindo os princípios intrínsecos de *Security by Design* e atende às premissas da **LGPD (Lei Geral de Proteção de Dados)** aplicadas à saúde (Art. 11: Dados Pessoais Sensíveis):
+
+- **Privacidade e Governança:** É terminantemente proibido o versionamento no GitHub ou tráfego local de exames reais, números de prontuários autênticos ou nomes de pacientes fidedignos sob ambiente de **desenvolvimento/teste**. Mocks e dados mascarados são mandatórios e auditáveis.
+- **Autenticação (Google + Escopos de Uso Especial):** O sistema utiliza Firebase Auth interligado à Google Cloud. Devido ao envio interno e automatizado do **Módulo AVC (Lista Ambulatorial)**, o sistema requer o escopo sensível estrito de `https://www.googleapis.com/auth/gmail.send`. Este Token é usado momentaneamente apenas em memória virtual (Client-Side) para orquestrar as APIs REST.
+- **Autorização (Regras do Firebase Firestore):** O acesso total às instâncias de banco (Collections baseadas na nomenclatura `nexus_*`) é explicitamente bloqueado e dependente da submissão das Regras de Segurança (Security Rules). Não exsite permissão de `read`/`write` universal indiscriminada.
+- **Tratamento de Dados:** Dados importados de sistemas de terceiros via planilhas (como o Soul MV e Tasy) são tratados no *front-end* e sanitizados antes da serialização final ou persistência via Firestore.
 
 Agradecemos por nos ajudar a manter os dados do hospital e dos pacientes seguros! 💙

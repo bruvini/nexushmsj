@@ -19,8 +19,9 @@
 O **Nexus** atua como o **Hub de Inteligência Hospitalar** no ambiente do **HMSJ (Hospital Municipal São José)**. Seu objetivo principal é centralizar a inteligência e a gestão hospitalar em uma única plataforma, promovendo eficiência, transparência e agilidade na tomada de decisão em processos cruciais do hospital.
 
 Atualmente, o Nexus contempla os seguintes módulos integrados:
-- 📅 **Eletivas**: Gestão e inteligência de cirurgias e procedimentos eletivos.
+- 📅 **AIHs Cirurgias Eletivas**: Gestão e inteligência de cirurgias e procedimentos eletivos.
 - 📋 **Kanban de Altas**: Painel visual para acompanhamento e otimização do fluxo de altas hospitalares.
+- 🧠 **Telemonitoramento AVC (Pós-Alta)**: Fluxo completo de navegação do paciente (Triagem, Exames, Agendamentos, Desfechos e CRM) com disparos automáticos de e-mail e Kanban Reativo.
 
 ---
 
@@ -31,19 +32,19 @@ O projeto foi construído utilizando tecnologias modernas visando alta performan
 ### 💻 Frontend
 - **React (v19)**: Biblioteca principal para construção de interfaces.
 - **Vite**: Ferramenta de build super rápida.
-- **Tailwind CSS**: Framework utilitário para estilização e design responsivo.
+- **Tailwind CSS**: Framework utilitário para estilização e design responsivo (**Mobile-First**).
+- **Framer Motion**: Biblioteca de animações para transições de página (Fade-in + Slide).
 - **React Router DOM**: Gerenciamento de rotas da aplicação (Single Page Application).
 
 ### ⚙️ Backend & Infraestrutura
-- **Firebase**: Utilizado como Backend-as-a-Service (BaaS).
-  - **Hosting**: Hospedagem da aplicação web.
-  - *(Outros serviços da Google Cloud / Firebase)*
+- **Firebase Firestore**: Banco de dados NoSQL focado em alta reatividade (onSnapshot/Realtime).
+- **Firebase Hosting**: Hospedagem da aplicação web.
 
 ### 🔌 Integrações e Bibliotecas Utilitárias
+- **Gmail API**: Utilizada para disparar e-mails institucionais dinâmicos (Listas Ambulatoriais) de forma transparente através do Google Auth.
 - **PapaParse**: Processamento e conversão de dados em formato CSV.
 - **SheetJS (XLSX)**: Leitura, manipulação e exportação de planilhas.
-- **React Toastify**: Sistema de notificações e alertas em tela.
-- **ESLint / PostCSS / Autoprefixer**: Ferramentas de linting e padronização de código.
+- **React Toastify**: Sistema de notificações e alertas modais em tela (Em substituição ao `window.alert`).
 
 ---
 

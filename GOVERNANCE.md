@@ -20,12 +20,14 @@ Esta seção rege as atuações de qualquer agente autônomo (IAs de desenvolvim
 
 O ecossistema Nexus deve, sob qualquer hipótese, aderir aos seguintes frameworks e metodologias, conforme definido no stack base `React + Vite`:
 
-- **Arquitetura de Componentes:**  
-  Uso estrito e obrigatório de **Componentes Funcionais** (React 19) aliados a *Hooks*. Classes (React Class Components) estão depreciados e não devem ser inseridos na base de código.
-- **Estilização de UI:**  
-  O desenvolvimento das interfaces visuais será feito **exclusivamente** com **Tailwind CSS**. A criação de arquivos `.css` isolados deve ser evitada, priorizando a abordagem *utility-first* fornecida pelo framework para maximizar o desempenho e a adaptabilidade em plataformas mobile/desktop.
-- **Persistência de Dados e Backend:**  
-  As operações transacionais, autenticação, armazenamento e inteligência analítica de banco de dados devem, por padrão, direcionar o consumo ao ecossistema de bibliotecas do **Firebase** (e respectiva integração de banco em infraestrutura GCP).
+- **UI-01 (Zero Window Alerts):**  
+  É absolutamente proibido o uso de interrupções de fluxo bloqueantes por meio de `window.alert()` ou `window.confirm()`. As notificações globais devem convergir para o `react-toastify` e modais institucionais dedicados.
+- **UI-02 (Mobile Standard):**  
+  Layouts devem seguir os preceitos de Mobile-First. Telas gerenciais (como os _Dashboards_) são obrigadas a comportar Grids Reativos (Ex: Kanbans de 1 até 5 colunas baseados na viewport) e encapsulamento em **Drawer** para sidebars.
+- **UI-03 (UX & Tema Institucional):**  
+  É mandatório o uso de `framer-motion` nas transições entre módulos mestres para fluência visual. Todo design deve seguir inequivocamente o **Tema Light Hospitalar**, abolindo _dark modes_ em fluxos puramente clínicos.
+- **DB-01 (Mínimo de Leituras Firestore - Realtime):**  
+  Toda busca estrutural reativa deve usar a abordagem on-demand `onSnapshot()` acoplada à raízes de componentes. Requisições em laço fechado como `.get()` para Dashboards são proibidas para impedir a sobreposição e faturamento desnecessário de _Cloud Reads_ do HMSJ.
 
 ---
 
