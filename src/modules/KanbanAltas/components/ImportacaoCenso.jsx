@@ -11,24 +11,24 @@ export default function ImportacaoCenso({ onClose, onImportSuccess }) {
   // Função para gerar um UID único (Nome + Nascimento em Base64 simulado)
   const generateUID = (nome, nasc) => {
     const stringBase = `${nome.trim().toUpperCase()}_${nasc}`;
-    return btoa(unescape(encodeURIComponent(stringBase))).replace(/[/+=]/g, ''); 
+    return btoa(unescape(encodeURIComponent(stringBase))).replace(/[/+=]/g, '');
   };
 
   const processarExcel = async (jsonData) => {
     setLoading(true);
     setStatusText('Consultando pacientes ativos no banco de dados...');
-    
+
     try {
       const qAtivos = query(collection(db, 'nexus_kanban_pacientes'));
       const snapshotAtivos = await getDocs(qAtivos);
-      
+
       const pacientesNoBanco = new Map();
       snapshotAtivos.forEach(docSnap => {
         pacientesNoBanco.set(docSnap.data().uid, { idDocumento: docSnap.id, ...docSnap.data() });
       });
 
       setStatusText('Processando reconciliação (Apagando altas)...');
-      
+
       const batch = writeBatch(db);
       const uidsNoRelatorioNovo = new Set();
       let novos = 0;
@@ -44,7 +44,7 @@ export default function ImportacaoCenso({ onClose, onImportSuccess }) {
         const sexo = String(row[2] || '');
         const dataInt = String(row[3] || '');
         const setor = String(row[4] || '');
-        const leito = String(row[6] || ''); 
+        const leito = String(row[6] || '');
         const especialidade = String(row[7] || '');
 
         if (!nome) return;
@@ -55,14 +55,20 @@ export default function ImportacaoCenso({ onClose, onImportSuccess }) {
         if (pacientesNoBanco.has(uid)) {
           const pacExistente = pacientesNoBanco.get(uid);
           const docRef = doc(db, 'nexus_kanban_pacientes', pacExistente.idDocumento);
-          
-          batch.update(docRef, {
+
+          const payloadUpdate = {
             setor: setor,
             leito: leito,
-            especialidade: especialidade,
             status: pacExistente.status === 'SINALIZADA' ? 'SINALIZADA' : 'ATIVO',
             ultimaAtualizacao: serverTimestamp()
-          });
+          };
+
+          // Proteção de Especialidade: Se não for manual, sobrescreve com o dado do Excel
+          if (!pacExistente.especialidade_gestao || pacExistente.especialidade_gestao.is_manual !== true) {
+            payloadUpdate.especialidade = especialidade;
+          }
+
+          batch.update(docRef, payloadUpdate);
           atualizados++;
         } else {
           const novoDocRef = doc(collection(db, 'nexus_kanban_pacientes'));
@@ -97,7 +103,7 @@ export default function ImportacaoCenso({ onClose, onImportSuccess }) {
 
       // Atualiza o relógio da última sincronização
       const configRef = doc(db, 'nexus_kanban_config', 'metadata');
-      batch.set(configRef, { 
+      batch.set(configRef, {
         ultimaSincronizacao: serverTimestamp(),
         totalImportado: dadosValidos.length
       }, { merge: true });
@@ -114,7 +120,7 @@ export default function ImportacaoCenso({ onClose, onImportSuccess }) {
             <span><span className="font-bold text-emerald-600 text-[13px]">{atualizados}</span> Leitos Atualizados</span>
             <span><span className="font-bold text-rose-600 text-[13px]">{excluidos}</span> Pacientes Apagados (Alta)</span>
           </div>
-        </div>, 
+        </div>,
         { autoClose: 7000 }
       );
 
@@ -140,24 +146,24 @@ export default function ImportacaoCenso({ onClose, onImportSuccess }) {
         const workbook = XLSX.read(data, { type: 'array', cellDates: true });
         const firstSheet = workbook.SheetNames[0];
         const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet], { header: 1 });
-        
+
         processarExcel(jsonData);
       } catch (err) {
         toast.error('Falha ao ler o arquivo Excel.');
       }
     };
     reader.readAsArrayBuffer(file);
-    e.target.value = null; 
+    e.target.value = null;
   };
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-[fadeIn_0.2s_ease-in-out]">
-      
+
       {/* Container Principal do Modal */}
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col md:flex-row overflow-hidden relative">
-        
+
         {/* Botão Fechar */}
-        <button 
+        <button
           onClick={onClose}
           disabled={loading}
           className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors z-10 disabled:opacity-50"
@@ -173,7 +179,7 @@ export default function ImportacaoCenso({ onClose, onImportSuccess }) {
             </div>
             <h3 className="text-lg font-bold text-slate-800">Passo a Passo MV</h3>
           </div>
-          
+
           <ol className="space-y-4 text-sm text-slate-600 relative border-l-2 border-slate-200 ml-3 pl-5">
             <li className="relative">
               <span className="absolute -left-[29px] bg-white border-2 border-slate-300 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-slate-500">1</span>
@@ -204,7 +210,7 @@ export default function ImportacaoCenso({ onClose, onImportSuccess }) {
 
         {/* Coluna Direita: Área de Drop / Upload */}
         <div className="w-full md:w-1/2 p-8 flex flex-col items-center justify-center relative">
-          
+
           {loading ? (
             <div className="flex flex-col items-center justify-center text-center animate-[fadeIn_0.2s_ease-in-out]">
               <div className="w-14 h-14 border-4 border-slate-200 border-t-sky-500 rounded-full animate-spin mb-4"></div>
@@ -227,7 +233,7 @@ export default function ImportacaoCenso({ onClose, onImportSuccess }) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
                 </div>
-                <span className="text-sm font-bold text-sky-700 text-center">Clique para buscar o arquivo<br/>ou arraste e solte aqui</span>
+                <span className="text-sm font-bold text-sky-700 text-center">Clique para buscar o arquivo<br />ou arraste e solte aqui</span>
                 <span className="text-xs font-medium text-slate-400 mt-3 bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm">Formato: .XLSX</span>
               </label>
             </>

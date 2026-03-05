@@ -4,7 +4,8 @@ import { db } from '../../../services/firebase';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ImportacaoCenso from './ImportacaoCenso';
-import { toggleClinicalTag, updateProvavelAlta, removeProvavelAlta, updateFluxoTrauma, removeFluxoTrauma, updateMedications } from '../services/kanbanService';
+import { toggleClinicalTag, updateProvavelAlta, removeProvavelAlta, updateFluxoTrauma, removeFluxoTrauma, updateMedications, updatePatientSpecialties } from '../services/kanbanService';
+import { PROFISSIONAL_ESPECIALIDADES } from '../../../utils/specialties';
 import { gerarRelatorioRondas } from './utils/GeradorPDF';
 
 const SETORES_URGENCIA = [
@@ -82,6 +83,22 @@ export default function PainelKanban() {
   });
   const [medicacaoParaApagar, setMedicacaoParaApagar] = useState(null);
 
+  // Estados dos Modais de Especialidade
+  const [modalEspecialidadePaciente, setModalEspecialidadePaciente] = useState(null);
+  const [formEspecialidade, setFormEspecialidade] = useState({ principal: '', adicionais: [] });
+  const [selecaoAdicional, setSelecaoAdicional] = useState('');
+
+  // Sincroniza form de Especialidade com o Modal quando ele for aberto
+  useEffect(() => {
+    if (modalEspecialidadePaciente) {
+      setFormEspecialidade({
+        principal: modalEspecialidadePaciente.especialidade_gestao?.principal || modalEspecialidadePaciente.especialidade || '',
+        adicionais: modalEspecialidadePaciente.especialidade_gestao?.adicionais || []
+      });
+      setSelecaoAdicional('');
+    }
+  }, [modalEspecialidadePaciente]);
+
   // 1. BUSCA EM TEMPO REAL NO FIREBASE
   useEffect(() => {
     const qPacientes = query(collection(db, 'nexus_kanban_pacientes'));
@@ -100,6 +117,11 @@ export default function PainelKanban() {
       });
 
       setModalMedicacoesPaciente(prev => {
+        if (!prev) return null;
+        return lista.find(p => p.id === prev.id) || null;
+      });
+
+      setModalEspecialidadePaciente(prev => {
         if (!prev) return null;
         return lista.find(p => p.id === prev.id) || null;
       });
@@ -391,6 +413,32 @@ export default function PainelKanban() {
     return diffDays;
   };
 
+  // 5. GESTÃO DE ESPECIALIDADES CLÍNICAS
+  const addEspecialidadeAdicional = () => {
+    if (!selecaoAdicional) return;
+    if (formEspecialidade.adicionais.includes(selecaoAdicional)) return toast.warning("Especialidade já adicionada");
+    if (formEspecialidade.principal === selecaoAdicional) return toast.warning("Esta é a especialidade principal");
+
+    setFormEspecialidade(prev => ({ ...prev, adicionais: [...prev.adicionais, selecaoAdicional] }));
+    setSelecaoAdicional('');
+  };
+
+  const removeEspecialidadeAdicional = (esp) => {
+    setFormEspecialidade(prev => ({ ...prev, adicionais: prev.adicionais.filter(e => e !== esp) }));
+  };
+
+  const salvarEspecialidades = async () => {
+    if (!formEspecialidade.principal) return toast.warning("Informe a especialidade principal");
+
+    try {
+      await updatePatientSpecialties(modalEspecialidadePaciente.id, formEspecialidade.principal, formEspecialidade.adicionais);
+      toast.success("Especialidades salvas e protegidas!");
+      setModalEspecialidadePaciente(null);
+    } catch (error) {
+      toast.error("Erro ao salvar especialidades.");
+    }
+  };
+
   const coresMap = {
     verde: "border-emerald-500 bg-emerald-50",
     amarelo: "border-amber-500 bg-amber-50",
@@ -591,7 +639,21 @@ export default function PainelKanban() {
                       </div>
                       <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-600 mt-1.5">
                         <span className="flex items-center gap-1"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg> Nasc: {p.nascimento}</span>
-                        <span className="flex items-center gap-1 font-medium"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg> {p.especialidade || 'NÃO INFORMADA'}</span>
+                        <div className="flex flex-col items-start gap-1">
+                          <button onClick={() => setModalEspecialidadePaciente(p)} className="flex items-center gap-1 font-bold text-sky-700 hover:text-sky-900 bg-sky-50 shadow-sm hover:shadow hover:bg-sky-100 px-2 py-0.5 rounded transition-all group">
+                            <svg className="w-3 h-3 text-sky-500 group-hover:text-sky-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                            {p.especialidade_gestao?.principal || p.especialidade || 'NÃO INFORMADA'}
+                          </button>
+                          {p.especialidade_gestao?.adicionais?.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1 border-t border-slate-100 pt-1 w-full">
+                              {p.especialidade_gestao.adicionais.map((esp, i) => (
+                                <span key={i} className="bg-slate-100 text-slate-500 text-[9px] font-bold px-1.5 py-0.5 rounded border border-slate-200">
+                                  + {esp}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                         <span className={`flex items-center gap-1 ${p.diasInternado > 3 ? 'text-red-600 font-bold' : ''}`}>
                           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                           {p.diasInternado} dias internado
@@ -976,6 +1038,89 @@ export default function PainelKanban() {
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Gestão de Especialidades */}
+      {modalEspecialidadePaciente && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh] animate-[fadeIn_0.2s_ease-in-out] relative">
+            <div className="p-4 sm:p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-2xl">
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-slate-800 leading-tight">Gestão de Especialidades</h3>
+                <p className="text-[10px] sm:text-xs text-slate-500">{modalEspecialidadePaciente.nome}</p>
+              </div>
+              <button onClick={() => setModalEspecialidadePaciente(null)} className="text-slate-400 hover:text-slate-700 bg-slate-200/50 hover:bg-slate-200 p-2 rounded-full transition-colors">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-5 overflow-y-auto custom-scrollbar flex-1 bg-white space-y-5">
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase mb-2">Especialidade Principal</label>
+                <select
+                  value={formEspecialidade.principal}
+                  onChange={e => setFormEspecialidade({ ...formEspecialidade, principal: e.target.value })}
+                  className="w-full p-2.5 sm:p-3 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-sky-500 bg-slate-50 font-bold text-slate-700"
+                >
+                  <option value="">Selecione a Principal...</option>
+                  {PROFISSIONAL_ESPECIALIDADES.map(esp => (
+                    <option key={esp} value={esp}>{esp}</option>
+                  ))}
+                  {/* Fallback caso a do censo não esteja na lista */}
+                  {formEspecialidade.principal && !PROFISSIONAL_ESPECIALIDADES.includes(formEspecialidade.principal) && (
+                    <option value={formEspecialidade.principal}>{formEspecialidade.principal}</option>
+                  )}
+                </select>
+                <p className="text-[10px] text-slate-400 mt-1 italic">* Substitui a especialidade primária que é importada pelo Sisreg.</p>
+              </div>
+
+              <div className="border-t border-slate-100 pt-5">
+                <label className="block text-[11px] font-bold text-slate-500 uppercase mb-2">Acompanhamentos Secundários</label>
+
+                <div className="flex gap-2 mb-3">
+                  <select
+                    value={selecaoAdicional}
+                    onChange={e => setSelecaoAdicional(e.target.value)}
+                    className="flex-1 p-2.5 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-sky-500 bg-slate-50 text-slate-600"
+                  >
+                    <option value="">Adicionar acompanhamento...</option>
+                    {PROFISSIONAL_ESPECIALIDADES.map(esp => (
+                      <option key={esp} value={esp}>{esp}</option>
+                    ))}
+                  </select>
+                  <button onClick={addEspecialidadeAdicional} className="bg-slate-800 hover:bg-slate-900 text-white px-4 rounded-xl font-bold transition-colors shadow-sm">
+                    +
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {formEspecialidade.adicionais.length === 0 ? (
+                    <span className="text-[11px] text-slate-400 italic">Nenhuma especialidade adicional vinculada.</span>
+                  ) : (
+                    formEspecialidade.adicionais.map((esp, i) => (
+                      <div key={i} className="flex items-center gap-1.5 bg-sky-50 text-sky-700 border border-sky-200 px-2.5 py-1.5 rounded-lg text-[10px] font-bold shadow-sm">
+                        <span>{esp}</span>
+                        <button onClick={() => removeEspecialidadeAdicional(esp)} className="text-sky-400 hover:text-red-500 bg-white hover:bg-red-50 rounded-full p-0.5 transition-colors border border-sky-100 hover:border-red-200">
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+            </div>
+
+            <div className="p-4 sm:p-5 border-t border-slate-200 bg-slate-50 rounded-b-2xl">
+              <button onClick={salvarEspecialidades} className="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 rounded-xl transition-shadow shadow-md flex justify-center items-center gap-2">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                Salvar Especialidades
+              </button>
+            </div>
+
           </div>
         </div>
       )}

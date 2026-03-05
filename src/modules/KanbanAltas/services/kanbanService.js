@@ -142,3 +142,30 @@ export const updateMedications = async (patientId, medicationsArray) => {
         throw error;
     }
 };
+
+/**
+ * Adiciona ou atualiza a gestão de especialidades do paciente,
+ * ativando a flag manual para proteger contra sobrescritas do sistema automático.
+ * 
+ * @param {string} patientId ID do paciente no Firestore
+ * @param {string} primary Especialidade principal
+ * @param {Array} additional Array de strings com especialidades adicionais cruzadas
+ */
+export const updatePatientSpecialties = async (patientId, primary, additional = []) => {
+    if (!patientId || !primary) return;
+    const patientRef = doc(db, 'nexus_kanban_pacientes', patientId);
+
+    try {
+        await updateDoc(patientRef, {
+            especialidade_gestao: {
+                principal: primary,
+                adicionais: additional,
+                atualizado_em: serverTimestamp(),
+                is_manual: true
+            }
+        });
+    } catch (error) {
+        console.error(`Erro ao atualizar Especialidades da Gestão:`, error);
+        throw error;
+    }
+};
