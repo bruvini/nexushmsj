@@ -1399,7 +1399,7 @@ export default function PainelKanban() {
                   <li className="flex items-start gap-3"><div className="w-5 h-5 rounded bg-amber-500 shrink-0 shadow-inner mt-0.5"></div><span><strong>Amarelo:</strong> Tempo padrão (48 a 72h). Momento onde condutas cirúrgicas ou clínicas são fechadas.</span></li>
                   <li className="flex items-start gap-3"><div className="w-5 h-5 rounded bg-red-500 shrink-0 shadow-inner mt-0.5"></div><span><strong>Vermelho:</strong> Acima de 72h. O tempo regular de uma internação aguda expirou.</span></li>
                   <li className="flex items-start gap-3"><div className="w-5 h-5 rounded bg-orange-500 shrink-0 shadow-inner mt-0.5"></div><span><strong>Laranja:</strong> Acima de 7 dias. Entra na classificação de Média Permanência.</span></li>
-                  <li className="flex items-start gap-3"><div className="w-5 h-5 rounded bg-purple-500 shrink-0 shadow-inner mt-0.5"></div><span><strong>Roxo:</strong> Acima de 15 dias. Limiar de Longa Permanência e atuação CISS forte.</span></li>
+                  <li className="flex items-start gap-3"><div className="w-5 h-5 rounded bg-purple-500 shrink-0 shadow-inner mt-0.5"></div><span><strong>Roxo:</strong> Acima de 15 dias. Limiar de Longa Permanência. Exige atuação forte do NIR, Serviço Social e CCIH para resolver os gargalos de desospitalização e prevenir infecções.</span></li>
                   <li className="flex items-start gap-3"><div className="w-5 h-5 rounded bg-slate-800 shrink-0 shadow-inner mt-0.5"></div><span><strong>Preto:</strong> Extrema Permanência (&gt; 30 dias). Históricos cronificados, sociais ou liminares judiciais.</span></li>
                 </ul>
               </section>
