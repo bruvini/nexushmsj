@@ -523,32 +523,35 @@ export default function PainelKanban() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 hide-scrollbar scrollbar-hide">
+        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto flex-wrap sm:flex-nowrap pb-1 sm:pb-0">
           {/* Central de Atividades Dropdown */}
           <div className="relative shrink-0">
-            <button onClick={() => { setIsLogDropdownOpen(!isLogDropdownOpen); setHasRecentLog(false); }} className="bg-slate-100 hover:bg-slate-200 text-slate-700 w-10.5 h-10.5 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all relative text-lg sm:text-base">
-              🔔
+            <button disabled={activityLogs.length === 0} onClick={() => { setIsLogDropdownOpen(!isLogDropdownOpen); setHasRecentLog(false); }} className={`bg-slate-100 text-slate-700 w-10.5 h-10.5 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all relative text-lg sm:text-base ${activityLogs.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-200 cursor-pointer'}`}>
+              <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
               {hasRecentLog && <span className="absolute -top-1 -right-1 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span></span>}
             </button>
-            {isLogDropdownOpen && (
-              <div className="absolute top-12 right-0 w-[280px] sm:w-[320px] bg-white shadow-xl border border-slate-200 rounded-2xl z-50 p-4">
+            {isLogDropdownOpen && activityLogs.length > 0 && (
+              <div className="absolute top-full right-0 mt-2 w-[280px] sm:w-[320px] bg-white shadow-xl border border-slate-200 rounded-2xl z-[9999] p-4">
                 <h4 className="text-sm font-bold text-slate-800 border-b pb-2 mb-3">Últimas Atualizações</h4>
                 <div className="flex flex-col gap-3">
-                  {activityLogs.length === 0 ? <p className="text-xs text-slate-400 text-center py-4">Nenhum evento registrado.</p> :
-                    activityLogs.map(log => (
-                      <div key={log.id} className="flex gap-3 text-sm items-start">
-                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 shrink-0 text-base">
-                          {log.acao === 'SINC. MV' ? '🔄' : '📝'}
-                        </div>
-                        <div className="flex flex-col w-full">
-                          <span className="font-bold text-slate-700 text-[11px] leading-tight flex justify-between gap-2">
-                            <span className="truncate w-36 sm:w-44">{log.nome_paciente}</span>
-                            <span className="text-[9px] font-normal text-slate-400">{log.timestamp ? new Date(log.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
-                          </span>
-                          <span className="text-[10px] text-slate-500 leading-tight mt-0.5">{log.descricao}</span>
-                        </div>
+                  {activityLogs.map(log => (
+                    <div key={log.id} className="flex gap-3 text-sm items-start">
+                      <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 shrink-0 text-base">
+                        {log.acao === 'SINC. MV' ? (
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                        )}
                       </div>
-                    ))}
+                      <div className="flex flex-col w-full">
+                        <span className="font-bold text-slate-700 text-[11px] leading-tight flex justify-between gap-2">
+                          <span className="truncate w-36 sm:w-44">{log.nome_paciente}</span>
+                          <span className="text-[9px] font-normal text-slate-400">{log.timestamp ? new Date(log.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                        </span>
+                        <span className="text-[10px] text-slate-500 leading-tight mt-0.5">{log.descricao}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -556,7 +559,7 @@ export default function PainelKanban() {
 
           {/* Botão Universidade Nexus (Desktop Only) */}
           <button onClick={() => setShowTutorialModal(true)} className="hidden md:flex bg-slate-100 hover:bg-slate-200 text-slate-700 w-10 h-10 rounded-xl items-center justify-center transition-all text-base shrink-0">
-            📖
+            <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
           </button>
 
           <button onClick={() => toast.info('Funcionalidade em desenvolvimento: Integração RPA para inclusão automática de pedidos de internação em lote no SISREG.')} className="hidden lg:flex bg-slate-100 border border-indigo-100 hover:bg-indigo-50 text-indigo-800 px-4 py-2.5 rounded-xl text-sm font-bold transition-all items-center gap-2 shrink-0">
@@ -1343,7 +1346,10 @@ export default function PainelKanban() {
             <div className="bg-indigo-600 p-8 text-center relative overflow-hidden shrink-0">
               <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
               <h2 className="text-2xl font-black text-white relative z-10 font-sans flex justify-center items-center gap-3">
-                <span className="bg-white/20 p-2 rounded-xl text-3xl">🎓</span> Universidade Nexus
+                <div className="bg-white/20 p-2 rounded-xl flex items-center justify-center">
+                  <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M12 14l9-5-9-5-9 5 9 5z" /><path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" /></svg>
+                </div>
+                Gestão de Altas e Fluxos (NIR)
               </h2>
               <p className="text-indigo-100 mt-2 font-medium relative z-10 text-sm">Guia prático para gestores e assistentes do Kanban de Altas.</p>
               <button onClick={() => setShowTutorialModal(false)} className="absolute top-5 right-5 text-indigo-200 hover:text-white transition-colors bg-white/10 hover:bg-white/20 p-2 rounded-full z-20">
@@ -1354,16 +1360,18 @@ export default function PainelKanban() {
             <div className="p-8 overflow-y-auto bg-slate-50 space-y-8 flex-1">
               <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                 <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4 border-b pb-3">
-                  <span className="text-sky-500 text-2xl">📊</span> Os Números no Topo (KPIs)
+                  <svg className="w-6 h-6 text-sky-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                  Os Números no Topo (KPIs)
                 </h3>
                 <p className="text-sm text-slate-600 leading-relaxed font-medium">As placas coloridas no topo do painel representam a contagem viva do hospital. Elas mostram a fotografia atual baseada nos <span className="text-sky-600 font-bold bg-sky-50 px-1 py-0.5 rounded">filtros que você acionou.</span> Se você filtrar por "Cirurgia Geral", todos os numerais vão se recalcular instantaneamente para refletir apenas os cirúrgicos.</p>
               </section>
 
               <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                 <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4 border-b pb-3">
-                  <span className="text-orange-500 text-2xl">⏳</span> As Cores do Tempo (Protocolo Kanban)
+                  <svg className="w-6 h-6 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  As Cores do Tempo (Protocolo Kanban)
                 </h3>
-                <ul className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-600 font-medium">
+                <ul className="flex flex-col gap-4 text-sm text-slate-600 font-medium">
                   <li className="flex items-start gap-3"><div className="w-5 h-5 rounded bg-emerald-500 shrink-0 shadow-inner mt-0.5"></div><span><strong>Verde:</strong> Recém chegado no leito (menos de 48h). Foco na emissão de laudos de exames iniciais.</span></li>
                   <li className="flex items-start gap-3"><div className="w-5 h-5 rounded bg-amber-500 shrink-0 shadow-inner mt-0.5"></div><span><strong>Amarelo:</strong> Tempo padrão (48 a 72h). Momento onde condutas cirúrgicas ou clínicas são fechadas.</span></li>
                   <li className="flex items-start gap-3"><div className="w-5 h-5 rounded bg-red-500 shrink-0 shadow-inner mt-0.5"></div><span><strong>Vermelho:</strong> Acima de 72h. O tempo regular de uma internação aguda expirou.</span></li>
@@ -1376,18 +1384,23 @@ export default function PainelKanban() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                   <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4 border-b pb-3">
-                    <span className="text-indigo-500 text-2xl">🎛️</span> Botões de Ação Clínica
+                    <svg className="w-6 h-6 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" /></svg>
+                    Botões de Ação Clínica
                   </h3>
-                  <ul className="space-y-3 text-sm text-slate-600 font-medium list-disc ml-5">
-                    <li><strong>EMAD / Retaguarda:</strong> Sinaliza que a equipe aceita transferir o paciente para assistência residencial ou hospital de retaguarda crônica.</li>
-                    <li><strong>Provável Alta 24/48h:</strong> O botão mais importante do giro de leito. Indica para a governança que aquele leito ficará vago amanhã/depois, destrancando o Pronto Socorro.</li>
-                    <li><strong>Fluxo Trauma:</strong> Pacientes cirúrgicos de ortopedia classificados pela equipe na sala de trauma para descer pro Centro Cirúrgico acelerado.</li>
+                  <ul className="space-y-4 text-sm text-slate-600 font-medium">
+                    <li><strong>EMAD / Retaguarda:</strong> Sinaliza que o paciente possui perfil para desospitalização (domiciliar ou retaguarda clínica). Use esta tag para encontrar facilmente esses pacientes e agilizar os trâmites de transferência junto aos demais setores.</li>
+                    <li><strong>Provável Alta 24/48h:</strong> Indica que o paciente tem previsão de saída. A equipe deve focar em resolver as pendências (ex: exames, transporte) para garantir que ele saia dentro do previsto. Se o tempo estourar, o sistema alerta para investigar o gargalo.</li>
+                    <li><strong>Fluxo Trauma:</strong> Sinaliza os pacientes que deram entrada por trauma com fratura e que preenchem os critérios do Fluxo Trauma da Regulação Estadual (SES/SC).</li>
+                    <li><strong>Botão de Medicação:</strong> Serve para monitorar ciclos de medicamentos com prazo definido (como antibióticos). O sistema conta os dias automaticamente e pisca em vermelho quando o tempo previsto acaba.</li>
+                    <li><strong>Especialidades:</strong> O sistema importa a especialidade do relatório MV. Ao clicar na especialidade no card do paciente, você pode alterar quem assumiu o caso (Especialidade Principal) e incluir outras equipes acompanhantes. O Nexus protege sua alteração manual para que ela não seja apagada na próxima sincronização.</li>
+                    <li><strong>Relatório de Rondas:</strong> Gera um relatório otimizado em PDF (ou impressão) com o cruzamento dos dados do paciente e suas pendências, ideal para ser levado fisicamente durante a ronda nos leitos.</li>
                   </ul>
                 </section>
 
                 <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                   <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4 border-b pb-3">
-                    <span className="text-emerald-500 text-2xl">🛡️</span> Sincronização Segura
+                    <svg className="w-6 h-6 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                    Sincronização Segura
                   </h3>
                   <p className="text-sm text-slate-600 font-medium leading-relaxed">
                     A Sincronização importa a planilha do MV. Todo e qualquer paciente que já tem Botões engatilhados (como Especialidades Manuais, Medicações e SISREG) fica <strong>Puro e Fechado</strong> dentro do Nexus.
@@ -1398,11 +1411,12 @@ export default function PainelKanban() {
 
               <section className="bg-rose-50 p-6 rounded-2xl border border-rose-200 shadow-sm">
                 <h3 className="text-lg font-bold text-rose-800 flex items-center gap-2 mb-3">
-                  <span className="text-rose-600 text-2xl">❌</span> O Que NÃO Fazer
+                  <svg className="w-6 h-6 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  O Que NÃO Fazer
                 </h3>
                 <p className="text-sm text-rose-700 font-bold leading-relaxed mb-2">Exclusivo: A Lei do Botão Próprio!</p>
                 <div className="bg-white p-4 rounded-xl text-rose-600 text-[13px] font-medium leading-relaxed border border-rose-100 flex items-start gap-4">
-                  <span className="text-2xl mt-1 opacity-80">💡</span>
+                  <svg className="w-6 h-6 shrink-0 opacity-80 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
                   <p>Evite usar o campo Livre de <strong>Notas da Equipe</strong> para transcrever dados operacionais que já possuem botões/modais próprios (como agendar antibiótico em andamento, marcar previsão temporal de alta médica, ou ditar especialidades). <strong>Utilize os botões originais no card!</strong> Isso mantém nossa infraestrutura analítica viva e nossos painéis 100% acurados.</p>
                 </div>
               </section>
