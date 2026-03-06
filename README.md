@@ -20,7 +20,11 @@ O **Nexus** atua como o **Hub de Inteligência Hospitalar** no ambiente do **HMS
 
 Atualmente, o Nexus contempla os seguintes módulos integrados:
 - 📅 **AIHs Cirurgias Eletivas**: Gestão e inteligência de cirurgias e procedimentos eletivos.
-- 📋 **Kanban de Altas**: Painel visual para acompanhamento e otimização do fluxo de altas hospitalares.
+- 📋 **Kanban de Altas (Giro de Leitos)**: Núcleo avançado de gestão operacional do NIR. Combina automação de importações via RPA (Censo MV) com a **Soberania da Decisão Clínica**. Destacam-se:
+  - **Gestão Semântica de Especialidades**: Sistema dual de equipe (Principal e Acompanhantes) com proteção de nível banco de dados (`is_manual`) contra sobreposições robóticas.
+  - **Filtros e KPIs de Alta Performance**: Motor Reativo que calcula o tempo de giro de leito (Verde a Preto), monitora antibióticos cronometrados e acusa fluxos setoriais (EMAD, Trauma) instantaneamente.
+  - **Auditoria Transparente (Nexus Logs)**: O "Sino de Atividades", suportado pelo Firestore, rastreia e consolida _Logs Semânticos_ de quem fez cada ação clínica/documental em tempo real.
+  - **Universidade Nexus**: Módulo *in-app* projetado para fixar o _Onboarding_ visual prático para todo novo médico ou enfermeiro da base.
 - 🧠 **Telemonitoramento AVC (Pós-Alta)**: Fluxo completo de navegação do paciente (Triagem, Exames, Agendamentos, Desfechos e CRM) com disparos automáticos de e-mail e Kanban Reativo.
 
 ---

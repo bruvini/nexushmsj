@@ -26,8 +26,13 @@ O ecossistema Nexus deve, sob qualquer hipótese, aderir aos seguintes framework
   Layouts devem seguir os preceitos de Mobile-First. Telas gerenciais (como os _Dashboards_) são obrigadas a comportar Grids Reativos (Ex: Kanbans de 1 até 5 colunas baseados na viewport) e encapsulamento em **Drawer** para sidebars.
 - **UI-03 (UX & Tema Institucional):**  
   É mandatório o uso de `framer-motion` nas transições entre módulos mestres para fluência visual. Todo design deve seguir inequivocamente o **Tema Light Hospitalar**, abolindo _dark modes_ em fluxos puramente clínicos.
-- **DB-01 (Mínimo de Leituras Firestore - Realtime):**  
-  Toda busca estrutural reativa deve usar a abordagem on-demand `onSnapshot()` acoplada à raízes de componentes. Requisições em laço fechado como `.get()` para Dashboards são proibidas para impedir a sobreposição e faturamento desnecessário de _Cloud Reads_ do HMSJ.
+- **UI-04 (Densidade de Informação e Layouts Compactos):**  
+  Módulos altamente analíticos, como o Kanban de Altas, devem fundir clusters de dados em linhas unificadas (Ex: *Especialidade* e *Ações Clínicas* encapsuladas no mesmo `flex-container`). A regra de ouro é evitar _scroll_ excessivo em smartphones. O uso de SVGs vetoriais profissionais (ex: Heroicons) substituirá o uso recreativo de Emojis em artefatos maduros (Modais Onboarding).
+- **UI-05 (Ocultação Inteligente no Mobile e Idle Clicks):**  
+  Visualizações celulares (`< lg`) exigem a supressão pragmática de botões secundários da matriz visível (reservá-los ao Desktop). A interface deve travar ativamente repetições ociosas: menus Dropdowns de log e filtros de zeramento recebem classes restritivas CSS (`opacity-50 grayscale cursor-not-allowed`) e a propriedade `disabled` no DOM, cortando processamentos redundantes na raiz.
+- **DB-01 (Mínimo de Leituras Firestore e Cálculos In-Memory):**  
+  Toda busca estrutural reativa deve ser orquestrada com `onSnapshot()` acoplado estritamente à montagem raiz do container pai. Requisições estáticas em loop fechado `.get()` para Dashboards ao vivo são severamente proibidas.  
+  Além disso, algoritmos computacionais pesados (como a reatividade diária do Tempo de Internação, Filtros Multidiscplanares ou Flags Cronometradas de Antibióticos) **devem ser delegados unicamente em Client-Side (memória temporal do Browser)** a partir do espelho inicial da Query, isentando os servidores e as chaves de precificação Opex do HMSJ.
 
 ---
 

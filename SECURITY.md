@@ -39,6 +39,20 @@ Valorizamos muito a comunidade de desenvolvedores e auditores de segurança que 
 
 ---
 
+## 👁️ Auditoria e Rastreabilidade Baseada em Eventos
+
+Visando total transparência sobre a evolução do Censo Hospitalar, o módulo **Kanban de Altas** introduz o ecossistema de Logs Semânticos:
+- **Coleção `nexus_kanban_logs`**: Cada interação técnica e/ou clínica (marcação de tags diretivas como EMAD/Trauma, prescrição/remoção de medicamentos temporizados, exclusão de SISREGs ou alteração ativa de Especialidades) dispara um evento autônomo na nuvem, portando o perfil logado no App.
+- Isso constitui uma trilha de auditoria cirúrgica e irrefutável, permitindo que as Coordenações saibam exatamente *quem*, *quando* e *o quê* foi alterado no prontuário de rastreio, visível de forma orgânica por meio da **Central de Atividades (Sino de Notificações)**.
+
+## 🛡️ Proteção da Soberania de Dados (Censo Autônomo MV)
+
+A automação RPA não deve apagar o raciocínio e a apuração humana do NIR. O Nexus adota o princípio da **Soberania Interativa**:
+- O sincronizador mecânico do Censo MV é capaz de incluir pacientes, atualizar leitos ou dar teto/desfecho de alta ao mapear as evasões. No entanto, sempre que uma decisão interativa é firmada por um usuário nas bases do Nexus (exemplo: transferir o caso para outra Especialidade Principal), a arquitetura injeta a trava de blindagem `is_manual: true`.
+- Consequentemente, novos relatórios XLSX brutos importados não causarão **sobrescrita cega** nos dados já lapidados pelos assistentes operacionais em suas rondas.
+
+---
+
 ## 🔒 Boas Práticas de Arquitetura e Privacidade Hospitalar
 
 O Nexus foi construído seguindo os princípios intrínsecos de *Security by Design* e atende às premissas da **LGPD (Lei Geral de Proteção de Dados)** aplicadas à saúde (Art. 11: Dados Pessoais Sensíveis):
