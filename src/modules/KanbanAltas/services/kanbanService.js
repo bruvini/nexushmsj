@@ -48,7 +48,18 @@ export const toggleClinicalTag = async (patientId, tagName, active) => {
             payload[tagName] = deleteField();
         }
         await updateDoc(patientRef, payload);
-        await saveActivityLog(patientId, tagName.toUpperCase(), active ? `Marcou a tag do paciente` : `Removeu a tag do paciente`);
+
+        const formatTagName = (tag) => {
+            const map = {
+                'perfil_emad': 'EMAD',
+                'perfil_retaguarda': 'Retaguarda',
+                'provavel_alta': 'Provável Alta',
+                'fluxo_trauma': 'Fluxo Trauma'
+            };
+            return map[tag] || tag.replace('perfil_', '').toUpperCase();
+        };
+        const nomeFormatado = formatTagName(tagName);
+        await saveActivityLog(patientId, tagName.toUpperCase(), active ? `Marcou a tag ${nomeFormatado}` : `Desmarcou a tag ${nomeFormatado}`);
     } catch (error) {
         console.error(`Erro ao atualizar tag ${tagName}:`, error);
         throw error;
@@ -167,7 +178,7 @@ export const updateMedications = async (patientId, medicationsArray) => {
             medicacoes_curso: parsedArray,
             medicacoes_updated_at: serverTimestamp()
         });
-        await saveActivityLog(patientId, 'MEDICAÇÃO', `Atualizou os dados de medicação (${parsedArray.length} regs)`);
+        // Log específico é feito no componente
     } catch (error) {
         console.error(`Erro ao atualizar Medicações:`, error);
         throw error;
@@ -195,7 +206,7 @@ export const updatePatientSpecialties = async (patientId, primary, additional = 
                 is_manual: true
             }
         });
-        await saveActivityLog(patientId, 'ESPECIALIDADE', `Alterou especialidade para ${primary} / +${additional.length} adicionais`);
+        // Log específico é feito no componente PainelKanban.jsx
     } catch (error) {
         console.error(`Erro ao atualizar Especialidades da Gestão:`, error);
         throw error;

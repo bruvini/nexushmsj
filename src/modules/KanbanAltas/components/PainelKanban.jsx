@@ -407,6 +407,7 @@ export default function PainelKanban() {
       }
 
       await updateMedications(modalMedicacoesPaciente.id, newMedications);
+      await saveActivityLog(modalMedicacoesPaciente.id, 'MEDICAÇÃO', formMedicacao.id ? `Alterou a medicação: ${formMedicacao.nome_medicacao}` : `Adicionou a medicação: ${formMedicacao.nome_medicacao} (${formMedicacao.duracao_dias} dias)`);
       toast.success(formMedicacao.id ? "Medicação atualizada!" : "Medicação salva com sucesso!");
 
       // Reset form
@@ -449,6 +450,7 @@ export default function PainelKanban() {
       const newMedications = (p.medicacoes_curso || []).filter(med => med.id !== medicacaoParaApagar.id);
 
       await updateMedications(modalMedicacoesPaciente.id, newMedications);
+      await saveActivityLog(modalMedicacoesPaciente.id, 'MEDICAÇÃO', `Removeu a medicação: ${medicacaoParaApagar.nome_medicacao}`);
       toast.success("Medicação apagada com sucesso.");
 
     } catch (error) {
@@ -485,6 +487,25 @@ export default function PainelKanban() {
     if (!formEspecialidade.principal) return toast.warning("Informe a especialidade principal");
 
     try {
+      const p = pacientes.find(pat => pat.id === modalEspecialidadePaciente.id);
+      if (p) {
+        const principalAntiga = p.especialidade_gestao?.principal || p.especialidade || 'N/A';
+        if (principalAntiga !== formEspecialidade.principal) {
+          await saveActivityLog(p.id, 'ESPECIALIDADE', `Alterou especialidade principal de [${principalAntiga}] para [${formEspecialidade.principal}]`);
+        }
+        const adicionaisAntigas = p.especialidade_gestao?.adicionais || [];
+        const novasAdicionais = formEspecialidade.adicionais || [];
+        const adicionadas = novasAdicionais.filter(x => !adicionaisAntigas.includes(x));
+        const removidas = adicionaisAntigas.filter(x => !novasAdicionais.includes(x));
+
+        for (let add of adicionadas) {
+          await saveActivityLog(p.id, 'ESPECIALIDADE', `Adicionou a especialidade acompanhante: ${add}`);
+        }
+        for (let rem of removidas) {
+          await saveActivityLog(p.id, 'ESPECIALIDADE', `Removeu a especialidade acompanhante: ${rem}`);
+        }
+      }
+
       await updatePatientSpecialties(modalEspecialidadePaciente.id, formEspecialidade.principal, formEspecialidade.adicionais);
       toast.success("Especialidades salvas e protegidas!");
       setModalEspecialidadePaciente(null);
@@ -531,7 +552,7 @@ export default function PainelKanban() {
               {hasRecentLog && <span className="absolute -top-1 -right-1 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span></span>}
             </button>
             {isLogDropdownOpen && activityLogs.length > 0 && (
-              <div className="absolute top-full right-0 mt-2 w-[280px] sm:w-[320px] bg-white shadow-xl border border-slate-200 rounded-2xl z-[9999] p-4">
+              <div className="absolute top-full right-0 origin-top-right mt-2 w-72 max-w-[90vw] sm:w-[320px] bg-white shadow-xl border border-slate-200 rounded-2xl z-[9999] p-4">
                 <h4 className="text-sm font-bold text-slate-800 border-b pb-2 mb-3">Últimas Atualizações</h4>
                 <div className="flex flex-col gap-3">
                   {activityLogs.map(log => (
@@ -566,11 +587,11 @@ export default function PainelKanban() {
             <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
             Inclusão SISREG (RPA)
           </button>
-          <button onClick={() => gerarRelatorioRondas(pacientes)} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-[13px] sm:text-sm font-bold transition-all flex items-center gap-2 shrink-0">
+          <button onClick={() => gerarRelatorioRondas(pacientes)} className="hidden lg:flex bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-[13px] sm:text-sm font-bold transition-all items-center gap-2 shrink-0">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
             Relatório Rondas
           </button>
-          <button onClick={() => setShowImportModal(true)} className="bg-sky-600 hover:bg-sky-700 text-white px-5 py-2.5 rounded-xl text-[13px] sm:text-sm font-bold shadow-md transition-all flex items-center gap-2 shrink-0">
+          <button onClick={() => setShowImportModal(true)} className="hidden lg:flex bg-sky-600 hover:bg-sky-700 text-white px-5 py-2.5 rounded-xl text-[13px] sm:text-sm font-bold shadow-md transition-all items-center gap-2 shrink-0">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
             Sincronizar Censo
           </button>
@@ -650,7 +671,7 @@ export default function PainelKanban() {
         {/* Toggles Interativos com visual de Switch */}
         <div className="col-span-2 md:col-span-6 border-t pt-3 md:pt-4">
           <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Filtros Rápidos</label>
-          <div className="flex flex-wrap gap-4 sm:gap-6 items-center">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
 
             <label className={`flex items-center gap-2 group transition-all ${contadoresRapidos?.sisreg === 0 ? 'opacity-40 grayscale cursor-not-allowed' : 'cursor-pointer'}`}>
               <div className="relative">
@@ -750,72 +771,74 @@ export default function PainelKanban() {
                       </span>
                     </div>
 
-                    {/* Linha 2: Gestão de Especialidade Unificada */}
-                    <div className="flex w-full mt-0.5">
-                      <button onClick={() => setModalEspecialidadePaciente(p)} className="flex items-center gap-1 font-bold text-[11px] text-sky-700 hover:text-sky-900 bg-sky-50 shadow-sm hover:shadow hover:bg-sky-100 px-2 py-1 rounded transition-all group text-left">
+                    {/* Linha 2 e 3 Unidas: Especialidades e Ações de Gestão */}
+                    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 w-full pt-2 border-t border-slate-100/70 mt-1">
+
+                      {/* Lado Esquerdo: Especialidades */}
+                      <button onClick={() => setModalEspecialidadePaciente(p)} className="flex items-center gap-1 font-bold text-[11px] text-sky-700 hover:text-sky-900 bg-sky-50 shadow-sm hover:shadow hover:bg-sky-100 px-2.5 py-1.5 rounded-lg transition-all group text-left shrink-0">
                         <svg className="w-3.5 h-3.5 text-sky-500 group-hover:text-sky-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
                         <span>Especialidade: {p.especialidade_gestao?.principal || p.especialidade || 'NÃO INFORMADA'}</span>
                         {p.especialidade_gestao?.adicionais?.length > 0 && (
                           <span className="font-normal opacity-80 ml-1">(+ {p.especialidade_gestao.adicionais.length} acompanham)</span>
                         )}
                       </button>
-                    </div>
 
-                    {/* Linha 3: Ações de Gestão e Clinica (Unificadas) */}
-                    <div className="flex flex-row flex-wrap items-center justify-start sm:justify-end w-full gap-1 sm:gap-2 pt-2 border-t border-slate-100/70 mt-1">
+                      {/* Lado Direito: Ações Clínicas */}
+                      <div className="flex flex-wrap items-center justify-start lg:justify-end w-full lg:w-auto gap-1 sm:gap-2">
 
-                      <button onClick={() => toggleClinicalTag(p.id, 'perfil_emad', !p.perfil_emad?.active)} className={`flex items-center justify-center gap-1 p-2 sm:px-2.5 sm:py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black transition-all border shadow-sm ${p.perfil_emad?.active ? 'bg-sky-50 text-sky-700 border-sky-300 ring-1 ring-sky-100' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`} title="Perfil EMAD">
-                        <svg className="w-4 h-4 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
-                        <span className="hidden sm:inline">EMAD</span>
-                      </button>
+                        <button onClick={() => toggleClinicalTag(p.id, 'perfil_emad', !p.perfil_emad?.active)} className={`flex items-center justify-center gap-1 p-2 sm:px-2.5 sm:py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black transition-all border shadow-sm ${p.perfil_emad?.active ? 'bg-sky-50 text-sky-700 border-sky-300 ring-1 ring-sky-100' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`} title="Perfil EMAD">
+                          <svg className="w-4 h-4 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                          <span className="hidden sm:inline">EMAD</span>
+                        </button>
 
-                      <button onClick={() => toggleClinicalTag(p.id, 'perfil_retaguarda', !p.perfil_retaguarda?.active)} className={`flex items-center justify-center gap-1 p-2 sm:px-2.5 sm:py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black transition-all border shadow-sm ${p.perfil_retaguarda?.active ? 'bg-purple-50 text-purple-700 border-purple-300 ring-1 ring-purple-100' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`} title="Perfil Retaguarda">
-                        <svg className="w-4 h-4 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-                        <span className="hidden sm:inline">RETAG.</span>
-                      </button>
+                        <button onClick={() => toggleClinicalTag(p.id, 'perfil_retaguarda', !p.perfil_retaguarda?.active)} className={`flex items-center justify-center gap-1 p-2 sm:px-2.5 sm:py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black transition-all border shadow-sm ${p.perfil_retaguarda?.active ? 'bg-purple-50 text-purple-700 border-purple-300 ring-1 ring-purple-100' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`} title="Perfil Retaguarda">
+                          <svg className="w-4 h-4 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                          <span className="hidden sm:inline">RETAG.</span>
+                        </button>
 
-                      <button onClick={() => { p.provavel_alta?.active ? setModalDetalhesAlta(p) : setModalProvavelAlta(p) }} className={`flex items-center justify-center gap-1 p-2 sm:px-2.5 sm:py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black transition-all border shadow-sm ${p.provavel_alta?.active ? 'bg-emerald-50 text-emerald-700 border-emerald-300 ring-1 ring-emerald-100' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`} title="Provável Alta">
-                        <svg className="w-4 h-4 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        <span className="hidden sm:inline">ALTA</span>
-                      </button>
+                        <button onClick={() => { p.provavel_alta?.active ? setModalDetalhesAlta(p) : setModalProvavelAlta(p) }} className={`flex items-center justify-center gap-1 p-2 sm:px-2.5 sm:py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black transition-all border shadow-sm ${p.provavel_alta?.active ? 'bg-emerald-50 text-emerald-700 border-emerald-300 ring-1 ring-emerald-100' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`} title="Provável Alta">
+                          <svg className="w-4 h-4 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                          <span className="hidden sm:inline">ALTA</span>
+                        </button>
 
-                      <button onClick={() => { p.fluxo_trauma?.active ? setModalDetalhesTrauma(p) : setModalFluxoTrauma(p) }} className={`flex items-center justify-center gap-1 p-2 sm:px-2.5 sm:py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black transition-all border shadow-sm ${p.fluxo_trauma?.active ? 'bg-amber-50 text-amber-700 border-amber-300 ring-1 ring-amber-100' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`} title="Fluxo Trauma">
-                        <svg className="w-4 h-4 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                        <span className="hidden sm:inline">TRAUMA</span>
-                      </button>
+                        <button onClick={() => { p.fluxo_trauma?.active ? setModalDetalhesTrauma(p) : setModalFluxoTrauma(p) }} className={`flex items-center justify-center gap-1 p-2 sm:px-2.5 sm:py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black transition-all border shadow-sm ${p.fluxo_trauma?.active ? 'bg-amber-50 text-amber-700 border-amber-300 ring-1 ring-amber-100' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`} title="Fluxo Trauma">
+                          <svg className="w-4 h-4 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                          <span className="hidden sm:inline">TRAUMA</span>
+                        </button>
 
-                      <button onClick={() => setModalMedicacoesPaciente(p)} className={`flex items-center justify-center gap-1 p-2 sm:px-2.5 sm:py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black transition-all border shadow-sm relative group ${p.medicacoes_curso?.length > 0 ? (p.isAlertaMedicacao ? 'bg-red-50 text-red-700 border-red-300 ring-1 ring-red-100 animate-pulse' : 'bg-indigo-50 text-indigo-700 border-indigo-300 ring-1 ring-indigo-100') : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`} title="Medicações em Curso">
-                        <svg className="w-4 h-4 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.6 4.4a5 5 0 117.07 7.07l-6.26 6.26a5 5 0 11-7.07-7.07l6.26-6.26z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.5 15.5l7-7" />
-                        </svg>
-                        <span className="hidden sm:inline">MEDS</span>
-                        {p.medicacoes_curso?.length > 0 && (
-                          <span className={`absolute -top-1.5 -right-1.5 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full shadow-sm ring-2 ${p.isAlertaMedicacao ? 'bg-red-600 ring-red-50' : 'bg-indigo-500 ring-indigo-50'}`}>{p.medicacoes_curso.length}</span>
+                        <button onClick={() => setModalMedicacoesPaciente(p)} className={`flex items-center justify-center gap-1 p-2 sm:px-2.5 sm:py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black transition-all border shadow-sm relative group ${p.medicacoes_curso?.length > 0 ? (p.isAlertaMedicacao ? 'bg-red-50 text-red-700 border-red-300 ring-1 ring-red-100 animate-pulse' : 'bg-indigo-50 text-indigo-700 border-indigo-300 ring-1 ring-indigo-100') : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`} title="Medicações em Curso">
+                          <svg className="w-4 h-4 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.6 4.4a5 5 0 117.07 7.07l-6.26 6.26a5 5 0 11-7.07-7.07l6.26-6.26z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.5 15.5l7-7" />
+                          </svg>
+                          <span className="hidden sm:inline">MEDS</span>
+                          {p.medicacoes_curso?.length > 0 && (
+                            <span className={`absolute -top-1.5 -right-1.5 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full shadow-sm ring-2 ${p.isAlertaMedicacao ? 'bg-red-600 ring-red-50' : 'bg-indigo-500 ring-indigo-50'}`}>{p.medicacoes_curso.length}</span>
+                          )}
+                        </button>
+
+                        {p.exigeSisreg && (
+                          p.semSisreg ? (
+                            <button onClick={() => abrirModalSisregParaEdicao(p)} className="flex items-center justify-center gap-1 bg-rose-50 border border-red-200 text-red-600 hover:bg-rose-600 hover:text-white p-2 sm:px-2.5 sm:py-1.5 rounded-lg transition-all text-[9px] sm:text-[10px] font-black shadow-sm animate-pulse">
+                              <svg className="w-4 h-4 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                              <span className="hidden sm:inline">SISREG!</span>
+                            </button>
+                          ) : (
+                            <button onClick={() => abrirModalSisregParaEdicao(p)} className="flex items-center justify-center gap-1 bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 p-2 sm:px-2.5 sm:py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black transition-colors group" title={`Sisreg Nº ${p.numeroSisreg}`}>
+                              <svg className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-indigo-500 group-hover:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                              <svg className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-indigo-500 hidden group-hover:block" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                              <span className="hidden sm:inline opacity-80 font-mono">#{p.numeroSisreg?.slice(-4) || '...'}</span>
+                            </button>
+                          )
                         )}
-                      </button>
 
-                      {p.exigeSisreg && (
-                        p.semSisreg ? (
-                          <button onClick={() => abrirModalSisregParaEdicao(p)} className="flex items-center justify-center gap-1 bg-rose-50 border border-red-200 text-red-600 hover:bg-rose-600 hover:text-white p-2 sm:px-2.5 sm:py-1.5 rounded-lg transition-all text-[9px] sm:text-[10px] font-black shadow-sm animate-pulse">
-                            <svg className="w-4 h-4 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                            <span className="hidden sm:inline">SISREG!</span>
-                          </button>
-                        ) : (
-                          <button onClick={() => abrirModalSisregParaEdicao(p)} className="flex items-center justify-center gap-1 bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 p-2 sm:px-2.5 sm:py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black transition-colors group" title={`Sisreg Nº ${p.numeroSisreg}`}>
-                            <svg className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-indigo-500 group-hover:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                            <svg className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-indigo-500 hidden group-hover:block" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                            <span className="hidden sm:inline opacity-80 font-mono">#{p.numeroSisreg?.slice(-4) || '...'}</span>
-                          </button>
-                        )
-                      )}
+                        <button onClick={() => setModalNotasPaciente(p)} className="flex items-center justify-center gap-1 bg-white hover:bg-sky-50 text-sky-600 p-2 sm:px-2.5 sm:py-1.5 rounded-lg transition-all text-[9px] sm:text-[10px] font-black shadow-sm relative border border-sky-200">
+                          <svg className="w-4 h-4 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                          <span className="hidden sm:inline">NOTAS</span>
+                          {p.temNotas && <span className="absolute -top-1.5 -right-1.5 bg-sky-600 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full shadow-sm">{p.notasArray.length}</span>}
+                        </button>
 
-                      <button onClick={() => setModalNotasPaciente(p)} className="flex items-center justify-center gap-1 bg-white hover:bg-sky-50 text-sky-600 p-2 sm:px-2.5 sm:py-1.5 rounded-lg transition-all text-[9px] sm:text-[10px] font-black shadow-sm relative border border-sky-200">
-                        <svg className="w-4 h-4 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                        <span className="hidden sm:inline">NOTAS</span>
-                        {p.temNotas && <span className="absolute -top-1.5 -right-1.5 bg-sky-600 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full shadow-sm">{p.notasArray.length}</span>}
-                      </button>
-
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1349,7 +1372,7 @@ export default function PainelKanban() {
                 <div className="bg-white/20 p-2 rounded-xl flex items-center justify-center">
                   <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M12 14l9-5-9-5-9 5 9 5z" /><path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" /></svg>
                 </div>
-                Gestão de Altas e Fluxos (NIR)
+                Universidade Nexus: Gestão de Altas e Fluxos (NIR)
               </h2>
               <p className="text-indigo-100 mt-2 font-medium relative z-10 text-sm">Guia prático para gestores e assistentes do Kanban de Altas.</p>
               <button onClick={() => setShowTutorialModal(false)} className="absolute top-5 right-5 text-indigo-200 hover:text-white transition-colors bg-white/10 hover:bg-white/20 p-2 rounded-full z-20">
