@@ -1,5 +1,30 @@
-import { doc, updateDoc, serverTimestamp, deleteField } from 'firebase/firestore';
-import { db } from '../../../services/firebase';
+import { doc, getDoc, updateDoc, serverTimestamp, deleteField, collection, addDoc } from 'firebase/firestore';
+import { db, auth } from '../../../services/firebase';
+
+export const saveActivityLog = async (patientId, action, description) => {
+    try {
+        let patientName = 'Massa Censo / Multicards';
+        if (patientId && patientId !== 'CENSO') {
+            const patientRef = doc(db, 'nexus_kanban_pacientes', patientId);
+            const patientSnap = await getDoc(patientRef);
+            if (patientSnap.exists()) patientName = patientSnap.data().nome;
+        }
+
+        const authUser = auth?.currentUser;
+        const userName = authUser?.displayName || authUser?.email || "Interação Local";
+
+        await addDoc(collection(db, 'nexus_kanban_logs'), {
+            id_paciente: patientId || 'SISTEMA',
+            nome_paciente: patientName,
+            usuario_nome: userName,
+            acao: action,
+            descricao: description,
+            timestamp: serverTimestamp()
+        });
+    } catch (error) {
+        console.error("Erro ao salvar log:", error);
+    }
+};
 
 /**
  * Adiciona ou remove uma tag clínica simples (ex: EMAD, Retaguarda) de um paciente.
@@ -23,6 +48,7 @@ export const toggleClinicalTag = async (patientId, tagName, active) => {
             payload[tagName] = deleteField();
         }
         await updateDoc(patientRef, payload);
+        await saveActivityLog(patientId, tagName.toUpperCase(), active ? `Marcou a tag do paciente` : `Removeu a tag do paciente`);
     } catch (error) {
         console.error(`Erro ao atualizar tag ${tagName}:`, error);
         throw error;
@@ -47,6 +73,7 @@ export const updateProvavelAlta = async (patientId, pendencia) => {
                 timestamp: serverTimestamp()
             }
         });
+        await saveActivityLog(patientId, 'ALTA', `Sinalizou provável alta: ${pendencia}`);
     } catch (error) {
         console.error(`Erro ao atualizar Provável Alta:`, error);
         throw error;
@@ -66,6 +93,7 @@ export const removeProvavelAlta = async (patientId) => {
         await updateDoc(patientRef, {
             provavel_alta: deleteField()
         });
+        await saveActivityLog(patientId, 'ALTA', `Removeu sinalização de alta`);
     } catch (error) {
         console.error(`Erro ao remover Provável Alta:`, error);
         throw error;
@@ -90,6 +118,7 @@ export const updateFluxoTrauma = async (patientId, descricao) => {
                 timestamp: serverTimestamp()
             }
         });
+        await saveActivityLog(patientId, 'TRAUMA', `Sinalizou fluxo trauma: ${descricao}`);
     } catch (error) {
         console.error(`Erro ao atualizar Fluxo Trauma:`, error);
         throw error;
@@ -109,6 +138,7 @@ export const removeFluxoTrauma = async (patientId) => {
         await updateDoc(patientRef, {
             fluxo_trauma: deleteField()
         });
+        await saveActivityLog(patientId, 'TRAUMA', `Removeu sinalização de fluxo trauma`);
     } catch (error) {
         console.error(`Erro ao remover Fluxo Trauma:`, error);
         throw error;
@@ -137,6 +167,7 @@ export const updateMedications = async (patientId, medicationsArray) => {
             medicacoes_curso: parsedArray,
             medicacoes_updated_at: serverTimestamp()
         });
+        await saveActivityLog(patientId, 'MEDICAÇÃO', `Atualizou os dados de medicação (${parsedArray.length} regs)`);
     } catch (error) {
         console.error(`Erro ao atualizar Medicações:`, error);
         throw error;
@@ -164,6 +195,7 @@ export const updatePatientSpecialties = async (patientId, primary, additional = 
                 is_manual: true
             }
         });
+        await saveActivityLog(patientId, 'ESPECIALIDADE', `Alterou especialidade para ${primary} / +${additional.length} adicionais`);
     } catch (error) {
         console.error(`Erro ao atualizar Especialidades da Gestão:`, error);
         throw error;

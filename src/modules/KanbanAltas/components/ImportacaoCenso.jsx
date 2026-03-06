@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import { collection, getDocs, doc, writeBatch, query, where, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../services/firebase';
 import { toast } from 'react-toastify';
+import { saveActivityLog } from '../services/kanbanService';
 
 export default function ImportacaoCenso({ onClose, onImportSuccess }) {
   const [loading, setLoading] = useState(false);
@@ -111,6 +112,8 @@ export default function ImportacaoCenso({ onClose, onImportSuccess }) {
       setStatusText('Salvando alterações no servidor...');
       await batch.commit();
 
+      await saveActivityLog('CENSO', 'SINC. MV', `Importação do MV processada. ${novos} novos, ${atualizados} mods, ${excluidos} altas.`);
+
       // Toast Customizado e Elegante (Sem Emojis)
       toast.success(
         <div className="flex flex-col gap-1.5 ml-1">
@@ -187,7 +190,7 @@ export default function ImportacaoCenso({ onClose, onImportSuccess }) {
             </li>
             <li className="relative">
               <span className="absolute -left-[29px] bg-white border-2 border-slate-300 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-slate-500">2</span>
-              Faça login com o usuário <strong>"nir"</strong> e senha <strong>"mvnir"</strong>
+              Faça login com o usuário <strong>"nir"</strong> e senha <strong>"nirmv"</strong>
             </li>
             <li className="relative">
               <span className="absolute -left-[29px] bg-white border-2 border-slate-300 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-slate-500">3</span>
