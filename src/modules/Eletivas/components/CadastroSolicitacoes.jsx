@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   collection, query, getDocs, addDoc, updateDoc, deleteDoc, doc,
-  onSnapshot, serverTimestamp, writeBatch, where,
+  onSnapshot, serverTimestamp, writeBatch, where, orderBy, limit
 } from 'firebase/firestore';
 import { db } from '../../../services/firebase';
 import { cidadesSC } from '../../../utils/cidadesSC';
 import ImportacaoLote from './ImportacaoLote';
+import DashboardKpis from './DashboardKpis';
 
 // IMPORTAÇÕES DO TOASTIFY
 import { ToastContainer, toast } from 'react-toastify';
@@ -84,7 +85,12 @@ export default function CadastroSolicitacoes() {
 
   // --- EFEITOS DE CARREGAMENTO ---
   useEffect(() => {
-    const unsubPacientes = onSnapshot(query(collection(db, 'nexus_eletivas_pacientes')), (snap) => {
+    const qPacientes = query(
+      collection(db, 'nexus_eletivas_pacientes'),
+      orderBy('criadoEm', 'desc'),
+      limit(20)
+    );
+    const unsubPacientes = onSnapshot(qPacientes, (snap) => {
       setPacientes(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
     });
     const unsubProc = onSnapshot(query(collection(db, 'nexus_eletivas_procedimentos')), (snap) => {
@@ -379,19 +385,32 @@ export default function CadastroSolicitacoes() {
   const especialidadesDisponiveis = procSelecionado ? procSelecionado.especialidades || [] : [];
   const medicosDisponiveis = formDataSolicitacao.especialidade ? dbMedicos.filter((m) => m.especialidades && m.especialidades.includes(formDataSolicitacao.especialidade)) : [];
 
-  // --- HANDLERS DO FORMULÁRIO ---
-  const handlePesquisarCNS = (e) => {
+  const handlePesquisarCNS = async (e) => {
     e.preventDefault();
-    const p = pacientes.find((p) => p.cns === cnsBusca);
-    if (!p) {
-      setFormDataPaciente({ nome: '', cns: cnsBusca, dataNascimento: '', cidade: '', sexo: '', nomeMae: '' });
-      setPacienteAtivo(null);
-      setIsEditingPaciente(false);
-      setEtapa(1);
+    if (cnsBusca.length === 15) {
+      setLoading(true);
+      try {
+        const qCns = query(collection(db, 'nexus_eletivas_pacientes'), where('cns', '==', cnsBusca));
+        const snap = await getDocs(qCns);
+        if (!snap.empty) {
+          const docSnap = snap.docs[0];
+          const p = { id: docSnap.id, ...docSnap.data() };
+          setPacienteAtivo(p);
+          setEtapa(2);
+          setBuscaProc('');
+        } else {
+          setFormDataPaciente({ nome: '', cns: cnsBusca, dataNascimento: '', cidade: '', sexo: '', nomeMae: '' });
+          setPacienteAtivo(null);
+          setIsEditingPaciente(false);
+          setEtapa(1);
+        }
+      } catch (error) {
+        toast.error('Erro ao buscar paciente pelo CNS no Firestore.');
+      } finally {
+        setLoading(false);
+      }
     } else {
-      setPacienteAtivo(p);
-      setEtapa(2);
-      setBuscaProc('');
+      toast.warning('O CNS deve conter exatamente 15 dígitos.');
     }
   };
 
@@ -550,12 +569,39 @@ export default function CadastroSolicitacoes() {
     })
     .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
 
+  const buscarPacienteTabelaCNS = async () => {
+    if (filtroTabela.length !== 15) return;
+    setLoading(true);
+    try {
+      const qCns = query(collection(db, 'nexus_eletivas_pacientes'), where('cns', '==', filtroTabela));
+      const snap = await getDocs(qCns);
+      if (!snap.empty) {
+        const p = { id: snap.docs[0].id, ...snap.docs[0].data() };
+        // Atualiza a listagem de pacientes localmente para incluir o paciente buscado,
+        // no topo da lista se ele já não existir.
+        setPacientes(prev => {
+          const withoutP = prev.filter(x => x.cns !== p.cns);
+          return [p, ...withoutP];
+        });
+      } else {
+        toast.info('Nenhum paciente encontrado com este CNS.');
+      }
+    } catch (e) {
+      toast.error('Erro na busca de paciente pelo CNS.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const totalPaginas = Math.ceil(pacientesFiltradosSorted.length / itensPorPagina);
   const pacientesPaginados = pacientesFiltradosSorted.slice((paginaAtual - 1) * itensPorPagina, paginaAtual * itensPorPagina);
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-5xl mx-auto pb-12 relative">
       <ToastContainer position="top-right" theme="colored" />
+
+      {/* DASHBOARD DE KPIS DE AGREGAÇÃO FIREBASE */}
+      <DashboardKpis />
 
       {/* OVERLAY DE CARREGAMENTO GLOBAL */}
       {loading && (
@@ -758,10 +804,30 @@ export default function CadastroSolicitacoes() {
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden mt-4">
         <div className="px-6 py-4 border-b bg-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-sky-500"></span> Pacientes Cadastrados
+            <span className="w-2 h-2 rounded-full bg-sky-500"></span> Últimos Pacientes Cadastrados
           </h3>
-          <div className="relative w-full md:w-72">
-            <input type="text" placeholder="Filtrar por Nome ou CNS..." value={filtroTabela} onChange={(e) => { setFiltroTabela(e.target.value); setPaginaAtual(1); }} className="w-full border border-slate-300 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-sky-500/50 outline-none" disabled={loading} />
+          <div className="relative w-full md:w-96 flex gap-2">
+            <input
+              type="text"
+              placeholder="Filtro (Nome/CNS) ou Buscar Remoto (CNS 15 dig)..."
+              value={filtroTabela}
+              onChange={(e) => {
+                setFiltroTabela(e.target.value);
+                setPaginaAtual(1);
+              }}
+              className="w-full border border-slate-300 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-sky-500/50 outline-none"
+              disabled={loading}
+            />
+            <button
+              onClick={buscarPacienteTabelaCNS}
+              disabled={loading || filtroTabela.length !== 15 || isNaN(Number(filtroTabela))}
+              className="bg-sky-100 hover:bg-sky-200 text-sky-700 rounded-xl px-3 py-2 transition-colors disabled:opacity-50 border border-sky-300"
+              title="Buscar Remotamente (Exige CNS com 15 dígitos)"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </button>
           </div>
         </div>
         <div className="overflow-x-auto">
