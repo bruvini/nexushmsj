@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { getAVCConfigs, updateConfigList, importarPacientesLoteCSV, importarExamesLoteCSV } from '../services/avcService';
+import { getAVCConfigs, updateConfigList, importarPacientesLoteCSV, importarExamesLoteCSV, importarConsultasLoteCSV } from '../services/avcService';
 
 export default function ConfiguracoesAVC() {
     const [loading, setLoading] = useState(true);
     const [showModalMigracao, setShowModalMigracao] = useState(false);
     const [filePacientes, setFilePacientes] = useState(null);
     const [fileExames, setFileExames] = useState(null);
+    const [fileConsultas, setFileConsultas] = useState(null);
     const [isMigrating, setIsMigrating] = useState(false);
     const [configs, setConfigs] = useState({ exames: [], medicacoes: [], emails: [] });
 
@@ -306,8 +307,106 @@ export default function ConfiguracoesAVC() {
         });
     };
 
+    const handleMigracaoConsultas = async () => {
+        return new Promise((resolve) => {
+            if (!fileConsultas) {
+                resolve({ success: false, skipped: true });
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const text = e.target.result;
+                if (!text) {
+                    toast.error('O arquivo de Consultas está vazio.');
+                    resolve({ success: false }); return;
+                }
+
+                const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+                if (lines.length < 2) {
+                    toast.error('O arquivo CSV de Consultas parece não conter dados.');
+                    resolve({ success: false }); return;
+                }
+
+                const headerLine = lines[0];
+                const separator = headerLine.includes(';') ? ';' : ',';
+                const headers = headerLine.split(separator).map(h => h.trim().replace(/^"|"$/g, ''));
+                const sanitizeString = (val) => val ? val.trim().replace(/^"|"$/g, '').toUpperCase() : '';
+
+                const parsedData = [];
+                let orphanosCount = 0;
+
+                for (let i = 1; i < lines.length; i++) {
+                    const currentLine = lines[i].split(separator);
+                    if (currentLine.length < headers.length - 2) continue;
+
+                    const rowObj = {};
+                    headers.forEach((h, index) => {
+                        rowObj[h] = currentLine[index] !== undefined ? currentLine[index] : '';
+                    });
+
+                    try {
+                        const idPaciente = rowObj['id_paciente'] ? rowObj['id_paciente'].trim().replace(/^"|"$/g, '') : null;
+
+                        // Validação Crítica (Vínculo)
+                        if (!idPaciente) {
+                            orphanosCount++;
+                            continue;
+                        }
+
+                        // Formatação do timestamp para dh_ultima_atualizacao
+                        const parseDateTime = (val) => {
+                            if (!val) return null;
+                            const clean = val.trim().replace(/^"|"$/g, '');
+                            // Exemplo de formato vindo: 05/11/2024 14:30:00 ou similar
+                            if (clean.includes('/') && clean.includes(':')) {
+                                const [datePart, timePart] = clean.split(' ');
+                                const dParts = datePart.split('/');
+                                if (dParts.length === 3) {
+                                    return `${dParts[2]}-${dParts[1].padStart(2, '0')}-${dParts[0].padStart(2, '0')}T${timePart}`;
+                                }
+                            }
+                            return clean;
+                        };
+
+                        const baseObj = {
+                            id_consulta: rowObj['id_consulta'] ? rowObj['id_consulta'].trim().replace(/^"|"$/g, '') : null,
+                            pacienteId: idPaciente,
+                            status_agendamento: sanitizeString(rowObj['status_agendamento'] || 'PRE-AGENDADO'),
+                            data_pre_agendamento: parseDate(rowObj['data_pre_agendamento']) || null,
+                            data_confirmada: parseDate(rowObj['data_confirmada']) || null,
+                            dh_ultima_atualizacao: parseDateTime(rowObj['dh_ultima_atualizacao']) || null,
+                            observacoes: sanitizeString(rowObj['observacoes'] || '')
+                        };
+
+                        parsedData.push(baseObj);
+                    } catch (err) {
+                        console.error("Erro ao mapear linha de consulta:", i, err);
+                    }
+                }
+
+                if (parsedData.length === 0) {
+                    toast.error('Nenhuma consulta válida (com paciente) encontrada no CSV.');
+                    resolve({ success: false }); return;
+                }
+
+                const result = await importarConsultasLoteCSV(parsedData);
+                if (result.success && orphanosCount > 0) {
+                    result.orphanosCount = orphanosCount;
+                }
+                resolve(result);
+            };
+
+            reader.onerror = () => {
+                toast.error('Falha ao ler o arquivo CSV de Consultas.');
+                resolve({ success: false });
+            };
+            reader.readAsText(fileConsultas, 'utf-8');
+        });
+    };
+
     const handleExecutarImportacaoGeral = async () => {
-        if (!filePacientes && !fileExames) {
+        if (!filePacientes && !fileExames && !fileConsultas) {
             toast.warn('Selecione ao menos um arquivo CSV para a importação.');
             return;
         }
@@ -336,6 +435,19 @@ export default function ConfiguracoesAVC() {
             mudouAlgo = true;
         } else if (resExames && resExames.error) {
             toast.error(`Falha Exames: ${resExames.error}`);
+        }
+
+        // Tries Consultas
+        const resConsultas = await handleMigracaoConsultas();
+        if (resConsultas && resConsultas.success) {
+            toast.success(`${resConsultas.count} consultas importadas e vinculadas aos pacientes com sucesso!`);
+            if (resConsultas.orphanosCount > 0) {
+                toast.warning(`${resConsultas.orphanosCount} consultas ignoradas pois não possuíam paciente vinculado.`);
+            }
+            setFileConsultas(null);
+            mudouAlgo = true;
+        } else if (resConsultas && resConsultas.error) {
+            toast.error(`Falha Consultas: ${resConsultas.error}`);
         }
 
         if (mudouAlgo) {
@@ -452,8 +564,19 @@ export default function ConfiguracoesAVC() {
                                 />
                             </div>
 
+                            {/* CONSULTAS ATIVO */}
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-sm font-semibold text-slate-700">Consultas Ambulatoriais</label>
+                                <input
+                                    type="file"
+                                    accept=".csv"
+                                    disabled={isMigrating}
+                                    onChange={(e) => setFileConsultas(e.target.files[0])}
+                                    className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 border border-slate-200 rounded-lg cursor-pointer bg-slate-50 focus:outline-none"
+                                />
+                            </div>
+
                             {[
-                                "Consultas Ambulatoriais",
                                 "Logs do Sistema Antigo",
                                 "Desfechos",
                                 "Contatos Realizados"
@@ -474,6 +597,8 @@ export default function ConfiguracoesAVC() {
                             <button
                                 onClick={() => {
                                     setFilePacientes(null);
+                                    setFileExames(null);
+                                    setFileConsultas(null);
                                     setShowModalMigracao(false);
                                 }}
                                 disabled={isMigrating}

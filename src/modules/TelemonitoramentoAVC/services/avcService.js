@@ -244,6 +244,77 @@ export const importarExamesLoteCSV = async (examesArray) => {
 };
 
 /**
+ * Realiza upload agressivo em Lotes (Batches) para a Coleção de Consultas (Max 500 por transação)
+ * @param {Array} consultasArray Array de objetos higienizados de consultas com vínculo obrigatório ao Paciente
+ */
+export const importarConsultasLoteCSV = async (consultasArray) => {
+    try {
+        if (!consultasArray || consultasArray.length === 0) return { success: false, error: 'Lista vazia' };
+
+        const chunkSize = 500;
+        let totalImported = 0;
+
+        for (let i = 0; i < consultasArray.length; i += chunkSize) {
+            const chunk = consultasArray.slice(i, i + chunkSize);
+            const batch = writeBatch(db);
+
+            chunk.forEach((consultaObj) => {
+                const { id_consulta, ...dadosConsulta } = consultaObj;
+
+                // Vínculo obrigatório ao paciente
+                if (!dadosConsulta.pacienteId) return;
+
+                const docRef = id_consulta
+                    ? doc(db, CONSULTAS_COLLECTION, id_consulta)
+                    : doc(collection(db, CONSULTAS_COLLECTION));
+
+                const cleanData = {
+                    ...dadosConsulta,
+                    isImportadoLegado: true,
+                    importedAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                };
+                if (!cleanData.createdAt) cleanData.createdAt = serverTimestamp();
+
+                batch.set(docRef, cleanData, { merge: true });
+            });
+
+            await batch.commit();
+            totalImported += chunk.length;
+        }
+
+        await logOperation('IMPORTACAO_LOTE_CONSULTAS_CSV', `Foram importados/atualizados ${totalImported} consultas do legado.`);
+
+        return { success: true, count: totalImported };
+    } catch (error) {
+        console.error("Erro crítico ao executar Batch Import de Consultas:", error);
+        return { success: false, error: error.message };
+    }
+};
+
+/**
+ * ==========================================
+ * ARQUITETURA DE ROTEAMENTO DO KANBAN AVC
+ * ==========================================
+ * O Dashboard do AVC deriva o status visual dos pacientes reagindo aos sub-documentos:
+ * 
+ * REGRA A (PRECISA AGENDAR):
+ * O paciente cai nesta coluna se as seguintes condições existirem:
+ * - Possui exames com status_exame === "PENDENTE".
+ * - OU todos os seus exames estão "CHECADOS" (resolvidos), mas o paciente AINDA NÃO 
+ *   possui uma consulta com `data_confirmada` válida no banco de Consultas.
+ * 
+ * REGRA B (PRÓXIMAS CONSULTAS):
+ * O paciente avança para esta etapa SE:
+ * - Já possuir uma consulta com `data_confirmada` registrada e em aberto.
+ * - E concomitantemente, todos os seus exames solicitados estiverem com status 
+ *   resolvido ("REALIZADO", "CANCELADO" ou "CHECADO").
+ * 
+ * Isso exige um onSnapshot root em Pacientes, cruzando em tempo real com getDocs 
+ * ou onSnapshot nas coleções nexus_avc_exames e nexus_avc_consultas.
+ */
+
+/**
  * Busca pacientes aguardando Acolhimento
  */
 export const getPendingAcolhimento = async () => {
