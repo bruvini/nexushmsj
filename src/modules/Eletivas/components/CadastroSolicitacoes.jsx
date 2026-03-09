@@ -39,7 +39,7 @@ export default function CadastroSolicitacoes() {
 
   const [formDataSolicitacao, setFormDataSolicitacao] = useState({
     origem: '', dataSolicitacao: '', prontuario: '', consulta: '', cid: '',
-    procedimento: '', especialidade: '', medico: '', prioridade: 'NÃO',
+    procedimento: '', especialidade: '', medico: '', prioridade: 'NÃO', numeroSisreg: '',
   });
 
   const [buscaProc, setBuscaProc] = useState('');
@@ -161,21 +161,21 @@ export default function CadastroSolicitacoes() {
         const existente = mapUltimaDataExcel.get(chave);
 
         if (existente) {
-           linhasDuplicadasNoExcel++;
-           const dataExistenteTime = new Date(converterDataParaInput(existente.row.dt_solicitacao)).getTime() || 0;
-           
-           // Se a data dessa linha for MAIOR (mais recente) que a que já guardamos, substituimos
-           if (dataRowTime > dataExistenteTime) {
-             mapUltimaDataExcel.set(chave, { row, dataTime: dataRowTime });
-           }
+          linhasDuplicadasNoExcel++;
+          const dataExistenteTime = new Date(converterDataParaInput(existente.row.dt_solicitacao)).getTime() || 0;
+
+          // Se a data dessa linha for MAIOR (mais recente) que a que já guardamos, substituimos
+          if (dataRowTime > dataExistenteTime) {
+            mapUltimaDataExcel.set(chave, { row, dataTime: dataRowTime });
+          }
         } else {
-           mapUltimaDataExcel.set(chave, { row, dataTime: dataRowTime });
+          mapUltimaDataExcel.set(chave, { row, dataTime: dataRowTime });
         }
       }
 
       // Agora nosso array final de dados só tem as linhas únicas e mais recentes do Excel
       mapUltimaDataExcel.forEach((item) => {
-         dadosFiltrados.push(item.row);
+        dadosFiltrados.push(item.row);
       });
       // ---------------------------------------------------------------------------------
 
@@ -215,6 +215,7 @@ export default function CadastroSolicitacoes() {
         const medicoLinha = normalizeString(row.solicitante);
         const cidLinha = normalizeString(row.cd_cid_principal);
         const dataSolicitacaoFormatada = converterDataParaInput(row.dt_solicitacao);
+        const sisregLinha = row.nr_sisreg ? String(row.nr_sisreg).replace(/\D/g, '') : '';
 
         if (justificativa.includes('PRIORIDADE')) {
           prioridadeDefinida = 'Carta de Prioridade';
@@ -268,11 +269,14 @@ export default function CadastroSolicitacoes() {
           // 5. Cadastrar uma Nova Solicitação
           const refSolicitacao = doc(collection(db, 'nexus_eletivas_solicitacoes'));
 
+          const statusLinha = sisregLinha ? 'VALIDAÇÃO SISREG' : 'AGUARDA NÚMERO SISREG';
+
           const novaSolicitacaoData = {
             pacienteId: pacienteId,
             cns: cnsFormatado,
             nomePaciente: normalizeString(row.nm_paciente),
             origem: '',
+            numeroSisreg: sisregLinha,
             dataSolicitacao: dataSolicitacaoFormatada,
             prioridade: prioridadeDefinida,
             prontuario: prontuarioLinha,
@@ -284,13 +288,13 @@ export default function CadastroSolicitacoes() {
             especialidade: '',
             medico: medicoLinha,
             situacao: 'ATIVA',
-            status: 'VALIDAÇÃO SISREG',
+            status: statusLinha,
             criadoEm: serverTimestamp(),
             historico: [
               {
                 dataHora: dataHoraAtual,
                 de: 'IMPORTAÇÃO EM LOTE',
-                para: 'VALIDAÇÃO SISREG',
+                para: statusLinha,
                 usuario: 'Sistema',
               },
             ],
@@ -314,9 +318,9 @@ export default function CadastroSolicitacoes() {
           <span className="text-xs"><strong className="text-amber-200">~ {countSolicsAtualizadas}</strong> solicitações atualizadas</span>
           <span className="text-xs"><strong className="text-slate-300">= {countSolicsIgnoradas}</strong> no banco (ignoradas)</span>
           {linhasDuplicadasNoExcel > 0 && (
-             <span className="text-[10px] text-red-200 leading-tight mt-1 border-t border-white/20 pt-1">
-               * {linhasDuplicadasNoExcel} duplicidades no próprio Excel foram removidas (mantendo a data mais recente).
-             </span>
+            <span className="text-[10px] text-red-200 leading-tight mt-1 border-t border-white/20 pt-1">
+              * {linhasDuplicadasNoExcel} duplicidades no próprio Excel foram removidas (mantendo a data mais recente).
+            </span>
           )}
         </div>,
         { autoClose: 8000 }
@@ -405,7 +409,10 @@ export default function CadastroSolicitacoes() {
     setLoading(true);
     try {
       const dataHoraAtual = new Date().toLocaleString('pt-BR');
-      await addDoc(collection(db, 'nexus_eletivas_solicitacoes'), {
+      const numeroSisregStr = formDataSolicitacao.numeroSisreg.trim();
+      const statusDefinido = numeroSisregStr ? 'VALIDAÇÃO SISREG' : 'AGUARDA NÚMERO SISREG';
+
+      const payload = {
         ...formDataSolicitacao,
         cid: formDataSolicitacao.cid.toUpperCase(),
         codigoProcedimento: procSelecionado.codigo,
@@ -414,10 +421,17 @@ export default function CadastroSolicitacoes() {
         cns: pacienteAtivo.cns,
         nomePaciente: pacienteAtivo.nome,
         situacao: 'ATIVA',
-        status: 'VALIDAÇÃO SISREG',
+        status: statusDefinido,
         criadoEm: serverTimestamp(),
-        historico: [{ dataHora: dataHoraAtual, de: 'NOVA SOLICITAÇÃO', para: 'VALIDAÇÃO SISREG', usuario: 'Sistema' }],
-      });
+        historico: [{ dataHora: dataHoraAtual, de: 'NOVA SOLICITAÇÃO', para: statusDefinido, usuario: 'Sistema' }],
+      };
+
+      if (numeroSisregStr) {
+        payload.numeroSisreg = numeroSisregStr;
+        payload.dataInclusaoSisreg = dataHoraAtual;
+      }
+
+      await addDoc(collection(db, 'nexus_eletivas_solicitacoes'), payload);
       toast.success('Solicitação cadastrada com sucesso!');
       resetarFluxo();
     } catch (e) {
@@ -468,11 +482,11 @@ export default function CadastroSolicitacoes() {
     setPacienteAtivo(p);
     setIsEditingPaciente(true);
     setFormDataPaciente({
-      nome: p.nome, 
-      cns: p.cns, 
+      nome: p.nome,
+      cns: p.cns,
       dataNascimento: converterDataParaInput(p.dataNascimento), // Força a conversão na hora de editar
-      cidade: p.cidade, 
-      sexo: p.sexo, 
+      cidade: p.cidade,
+      sexo: p.sexo,
       nomeMae: p.nomeMae,
     });
     setEtapa(1);
@@ -484,7 +498,7 @@ export default function CadastroSolicitacoes() {
     setPacienteAtivo(p);
     setFormDataSolicitacao({
       origem: '', dataSolicitacao: '', prontuario: '', consulta: '', cid: '',
-      procedimento: '', especialidade: '', medico: '', prioridade: 'NÃO',
+      procedimento: '', especialidade: '', medico: '', prioridade: 'NÃO', numeroSisreg: ''
     });
     setBuscaProc('');
     setEtapa(2);
@@ -498,7 +512,7 @@ export default function CadastroSolicitacoes() {
     setIsEditingPaciente(false);
     setBuscaProc('');
     setFormDataPaciente({ nome: '', cns: '', dataNascimento: '', cidade: '', sexo: '', nomeMae: '' });
-    setFormDataSolicitacao({ origem: '', dataSolicitacao: '', prontuario: '', consulta: '', cid: '', procedimento: '', especialidade: '', medico: '', prioridade: 'NÃO' });
+    setFormDataSolicitacao({ origem: '', dataSolicitacao: '', prontuario: '', consulta: '', cid: '', procedimento: '', especialidade: '', medico: '', prioridade: 'NÃO', numeroSisreg: '' });
   };
 
   // --- FILTRAGEM SEGURA PARA A TABELA ---
@@ -594,7 +608,7 @@ export default function CadastroSolicitacoes() {
           <form ref={formPacienteRef} className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="md:col-span-2">
               <label className="block text-xs font-medium text-slate-500 mb-1">Nome Completo</label>
-              <input type="text" required value={formDataPaciente.nome} onChange={(e) => setFormDataPaciente({...formDataPaciente, nome: e.target.value})} className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 uppercase focus:ring-2 focus:ring-sky-500/50" disabled={loading} />
+              <input type="text" required value={formDataPaciente.nome} onChange={(e) => setFormDataPaciente({ ...formDataPaciente, nome: e.target.value })} className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 uppercase focus:ring-2 focus:ring-sky-500/50" disabled={loading} />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">CNS</label>
@@ -602,24 +616,24 @@ export default function CadastroSolicitacoes() {
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Nascimento</label>
-              <input type="date" required value={formDataPaciente.dataNascimento} onChange={(e) => setFormDataPaciente({...formDataPaciente, dataNascimento: e.target.value})} className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-sky-500/50" disabled={loading} />
+              <input type="date" required value={formDataPaciente.dataNascimento} onChange={(e) => setFormDataPaciente({ ...formDataPaciente, dataNascimento: e.target.value })} className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-sky-500/50" disabled={loading} />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Cidade</label>
-              <select required value={formDataPaciente.cidade} onChange={(e) => setFormDataPaciente({...formDataPaciente, cidade: e.target.value})} className="w-full border px-3 py-2 rounded-lg uppercase focus:ring-2 focus:ring-sky-500/50" disabled={loading}>
+              <select required value={formDataPaciente.cidade} onChange={(e) => setFormDataPaciente({ ...formDataPaciente, cidade: e.target.value })} className="w-full border px-3 py-2 rounded-lg uppercase focus:ring-2 focus:ring-sky-500/50" disabled={loading}>
                 <option value="">SELECIONE...</option>
                 {cidadesSC.map((c) => (<option key={c} value={c}>{c}</option>))}
               </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Sexo</label>
-              <select required value={formDataPaciente.sexo} onChange={(e) => setFormDataPaciente({...formDataPaciente, sexo: e.target.value})} className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-sky-500/50" disabled={loading}>
+              <select required value={formDataPaciente.sexo} onChange={(e) => setFormDataPaciente({ ...formDataPaciente, sexo: e.target.value })} className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-sky-500/50" disabled={loading}>
                 <option value="">Selecione...</option><option value="M">Masculino</option><option value="F">Feminino</option>
               </select>
             </div>
             <div className="md:col-span-2">
               <label className="block text-xs font-medium text-slate-500 mb-1">Nome da Mãe</label>
-              <input type="text" required value={formDataPaciente.nomeMae} onChange={(e) => setFormDataPaciente({...formDataPaciente, nomeMae: e.target.value})} className="w-full border px-3 py-2 rounded-lg uppercase focus:ring-2 focus:ring-sky-500/50" disabled={loading} />
+              <input type="text" required value={formDataPaciente.nomeMae} onChange={(e) => setFormDataPaciente({ ...formDataPaciente, nomeMae: e.target.value })} className="w-full border px-3 py-2 rounded-lg uppercase focus:ring-2 focus:ring-sky-500/50" disabled={loading} />
             </div>
             <div className="md:col-span-2 flex justify-end gap-3 mt-4">
               {isEditingPaciente && (
@@ -642,7 +656,7 @@ export default function CadastroSolicitacoes() {
           <form onSubmit={handleSalvarSolicitacao} className="grid grid-cols-1 md:grid-cols-4 gap-5">
             <div className="md:col-span-2">
               <label className="block text-xs font-medium text-slate-500 mb-1">Origem da Solicitação</label>
-              <select required value={formDataSolicitacao.origem} onChange={(e) => setFormDataSolicitacao({...formDataSolicitacao, origem: e.target.value})} className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500/50" disabled={loading}>
+              <select required value={formDataSolicitacao.origem} onChange={(e) => setFormDataSolicitacao({ ...formDataSolicitacao, origem: e.target.value })} className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500/50" disabled={loading}>
                 <option value="">Selecione...</option>
                 <option value="Ambulatório de Especialidades">Ambulatório de Especialidades</option>
                 <option value="Ambulatório de Oncologia">Ambulatório de Oncologia</option>
@@ -651,29 +665,34 @@ export default function CadastroSolicitacoes() {
             </div>
             <div className="md:col-span-1">
               <label className="block text-xs font-medium text-slate-500 mb-1">Data da Solicitação</label>
-              <input type="date" required value={formDataSolicitacao.dataSolicitacao} onChange={(e) => setFormDataSolicitacao({...formDataSolicitacao, dataSolicitacao: e.target.value})} className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-emerald-500/50" disabled={loading} />
+              <input type="date" required value={formDataSolicitacao.dataSolicitacao} onChange={(e) => setFormDataSolicitacao({ ...formDataSolicitacao, dataSolicitacao: e.target.value })} className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-emerald-500/50" disabled={loading} />
             </div>
             <div className="md:col-span-1">
               <label className="block text-xs font-medium text-slate-500 mb-1">Prioridade Urgente?</label>
-              <select required value={formDataSolicitacao.prioridade} onChange={(e) => setFormDataSolicitacao({...formDataSolicitacao, prioridade: e.target.value})} className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-emerald-500/50" disabled={loading}>
+              <select required value={formDataSolicitacao.prioridade} onChange={(e) => setFormDataSolicitacao({ ...formDataSolicitacao, prioridade: e.target.value })} className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-emerald-500/50" disabled={loading}>
                 <option value="NÃO">Não</option><option value="SIM">Sim</option><option value="Oncologia">Oncologia</option><option value="Carta de Prioridade">Carta de Prioridade</option>
               </select>
+            </div>
+            <div className="md:col-span-4 bg-slate-50 border border-slate-200 rounded-xl p-4">
+              <label className="block text-xs font-bold text-slate-600 mb-1">Número do SISREG (Opcional)</label>
+              <p className="text-[10px] text-slate-400 mb-2 leading-tight">Se preenchido, o paciente cairá direto em Validação. Do contrário, ficará retido aguardando o número.</p>
+              <input type="text" value={formDataSolicitacao.numeroSisreg} onChange={(e) => setFormDataSolicitacao({ ...formDataSolicitacao, numeroSisreg: e.target.value.replace(/\D/g, '') })} className="w-full md:w-1/3 border px-3 py-2 rounded-lg font-mono placeholder:text-slate-300" placeholder="Apenas números..." disabled={loading} />
             </div>
             {!isPamBoaVista && (
               <>
                 <div className="md:col-span-1">
                   <label className="block text-xs font-medium text-slate-500 mb-1">Prontuário MV PEP</label>
-                  <input type="text" required value={formDataSolicitacao.prontuario} onChange={(e) => setFormDataSolicitacao({...formDataSolicitacao, prontuario: e.target.value})} className="w-full border px-3 py-2 rounded-lg" disabled={loading} />
+                  <input type="text" required value={formDataSolicitacao.prontuario} onChange={(e) => setFormDataSolicitacao({ ...formDataSolicitacao, prontuario: e.target.value })} className="w-full border px-3 py-2 rounded-lg" disabled={loading} />
                 </div>
                 <div className="md:col-span-3">
                   <label className="block text-xs font-medium text-slate-500 mb-1">Nº Consulta Ambulatorial</label>
-                  <input type="text" required value={formDataSolicitacao.consulta} onChange={(e) => setFormDataSolicitacao({...formDataSolicitacao, consulta: e.target.value})} className="w-full border px-3 py-2 rounded-lg" disabled={loading} />
+                  <input type="text" required value={formDataSolicitacao.consulta} onChange={(e) => setFormDataSolicitacao({ ...formDataSolicitacao, consulta: e.target.value })} className="w-full border px-3 py-2 rounded-lg" disabled={loading} />
                 </div>
               </>
             )}
             <div className="md:col-span-1">
               <label className="block text-xs font-medium text-slate-500 mb-1">CID 10</label>
-              <input type="text" required value={formDataSolicitacao.cid} onChange={(e) => setFormDataSolicitacao({...formDataSolicitacao, cid: e.target.value.toUpperCase()})} className="w-full border px-3 py-2 rounded-lg uppercase" placeholder="M17" disabled={loading} />
+              <input type="text" required value={formDataSolicitacao.cid} onChange={(e) => setFormDataSolicitacao({ ...formDataSolicitacao, cid: e.target.value.toUpperCase() })} className="w-full border px-3 py-2 rounded-lg uppercase" placeholder="M17" disabled={loading} />
             </div>
             <div className="md:col-span-3 relative">
               <label className="block text-xs font-medium text-slate-500 mb-1">Procedimento (SIGTAP)</label>
@@ -690,14 +709,14 @@ export default function CadastroSolicitacoes() {
             </div>
             <div className="md:col-span-2">
               <label className="block text-xs font-medium text-slate-500 mb-1">Especialidade Médica</label>
-              <select required value={formDataSolicitacao.especialidade} onChange={(e) => setFormDataSolicitacao({...formDataSolicitacao, especialidade: e.target.value, medico: ''})} disabled={especialidadesDisponiveis.length === 0 || loading} className="w-full border px-3 py-2 rounded-lg disabled:bg-slate-50">
+              <select required value={formDataSolicitacao.especialidade} onChange={(e) => setFormDataSolicitacao({ ...formDataSolicitacao, especialidade: e.target.value, medico: '' })} disabled={especialidadesDisponiveis.length === 0 || loading} className="w-full border px-3 py-2 rounded-lg disabled:bg-slate-50">
                 <option value="">SELECIONE...</option>
                 {especialidadesDisponiveis.map((esp) => (<option key={esp} value={esp}>{esp}</option>))}
               </select>
             </div>
             <div className="md:col-span-2">
               <label className="block text-xs font-medium text-slate-500 mb-1">Médico Solicitante</label>
-              <select required value={formDataSolicitacao.medico} onChange={(e) => setFormDataSolicitacao({...formDataSolicitacao, medico: e.target.value})} disabled={medicosDisponiveis.length === 0 || loading} className="w-full border px-3 py-2 rounded-lg disabled:bg-slate-50">
+              <select required value={formDataSolicitacao.medico} onChange={(e) => setFormDataSolicitacao({ ...formDataSolicitacao, medico: e.target.value })} disabled={medicosDisponiveis.length === 0 || loading} className="w-full border px-3 py-2 rounded-lg disabled:bg-slate-50">
                 <option value="">SELECIONE...</option>
                 {medicosDisponiveis.map((m) => (<option key={m.id} value={m.nome}>{m.nome}</option>))}
               </select>

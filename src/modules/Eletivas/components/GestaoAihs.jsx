@@ -76,12 +76,17 @@ export default function GestaoAihs() {
 
   const grupos = [
     {
+      titulo: 'Aguarda Número do SISREG',
+      statusOriginais: ['AGUARDA NÚMERO SISREG'],
+      cor: 'orange',
+    },
+    {
       titulo: 'Validação SISREG (Fila de Entrada)',
       statusOriginais: ['VALIDAÇÃO SISREG'],
       cor: 'amber',
     },
     {
-      titulo: 'Aprovadas / Aguarda Entrar no Mapa',
+      titulo: 'Aguarda Entrar no mapa',
       statusOriginais: ['AGUARDA ENTRAR NO MAPA'],
       cor: 'emerald',
     },
@@ -399,6 +404,8 @@ export default function GestaoAihs() {
           const bgColors = {
             amber:
               'bg-amber-100/50 hover:bg-amber-100 text-amber-800 border-amber-200',
+            orange:
+              'bg-orange-100/50 hover:bg-orange-100 text-orange-800 border-orange-200',
             emerald:
               'bg-emerald-100/50 hover:bg-emerald-100 text-emerald-800 border-emerald-200',
             red: 'bg-red-100/50 hover:bg-red-100 text-red-800 border-red-200',
@@ -410,6 +417,7 @@ export default function GestaoAihs() {
           };
           const dotColors = {
             amber: 'bg-amber-500',
+            orange: 'bg-orange-500',
             emerald: 'bg-emerald-500',
             red: 'bg-red-500',
             purple: 'bg-purple-500',
@@ -424,15 +432,13 @@ export default function GestaoAihs() {
             >
               <button
                 onClick={() => setGrupoAberto(isOpen ? '' : grupo.titulo)}
-                className={`w-full px-6 py-4 flex items-center justify-between border-b transition-colors ${
-                  bgColors[grupo.cor]
-                } ${!isOpen && 'border-transparent'}`}
+                className={`w-full px-6 py-4 flex items-center justify-between border-b transition-colors ${bgColors[grupo.cor]
+                  } ${!isOpen && 'border-transparent'}`}
               >
                 <div className="flex items-center gap-3">
                   <span
-                    className={`w-3 h-3 rounded-full ${
-                      dotColors[grupo.cor]
-                    } shadow-sm`}
+                    className={`w-3 h-3 rounded-full ${dotColors[grupo.cor]
+                      } shadow-sm`}
                   ></span>
                   <h3 className="font-bold text-base uppercase tracking-wide">
                     {grupo.titulo}
@@ -443,9 +449,8 @@ export default function GestaoAihs() {
                     {solicitacoesDoGrupo.length}
                   </span>
                   <svg
-                    className={`w-5 h-5 transition-transform duration-300 ${
-                      isOpen ? 'rotate-180' : ''
-                    }`}
+                    className={`w-5 h-5 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''
+                      }`}
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -567,9 +572,8 @@ export default function GestaoAihs() {
       )}
 
       <div
-        className={`fixed top-0 right-0 h-full w-full max-w-[480px] bg-nexus-card shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${
-          sidebarAberto ? 'translate-x-0' : 'translate-x-full'
-        }`}
+        className={`fixed top-0 right-0 h-full w-full max-w-[480px] bg-nexus-card shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${sidebarAberto ? 'translate-x-0' : 'translate-x-full'
+          }`}
       >
         {solicitacaoAtiva && (
           <>
@@ -819,7 +823,7 @@ export default function GestaoAihs() {
                 </h4>
                 <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 flex flex-col gap-3">
                   {solicitacaoAtiva.historico &&
-                  solicitacaoAtiva.historico.length > 0 ? (
+                    solicitacaoAtiva.historico.length > 0 ? (
                     solicitacaoAtiva.historico.map((hist, idx) => (
                       <div
                         key={idx}
@@ -903,6 +907,9 @@ export default function GestaoAihs() {
                       onChange={(e) => setDecisao(e.target.value)}
                       className="w-full bg-white border border-amber-300 rounded-lg px-3 py-2.5 text-sm font-medium text-nexus-text focus:ring-2 focus:ring-amber-500"
                     >
+                      <option value="AGUARDA NÚMERO SISREG">
+                        PENDENTE - Aguarda Número do SISREG
+                      </option>
                       <option value="VALIDAÇÃO SISREG">
                         PENDENTE - Validação SISREG
                       </option>
@@ -1061,8 +1068,8 @@ export default function GestaoAihs() {
                     {loading
                       ? 'Salvando...'
                       : decisao === solicitacaoAtiva.status
-                      ? 'Atualizar Número do SISREG'
-                      : 'Gravar Parecer e Mover Paciente'}
+                        ? 'Atualizar Número do SISREG'
+                        : 'Gravar Parecer e Mover Paciente'}
                   </button>
                 </form>
               </section>

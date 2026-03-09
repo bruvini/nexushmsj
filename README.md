@@ -19,7 +19,7 @@
 O **Nexus** atua como o **Hub de Inteligência Hospitalar** no ambiente do **HMSJ (Hospital Municipal São José)**. Seu objetivo principal é centralizar a inteligência e a gestão hospitalar em uma única plataforma, promovendo eficiência, transparência e agilidade na tomada de decisão em processos cruciais do hospital.
 
 Atualmente, o Nexus contempla os seguintes módulos integrados:
-- 📅 **AIHs Cirurgias Eletivas**: Gestão e inteligência de cirurgias e procedimentos eletivos.
+- 📅 **AIHs Cirurgias Eletivas**: Gestão e inteligência de cirurgias e procedimentos eletivos. Inclui fluxo de entrada em duas etapas mitigando ruídos de inserção no mapa estadual ("Aguarda Número do SISREG" -> "Validação SISREG").
 - 📋 **Kanban de Altas (Giro de Leitos)**: Núcleo avançado de gestão operacional do NIR. Combina automação de importações via RPA (Censo MV) com a **Soberania da Decisão Clínica**. Destacam-se:
   - **Gestão Semântica de Especialidades**: Sistema dual de equipe (Principal e Acompanhantes) com proteção de nível banco de dados (`is_manual`) contra sobreposições robóticas.
   - **Filtros e KPIs de Alta Performance**: Motor Reativo que calcula o tempo de giro de leito (Verde a Preto), monitora antibióticos cronometrados e acusa fluxos setoriais (EMAD, Trauma) instantaneamente.

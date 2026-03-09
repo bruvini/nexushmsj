@@ -40,6 +40,10 @@ O ecossistema Nexus deve, sob qualquer hipótese, aderir aos seguintes framework
 
 O Nexus manipula informações de alto sigilo envolvendo painéis do censo clínico-hospitalar e listas de espera ou acompanhamento clínico (*Kanban e Eletivas*).
 
+> [!NOTE]  
+> **Fluxo de Eletivas e Protocolo SISREG.**  
+> O registro de pacientes no módulo Eletivas adota o modelo de duas etapas para adequação das filas: pacientes recém-cadastrados sem um Número do SISREG providenciado ficam retidos em status de "Aguarda Número do SISREG", obrigando esta validação prévia à fase cirúrgica.
+
 > [!CAUTION]  
 > **Tolerância Zero para Dados Reais em Repositórios.**  
 > Fica expressamente **proibido** fixar, versionar ou testar o aplicativo em ambiente de desenvolvimento com prontuários reais, nomes verídicos, CPFs ou quaisquer dados rastreáveis dos pacientes. Toda a base de simulação no GitHub ou localmente ("mocks") deve conter estritamente dados sintéticos mascarados.
