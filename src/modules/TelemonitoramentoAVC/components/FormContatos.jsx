@@ -170,6 +170,14 @@ export default function FormContatos() {
                 </div>
             </div>
 
+            {/* 
+                @TODO [FASE 5 - Renderização Timeline de Auditoria]: 
+                O paciente ativo abaixo deverá mapear seus contatos herdados e recém-criados. 
+                A query aponta para `nexus_avc_contatos` via `where("pacienteId", "==", pacienteAtivo.id)`
+                Os retornos deverão ser renderizados visualmente como uma timeline ordenada descrescentemente por:
+                `orderBy('data_contato_manual', 'desc')` e `orderBy('dh_inicio', 'desc')`. 
+            */}
+
             <div className="space-y-6">
                 {/* Seletor de Paciente */}
                 <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">

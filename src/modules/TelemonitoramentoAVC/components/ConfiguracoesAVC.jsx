@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { getAVCConfigs, updateConfigList, importarPacientesLoteCSV, importarExamesLoteCSV, importarConsultasLoteCSV, importarDesfechosLoteCSV } from '../services/avcService';
+import { getAVCConfigs, updateConfigList, importarPacientesLoteCSV, importarExamesLoteCSV, importarConsultasLoteCSV, importarDesfechosLoteCSV, importarContatosLoteCSV } from '../services/avcService';
 
 export default function ConfiguracoesAVC() {
     const [loading, setLoading] = useState(true);
@@ -9,6 +9,7 @@ export default function ConfiguracoesAVC() {
     const [fileExames, setFileExames] = useState(null);
     const [fileConsultas, setFileConsultas] = useState(null);
     const [fileDesfechos, setFileDesfechos] = useState(null);
+    const [fileContatos, setFileContatos] = useState(null);
     const [isMigrating, setIsMigrating] = useState(false);
     const [configs, setConfigs] = useState({ exames: [], medicacoes: [], emails: [] });
 
@@ -506,8 +507,119 @@ export default function ConfiguracoesAVC() {
         });
     };
 
+    const handleMigracaoContatos = async () => {
+        return new Promise((resolve) => {
+            if (!fileContatos) {
+                resolve({ success: false, skipped: true });
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const text = e.target.result;
+                if (!text) {
+                    toast.error('O arquivo de Contatos está vazio.');
+                    resolve({ success: false }); return;
+                }
+
+                const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+                if (lines.length < 2) {
+                    toast.error('O arquivo CSV de Contatos parece não conter dados.');
+                    resolve({ success: false }); return;
+                }
+
+                const headerLine = lines[0];
+                const separator = headerLine.includes(';') ? ';' : ',';
+                const headers = headerLine.split(separator).map(h => h.trim().replace(/^"|"$/g, ''));
+
+                const sanitizeString = (val) => val ? val.trim().replace(/^"|"$/g, '') : '';
+
+                const parsedData = [];
+                let orphanosCount = 0;
+
+                for (let i = 1; i < lines.length; i++) {
+                    const currentLine = lines[i].split(separator);
+                    if (currentLine.length < headers.length - 2) continue;
+
+                    const rowObj = {};
+                    headers.forEach((h, index) => {
+                        rowObj[h] = currentLine[index] !== undefined ? currentLine[index] : '';
+                    });
+
+                    try {
+                        const idPaciente = rowObj['id_paciente'] ? rowObj['id_paciente'].trim().replace(/^"|"$/g, '') : null;
+
+                        // Validação Crítica (Vínculo)
+                        if (!idPaciente) {
+                            orphanosCount++;
+                            continue;
+                        }
+
+                        // Formatação `data_contato_manual` para YYYY-MM-DD
+                        const parseDateISO = (val) => {
+                            if (!val) return null;
+                            const clean = val.trim().replace(/^"|"$/g, '');
+                            if (clean.includes('/')) {
+                                const [d, m, y] = clean.split(' ')[0].split('/');
+                                if (d && m && y) return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+                            }
+                            return clean;
+                        };
+
+                        // Formatação `dh_registro` para ISO
+                        const parseDateTime = (val) => {
+                            if (!val) return null;
+                            const clean = val.trim().replace(/^"|"$/g, '');
+                            if (clean.includes('/') && clean.includes(':')) {
+                                const [datePart, timePart] = clean.split(' ');
+                                const dParts = datePart.split('/');
+                                if (dParts.length === 3) {
+                                    return `${dParts[2]}-${dParts[1].padStart(2, '0')}-${dParts[0].padStart(2, '0')}T${timePart}`;
+                                }
+                            }
+                            return clean;
+                        };
+
+                        const baseObj = {
+                            id_contato: rowObj['id_contato'] ? rowObj['id_contato'].trim().replace(/^"|"$/g, '') : null,
+                            pacienteId: idPaciente,
+                            meio_contato: sanitizeString(rowObj['meio_contato']),
+                            categoria_desfecho: sanitizeString(rowObj['categoria_desfecho']),
+                            dh_inicio: sanitizeString(rowObj['dh_inicio']) || null,
+                            dh_fim: sanitizeString(rowObj['dh_fim']) || null,
+                            data_contato_manual: parseDateISO(rowObj['data_contato_manual']),
+                            dh_registro: parseDateTime(rowObj['dh_registro']),
+                            observacao_detalhe: sanitizeString(rowObj['observacao_detalhe'])
+                        };
+
+                        parsedData.push(baseObj);
+                    } catch (err) {
+                        console.error("Erro ao mapear linha de contato:", i, err);
+                    }
+                }
+
+                if (parsedData.length === 0) {
+                    toast.error('Nenhum contato válido (com paciente) encontrado no CSV.');
+                    resolve({ success: false }); return;
+                }
+
+                const result = await importarContatosLoteCSV(parsedData);
+                if (result.success && orphanosCount > 0) {
+                    result.orphanosCount = orphanosCount;
+                }
+                resolve(result);
+            };
+
+            reader.onerror = () => {
+                toast.error('Falha ao ler o arquivo CSV de Contatos.');
+                resolve({ success: false });
+            };
+            reader.readAsText(fileContatos, 'utf-8');
+        });
+    };
+
     const handleExecutarImportacaoGeral = async () => {
-        if (!filePacientes && !fileExames && !fileConsultas && !fileDesfechos) {
+        if (!filePacientes && !fileExames && !fileConsultas && !fileDesfechos && !fileContatos) {
             toast.warn('Selecione ao menos um arquivo CSV para a importação.');
             return;
         }
@@ -562,6 +674,19 @@ export default function ConfiguracoesAVC() {
             mudouAlgo = true;
         } else if (resDesfechos && resDesfechos.error) {
             toast.error(`Falha Desfechos: ${resDesfechos.error}`);
+        }
+
+        // Tries Contatos
+        const resContatos = await handleMigracaoContatos();
+        if (resContatos && resContatos.success) {
+            toast.success(`${resContatos.count} contatos registrados e vinculados com sucesso!`);
+            if (resContatos.orphanosCount > 0) {
+                toast.warning(`${resContatos.orphanosCount} contatos ignorados pois não possuíam paciente vinculado.`);
+            }
+            setFileContatos(null);
+            mudouAlgo = true;
+        } else if (resContatos && resContatos.error) {
+            toast.error(`Falha Contatos: ${resContatos.error}`);
         }
 
         if (mudouAlgo) {
@@ -702,9 +827,20 @@ export default function ConfiguracoesAVC() {
                                 />
                             </div>
 
+                            {/* CONTATOS ATIVO */}
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-sm font-semibold text-slate-700">Contatos Realizados</label>
+                                <input
+                                    type="file"
+                                    accept=".csv"
+                                    disabled={isMigrating}
+                                    onChange={(e) => setFileContatos(e.target.files[0])}
+                                    className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 border border-slate-200 rounded-lg cursor-pointer bg-slate-50 focus:outline-none"
+                                />
+                            </div>
+
                             {[
-                                "Logs do Sistema Antigo",
-                                "Contatos Realizados"
+                                "Logs do Sistema Antigo"
                             ].map((label, idx) => (
                                 <div key={idx} className="flex flex-col gap-1.5 opacity-50 cursor-not-allowed">
                                     <label className="text-sm font-semibold text-slate-700">{label}</label>
@@ -725,6 +861,7 @@ export default function ConfiguracoesAVC() {
                                     setFileExames(null);
                                     setFileConsultas(null);
                                     setFileDesfechos(null);
+                                    setFileContatos(null);
                                     setShowModalMigracao(false);
                                 }}
                                 disabled={isMigrating}

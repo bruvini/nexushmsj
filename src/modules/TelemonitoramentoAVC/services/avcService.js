@@ -7,6 +7,7 @@ const CONFIG_COLLECTION = 'nexus_avc_config';
 const EXAMES_COLLECTION = 'nexus_avc_exames';
 const CONSULTAS_COLLECTION = 'nexus_avc_consultas';
 const DESFECHOS_COLLECTION = 'nexus_avc_desfechos';
+const CONTATOS_COLLECTION = 'nexus_avc_contatos';
 
 /**
  * Registra um log operacional de qualquer ação de salvamento
@@ -339,6 +340,55 @@ export const importarDesfechosLoteCSV = async (desfechosArray) => {
         return { success: true, count: totalImported };
     } catch (error) {
         console.error("Erro crítico ao executar Batch Import de Desfechos:", error);
+        return { success: false, error: error.message };
+    }
+};
+
+/**
+ * Realiza upload agressivo em Lotes (Batches) para a Coleção de Contatos (Max 500 por transação)
+ * @param {Array} contatosArray Array de objetos higienizados de contatos com vínculo obrigatório
+ */
+export const importarContatosLoteCSV = async (contatosArray) => {
+    try {
+        if (!contatosArray || contatosArray.length === 0) return { success: false, error: 'Lista vazia' };
+
+        const chunkSize = 500;
+        let totalImported = 0;
+
+        for (let i = 0; i < contatosArray.length; i += chunkSize) {
+            const chunk = contatosArray.slice(i, i + chunkSize);
+            const batch = writeBatch(db);
+
+            chunk.forEach((contatoObj) => {
+                const { id_contato, ...dadosContato } = contatoObj;
+
+                // Vínculo obrigatório ao paciente
+                if (!dadosContato.pacienteId) return;
+
+                const docRef = id_contato
+                    ? doc(db, CONTATOS_COLLECTION, id_contato)
+                    : doc(collection(db, CONTATOS_COLLECTION));
+
+                const cleanData = {
+                    ...dadosContato,
+                    isImportadoLegado: true,
+                    importedAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                };
+                if (!cleanData.createdAt) cleanData.createdAt = serverTimestamp();
+
+                batch.set(docRef, cleanData, { merge: true });
+            });
+
+            await batch.commit();
+            totalImported += chunk.length;
+        }
+
+        await logOperation('IMPORTACAO_LOTE_CONTATOS_CSV', `Foram importados/atualizados ${totalImported} contatos históricos do legado.`);
+
+        return { success: true, count: totalImported };
+    } catch (error) {
+        console.error("Erro crítico ao executar Batch Import de Contatos:", error);
         return { success: false, error: error.message };
     }
 };
