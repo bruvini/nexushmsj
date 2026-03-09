@@ -395,9 +395,15 @@ export default function GestaoAihs() {
 
       <div className="flex flex-col gap-3 max-w-6xl mx-auto w-full">
         {grupos.map((grupo, index) => {
-          const solicitacoesDoGrupo = solicitacoesFiltradas.filter((sol) =>
-            grupo.statusOriginais.includes(sol.status)
-          );
+          const solicitacoesDoGrupo = solicitacoesFiltradas.filter((sol) => {
+            if (grupo.titulo === 'Aguarda Número do SISREG') {
+              return sol.status === 'AGUARDA NÚMERO SISREG' || (sol.status === 'VALIDAÇÃO SISREG' && !sol.numeroSisreg);
+            }
+            if (grupo.titulo === 'Validação SISREG (Fila de Entrada)') {
+              return sol.status === 'VALIDAÇÃO SISREG' && !!sol.numeroSisreg;
+            }
+            return grupo.statusOriginais.includes(sol.status);
+          });
           const isOpen = grupoAberto === grupo.titulo;
 
           // As cores semânticas foram mantidas pois são essenciais para indicar a urgência/status do acordeão

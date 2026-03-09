@@ -215,7 +215,7 @@ export default function CadastroSolicitacoes() {
         const medicoLinha = normalizeString(row.solicitante);
         const cidLinha = normalizeString(row.cd_cid_principal);
         const dataSolicitacaoFormatada = converterDataParaInput(row.dt_solicitacao);
-        const sisregLinha = row.nr_sisreg ? String(row.nr_sisreg).replace(/\D/g, '') : '';
+        const sisregLinha = row.nu_internacao ? String(row.nu_internacao).replace(/\D/g, '') : '';
 
         if (justificativa.includes('PRIORIDADE')) {
           prioridadeDefinida = 'Carta de Prioridade';
@@ -246,17 +246,41 @@ export default function CadastroSolicitacoes() {
           // Se a data de solicitação na planilha for diferente (e mais recente, pois já filtramos as mais recentes da planilha), atualiza.
           if (safeCompare(solicNoBanco.dataSolicitacao, dataSolicitacaoFormatada)) { updates.dataSolicitacao = dataSolicitacaoFormatada; isDifferent = true; }
 
+          let atualizouSisregInfo = false;
+          if (safeCompare(solicNoBanco.numeroSisreg, sisregLinha)) {
+            updates.numeroSisreg = sisregLinha;
+            if (sisregLinha && !solicNoBanco.numeroSisreg) {
+              updates.status = 'VALIDAÇÃO SISREG';
+              updates.dataInclusaoSisreg = dataHoraAtual;
+              atualizouSisregInfo = true;
+            }
+            isDifferent = true;
+          }
+
           if (isDifferent) {
             const historicoAnterior = solicNoBanco.historico || [];
-            updates.historico = [
-              ...historicoAnterior,
-              {
-                dataHora: dataHoraAtual,
-                de: 'DADOS ANTIGOS',
-                para: 'DADOS ATUALIZADOS POR LOTE',
-                usuario: 'Sistema',
-              },
-            ];
+            if (atualizouSisregInfo) {
+              updates.historico = [
+                ...historicoAnterior,
+                {
+                  dataHora: dataHoraAtual,
+                  de: solicNoBanco.status,
+                  para: 'VALIDAÇÃO SISREG',
+                  usuario: 'Sistema',
+                  detalhes: 'SISREG E STATUS ATUALIZADOS VIA IMPORTAÇÃO DE PLANILHA',
+                },
+              ];
+            } else {
+              updates.historico = [
+                ...historicoAnterior,
+                {
+                  dataHora: dataHoraAtual,
+                  de: 'DADOS ANTIGOS',
+                  para: 'DADOS ATUALIZADOS POR LOTE',
+                  usuario: 'Sistema',
+                },
+              ];
+            }
 
             batch.update(doc(db, 'nexus_eletivas_solicitacoes', solicNoBanco.id), updates);
             countSolicsAtualizadas++;
@@ -608,7 +632,7 @@ export default function CadastroSolicitacoes() {
           <form ref={formPacienteRef} className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="md:col-span-2">
               <label className="block text-xs font-medium text-slate-500 mb-1">Nome Completo</label>
-              <input type="text" required value={formDataPaciente.nome} onChange={(e) => setFormDataPaciente({ ...formDataPaciente, nome: e.target.value })} className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 uppercase focus:ring-2 focus:ring-sky-500/50" disabled={loading} />
+              <input type="text" required onInvalid={(e) => e.target.setCustomValidity('Por favor, digite o nome completo do paciente.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataPaciente({ ...formDataPaciente, nome: e.target.value }); }} value={formDataPaciente.nome} className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 uppercase focus:ring-2 focus:ring-sky-500/50" disabled={loading} />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">CNS</label>
@@ -616,24 +640,24 @@ export default function CadastroSolicitacoes() {
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Nascimento</label>
-              <input type="date" required value={formDataPaciente.dataNascimento} onChange={(e) => setFormDataPaciente({ ...formDataPaciente, dataNascimento: e.target.value })} className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-sky-500/50" disabled={loading} />
+              <input type="date" required onInvalid={(e) => e.target.setCustomValidity('Informe a data exata de nascimento do paciente.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataPaciente({ ...formDataPaciente, dataNascimento: e.target.value }); }} value={formDataPaciente.dataNascimento} className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-sky-500/50" disabled={loading} />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Cidade</label>
-              <select required value={formDataPaciente.cidade} onChange={(e) => setFormDataPaciente({ ...formDataPaciente, cidade: e.target.value })} className="w-full border px-3 py-2 rounded-lg uppercase focus:ring-2 focus:ring-sky-500/50" disabled={loading}>
+              <select required onInvalid={(e) => e.target.setCustomValidity('Você precisa selecionar a cidade do paciente.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataPaciente({ ...formDataPaciente, cidade: e.target.value }); }} value={formDataPaciente.cidade} className="w-full border px-3 py-2 rounded-lg uppercase focus:ring-2 focus:ring-sky-500/50" disabled={loading}>
                 <option value="">SELECIONE...</option>
                 {cidadesSC.map((c) => (<option key={c} value={c}>{c}</option>))}
               </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Sexo</label>
-              <select required value={formDataPaciente.sexo} onChange={(e) => setFormDataPaciente({ ...formDataPaciente, sexo: e.target.value })} className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-sky-500/50" disabled={loading}>
+              <select required onInvalid={(e) => e.target.setCustomValidity('Selecione o sexo do paciente.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataPaciente({ ...formDataPaciente, sexo: e.target.value }); }} value={formDataPaciente.sexo} className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-sky-500/50" disabled={loading}>
                 <option value="">Selecione...</option><option value="M">Masculino</option><option value="F">Feminino</option>
               </select>
             </div>
             <div className="md:col-span-2">
               <label className="block text-xs font-medium text-slate-500 mb-1">Nome da Mãe</label>
-              <input type="text" required value={formDataPaciente.nomeMae} onChange={(e) => setFormDataPaciente({ ...formDataPaciente, nomeMae: e.target.value })} className="w-full border px-3 py-2 rounded-lg uppercase focus:ring-2 focus:ring-sky-500/50" disabled={loading} />
+              <input type="text" required onInvalid={(e) => e.target.setCustomValidity('Por favor, digite o nome completo da mãe.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataPaciente({ ...formDataPaciente, nomeMae: e.target.value }); }} value={formDataPaciente.nomeMae} className="w-full border px-3 py-2 rounded-lg uppercase focus:ring-2 focus:ring-sky-500/50" disabled={loading} />
             </div>
             <div className="md:col-span-2 flex justify-end gap-3 mt-4">
               {isEditingPaciente && (
@@ -656,7 +680,7 @@ export default function CadastroSolicitacoes() {
           <form onSubmit={handleSalvarSolicitacao} className="grid grid-cols-1 md:grid-cols-4 gap-5">
             <div className="md:col-span-2">
               <label className="block text-xs font-medium text-slate-500 mb-1">Origem da Solicitação</label>
-              <select required value={formDataSolicitacao.origem} onChange={(e) => setFormDataSolicitacao({ ...formDataSolicitacao, origem: e.target.value })} className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500/50" disabled={loading}>
+              <select required onInvalid={(e) => e.target.setCustomValidity('Por favor, clique aqui e selecione de onde vem essa solicitação.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataSolicitacao({ ...formDataSolicitacao, origem: e.target.value }); }} value={formDataSolicitacao.origem} className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500/50" disabled={loading}>
                 <option value="">Selecione...</option>
                 <option value="Ambulatório de Especialidades">Ambulatório de Especialidades</option>
                 <option value="Ambulatório de Oncologia">Ambulatório de Oncologia</option>
@@ -665,38 +689,33 @@ export default function CadastroSolicitacoes() {
             </div>
             <div className="md:col-span-1">
               <label className="block text-xs font-medium text-slate-500 mb-1">Data da Solicitação</label>
-              <input type="date" required value={formDataSolicitacao.dataSolicitacao} onChange={(e) => setFormDataSolicitacao({ ...formDataSolicitacao, dataSolicitacao: e.target.value })} className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-emerald-500/50" disabled={loading} />
+              <input type="date" required onInvalid={(e) => e.target.setCustomValidity('Informe a data exata em que o pedido foi feito pelo médico.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataSolicitacao({ ...formDataSolicitacao, dataSolicitacao: e.target.value }); }} value={formDataSolicitacao.dataSolicitacao} className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-emerald-500/50" disabled={loading} />
             </div>
             <div className="md:col-span-1">
               <label className="block text-xs font-medium text-slate-500 mb-1">Prioridade Urgente?</label>
-              <select required value={formDataSolicitacao.prioridade} onChange={(e) => setFormDataSolicitacao({ ...formDataSolicitacao, prioridade: e.target.value })} className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-emerald-500/50" disabled={loading}>
+              <select required onInvalid={(e) => e.target.setCustomValidity('Selecione uma prioridade válida.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataSolicitacao({ ...formDataSolicitacao, prioridade: e.target.value }); }} value={formDataSolicitacao.prioridade} className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-emerald-500/50" disabled={loading}>
                 <option value="NÃO">Não</option><option value="SIM">Sim</option><option value="Oncologia">Oncologia</option><option value="Carta de Prioridade">Carta de Prioridade</option>
               </select>
-            </div>
-            <div className="md:col-span-4 bg-slate-50 border border-slate-200 rounded-xl p-4">
-              <label className="block text-xs font-bold text-slate-600 mb-1">Número do SISREG (Opcional)</label>
-              <p className="text-[10px] text-slate-400 mb-2 leading-tight">Se preenchido, o paciente cairá direto em Validação. Do contrário, ficará retido aguardando o número.</p>
-              <input type="text" value={formDataSolicitacao.numeroSisreg} onChange={(e) => setFormDataSolicitacao({ ...formDataSolicitacao, numeroSisreg: e.target.value.replace(/\D/g, '') })} className="w-full md:w-1/3 border px-3 py-2 rounded-lg font-mono placeholder:text-slate-300" placeholder="Apenas números..." disabled={loading} />
             </div>
             {!isPamBoaVista && (
               <>
                 <div className="md:col-span-1">
                   <label className="block text-xs font-medium text-slate-500 mb-1">Prontuário MV PEP</label>
-                  <input type="text" required value={formDataSolicitacao.prontuario} onChange={(e) => setFormDataSolicitacao({ ...formDataSolicitacao, prontuario: e.target.value })} className="w-full border px-3 py-2 rounded-lg" disabled={loading} />
+                  <input type="text" required onInvalid={(e) => e.target.setCustomValidity('Digite o número do prontuário do paciente no MV PEP.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataSolicitacao({ ...formDataSolicitacao, prontuario: e.target.value }); }} value={formDataSolicitacao.prontuario} className="w-full border px-3 py-2 rounded-lg" disabled={loading} />
                 </div>
                 <div className="md:col-span-3">
                   <label className="block text-xs font-medium text-slate-500 mb-1">Nº Consulta Ambulatorial</label>
-                  <input type="text" required value={formDataSolicitacao.consulta} onChange={(e) => setFormDataSolicitacao({ ...formDataSolicitacao, consulta: e.target.value })} className="w-full border px-3 py-2 rounded-lg" disabled={loading} />
+                  <input type="text" required onInvalid={(e) => e.target.setCustomValidity('Informe o número da respectiva consulta no Ambulatório.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataSolicitacao({ ...formDataSolicitacao, consulta: e.target.value }); }} value={formDataSolicitacao.consulta} className="w-full border px-3 py-2 rounded-lg" disabled={loading} />
                 </div>
               </>
             )}
             <div className="md:col-span-1">
               <label className="block text-xs font-medium text-slate-500 mb-1">CID 10</label>
-              <input type="text" required value={formDataSolicitacao.cid} onChange={(e) => setFormDataSolicitacao({ ...formDataSolicitacao, cid: e.target.value.toUpperCase() })} className="w-full border px-3 py-2 rounded-lg uppercase" placeholder="M17" disabled={loading} />
+              <input type="text" required onInvalid={(e) => e.target.setCustomValidity('Informe o código CID principal do diagnóstico.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataSolicitacao({ ...formDataSolicitacao, cid: e.target.value.toUpperCase() }); }} value={formDataSolicitacao.cid} className="w-full border px-3 py-2 rounded-lg uppercase" placeholder="M17" disabled={loading} />
             </div>
             <div className="md:col-span-3 relative">
               <label className="block text-xs font-medium text-slate-500 mb-1">Procedimento (SIGTAP)</label>
-              <input type="text" required placeholder="Buscar código ou nome..." value={buscaProc} onChange={handleBuscaProcChange} onFocus={() => setMostrarDropdownProc(true)} onBlur={() => setTimeout(() => setMostrarDropdownProc(false), 200)} className="w-full border px-3 py-2 rounded-lg uppercase focus:ring-2 focus:ring-emerald-500/50" disabled={loading} />
+              <input type="text" required onInvalid={(e) => e.target.setCustomValidity('Você precisa pesquisar e selecionar um procedimento da lista para continuar.')} onInput={(e) => { e.target.setCustomValidity(''); handleBuscaProcChange(e); }} placeholder="Buscar código ou nome..." value={buscaProc} onFocus={() => setMostrarDropdownProc(true)} onBlur={() => setTimeout(() => setMostrarDropdownProc(false), 200)} className="w-full border px-3 py-2 rounded-lg uppercase focus:ring-2 focus:ring-emerald-500/50" disabled={loading} />
               {mostrarDropdownProc && buscaProc && (
                 <ul className="absolute z-20 w-full bg-white border shadow-xl rounded-lg mt-1 max-h-60 overflow-y-auto custom-scrollbar">
                   {procedimentosFiltrados.map((p) => (
@@ -709,17 +728,22 @@ export default function CadastroSolicitacoes() {
             </div>
             <div className="md:col-span-2">
               <label className="block text-xs font-medium text-slate-500 mb-1">Especialidade Médica</label>
-              <select required value={formDataSolicitacao.especialidade} onChange={(e) => setFormDataSolicitacao({ ...formDataSolicitacao, especialidade: e.target.value, medico: '' })} disabled={especialidadesDisponiveis.length === 0 || loading} className="w-full border px-3 py-2 rounded-lg disabled:bg-slate-50">
+              <select required onInvalid={(e) => e.target.setCustomValidity('Selecione uma especialidade referenciada para o procedimento.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataSolicitacao({ ...formDataSolicitacao, especialidade: e.target.value, medico: '' }); }} value={formDataSolicitacao.especialidade} disabled={especialidadesDisponiveis.length === 0 || loading} className="w-full border px-3 py-2 rounded-lg disabled:bg-slate-50">
                 <option value="">SELECIONE...</option>
                 {especialidadesDisponiveis.map((esp) => (<option key={esp} value={esp}>{esp}</option>))}
               </select>
             </div>
             <div className="md:col-span-2">
               <label className="block text-xs font-medium text-slate-500 mb-1">Médico Solicitante</label>
-              <select required value={formDataSolicitacao.medico} onChange={(e) => setFormDataSolicitacao({ ...formDataSolicitacao, medico: e.target.value })} disabled={medicosDisponiveis.length === 0 || loading} className="w-full border px-3 py-2 rounded-lg disabled:bg-slate-50">
+              <select required onInvalid={(e) => e.target.setCustomValidity('Selecione o médico responsável na lista.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataSolicitacao({ ...formDataSolicitacao, medico: e.target.value }); }} value={formDataSolicitacao.medico} disabled={medicosDisponiveis.length === 0 || loading} className="w-full border px-3 py-2 rounded-lg disabled:bg-slate-50">
                 <option value="">SELECIONE...</option>
                 {medicosDisponiveis.map((m) => (<option key={m.id} value={m.nome}>{m.nome}</option>))}
               </select>
+            </div>
+            <div className="md:col-span-4 bg-slate-50 border border-slate-200 rounded-xl p-4 mt-2">
+              <label className="block text-xs font-bold text-slate-600 mb-1">Número do SISREG (Opcional)</label>
+              <p className="text-[10px] text-slate-400 mb-2 leading-tight">Se preenchido, o paciente cairá direto em Validação. Do contrário, ficará retido aguardando o número.</p>
+              <input type="text" value={formDataSolicitacao.numeroSisreg} onChange={(e) => setFormDataSolicitacao({ ...formDataSolicitacao, numeroSisreg: e.target.value.replace(/\D/g, '') })} className="w-full md:w-1/3 border px-3 py-2 rounded-lg font-mono placeholder:text-slate-300 focus:ring-2 focus:ring-slate-400" placeholder="Apenas números..." disabled={loading} />
             </div>
             <div className="md:col-span-4 flex justify-end mt-4">
               <button type="submit" disabled={loading} className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-2.5 rounded-xl font-bold transition-shadow shadow-md disabled:opacity-50">
