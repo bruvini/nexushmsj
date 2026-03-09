@@ -193,6 +193,57 @@ export const importarPacientesLoteCSV = async (pacientesArray) => {
 };
 
 /**
+ * Realiza upload agressivo em Lotes (Batches) para a Coleção de Exames (Max 500 por transação)
+ * @param {Array} examesArray Array de objetos higienizados de exames com vínculo obrigatório ao Paciente
+ */
+export const importarExamesLoteCSV = async (examesArray) => {
+    try {
+        if (!examesArray || examesArray.length === 0) return { success: false, error: 'Lista vazia' };
+
+        const chunkSize = 500;
+        let totalImported = 0;
+
+        for (let i = 0; i < examesArray.length; i += chunkSize) {
+            const chunk = examesArray.slice(i, i + chunkSize);
+            const batch = writeBatch(db);
+
+            chunk.forEach((exameObj) => {
+                // A regra solicita: Mapeamento de id_exame explícito como id do document, ou gerar dinâmico se nulo (embora a instrução fale id_exame do CSV)
+                const { id_exame, ...dadosExame } = exameObj;
+
+                // Vínculo obrigatório ao paciente já foi filtrado no Frontend, mas fica a segurança
+                if (!dadosExame.id_paciente) return;
+
+                // Se não vier id_exame fixo, deixa o firebase criar. (Mas a instrução pede docRef explícito se tiver)
+                const docRef = id_exame
+                    ? doc(db, EXAMES_COLLECTION, id_exame)
+                    : doc(collection(db, EXAMES_COLLECTION));
+
+                const cleanData = {
+                    ...dadosExame,
+                    isImportadoLegado: true,
+                    importedAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                };
+                if (!cleanData.createdAt) cleanData.createdAt = serverTimestamp();
+
+                batch.set(docRef, cleanData, { merge: true });
+            });
+
+            await batch.commit();
+            totalImported += chunk.length;
+        }
+
+        await logOperation('IMPORTACAO_LOTE_EXAMES_CSV', `Foram importados/atualizados ${totalImported} exames do legado.`);
+
+        return { success: true, count: totalImported };
+    } catch (error) {
+        console.error("Erro crítico ao executar Batch Import de Exames:", error);
+        return { success: false, error: error.message };
+    }
+};
+
+/**
  * Busca pacientes aguardando Acolhimento
  */
 export const getPendingAcolhimento = async () => {
