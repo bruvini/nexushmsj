@@ -144,6 +144,55 @@ export const getPacientes = async () => {
 };
 
 /**
+ * Realiza upload agressivo em Lotes (Batches) para o Firestore Firestore (Max 500 por transação)
+ * @param {Array} pacientesArray Array de objetos estritamente mapeados pro padrão Firebase
+ */
+export const importarPacientesLoteCSV = async (pacientesArray) => {
+    try {
+        if (!pacientesArray || pacientesArray.length === 0) return { success: false, error: 'Lista vazia' };
+
+        const chunkSize = 500; // Limite global do Firestore para Batch
+        let totalImported = 0;
+
+        for (let i = 0; i < pacientesArray.length; i += chunkSize) {
+            const chunk = pacientesArray.slice(i, i + chunkSize);
+            const batch = writeBatch(db);
+
+            chunk.forEach((pacienteObj) => {
+                // A regra solicita: Mapeamento de id_paciente explícito como id do document
+                const { id_paciente, ...dadosPaciente } = pacienteObj;
+                if (!id_paciente) return; // Segurança contra quebra
+
+                const docRef = doc(db, PACIENTES_COLLECTION, id_paciente);
+
+                // Mapeia `status` se vier do CSV para `status_monitoramento_atual` caso apropriado,
+                // mas garantimos que a arvore nativa do firebase sempre recebe `status_monitoramento_atual`.
+                const cleanData = {
+                    ...dadosPaciente,
+                    status_monitoramento_atual: dadosPaciente.status_monitoramento_atual || dadosPaciente.status || 'ENCERRADO - REINTERNAÇÃO',
+                    isImportadoLegado: true,
+                    importedAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                };
+                if (!cleanData.createdAt) cleanData.createdAt = serverTimestamp();
+
+                batch.set(docRef, cleanData, { merge: true });
+            });
+
+            await batch.commit();
+            totalImported += chunk.length;
+        }
+
+        await logOperation('IMPORTACAO_LOTE_CSV', `Foram importados/atualizados ${totalImported} pacientes do legado.`);
+
+        return { success: true, count: totalImported };
+    } catch (error) {
+        console.error("Erro crítico ao executar Batch Import:", error);
+        return { success: false, error: error.message };
+    }
+};
+
+/**
  * Busca pacientes aguardando Acolhimento
  */
 export const getPendingAcolhimento = async () => {

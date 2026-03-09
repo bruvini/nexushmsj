@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { getAVCConfigs, updateConfigList } from '../services/avcService';
+import { getAVCConfigs, updateConfigList, importarPacientesLoteCSV } from '../services/avcService';
 
 export default function ConfiguracoesAVC() {
     const [loading, setLoading] = useState(true);
     const [showModalMigracao, setShowModalMigracao] = useState(false);
+    const [filePacientes, setFilePacientes] = useState(null);
+    const [isMigrating, setIsMigrating] = useState(false);
     const [configs, setConfigs] = useState({ exames: [], medicacoes: [], emails: [] });
 
     const [newExame, setNewExame] = useState('');
@@ -110,6 +112,132 @@ export default function ConfiguracoesAVC() {
         </div>
     );
 
+    // =====================================
+    // LÓGICA DE MIGRAÇÃO CSV (FILE READER)
+    // =====================================
+    const handleMigracaoPacientes = async () => {
+        if (!filePacientes) {
+            toast.warn('Nenhum arquivo CSV de Pacientes selecionado.');
+            return;
+        }
+
+        setIsMigrating(true);
+        const reader = new FileReader();
+
+        reader.onload = async (e) => {
+            const text = e.target.result;
+            if (!text) {
+                toast.error('O arquivo está vazio.');
+                setIsMigrating(false);
+                return;
+            }
+
+            // Detect separator e break
+            const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+            if (lines.length < 2) {
+                toast.error('O arquivo CSV parece não conter dados.');
+                setIsMigrating(false);
+                return;
+            }
+
+            const headerLine = lines[0];
+            const separator = headerLine.includes(';') ? ';' : ',';
+            const headers = headerLine.split(separator).map(h => h.trim().replace(/^"|"$/g, ''));
+
+            const sanitizeString = (val) => val ? val.trim().replace(/^"|"$/g, '').toUpperCase() : '';
+
+            // DD/MM/YYYY to YYYY-MM-DD
+            const parseDate = (val) => {
+                if (!val) return null;
+                const clean = val.trim().replace(/^"|"$/g, '');
+                if (clean.includes('/')) {
+                    const parts = clean.split('/');
+                    if (parts.length === 3) {
+                        return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                    }
+                }
+                return clean; // Fallback se for formato ISO
+            };
+
+            const parsedData = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const currentLine = lines[i].split(separator);
+                // Se a linha não tiver o mesmo tamanho, algo quebrou no format, tentar pular ou limpar
+                if (currentLine.length < headers.length - 2) continue; // safety margin for empty trailing col
+
+                const rowObj = {};
+                headers.forEach((h, index) => {
+                    rowObj[h] = currentLine[index] !== undefined ? currentLine[index] : '';
+                });
+
+                // Higienização de Padrão NoSQL Firestore
+                try {
+                    const baseObj = {
+                        id_paciente: rowObj['id_paciente'] ? rowObj['id_paciente'].trim().replace(/^"|"$/g, '') : '',
+                        nome: sanitizeString(rowObj['nome_paciente'] || rowObj['nome'] || ''),
+                        prontuario: sanitizeString(rowObj['prontuario'] || ''),
+                        data_nascimento: parseDate(rowObj['data_nascimento']),
+                        sexo: sanitizeString(rowObj['sexo']),
+                        telefone: sanitizeString(rowObj['telefone_principal'] || rowObj['telefone']),
+                        telefone2: sanitizeString(rowObj['telefone2']),
+                        telefone3: sanitizeString(rowObj['telefone3']),
+                        cidade: sanitizeString(rowObj['cidade']),
+                        setor: sanitizeString(rowObj['setor']),
+                        leito: sanitizeString(rowObj['leito']),
+                        status_monitoramento_atual: sanitizeString(rowObj['status_monitoramento_atual'] || rowObj['status'] || 'ENCERRADO - REINTERNAÇÃO'),
+                        data_internacao_avc: parseDate(rowObj['data_internacao_avc']),
+                        data_provavel_alta: parseDate(rowObj['data_provavel_alta']),
+                        data_alta_hospitalar: parseDate(rowObj['data_alta_hospitalar']),
+                        data_acolhimento: parseDate(rowObj['data_acolhimento']),
+                        profissionalResponsavel: sanitizeString(rowObj['profissional_responsavel'] || rowObj['medico_solicitante']),
+                    };
+
+                    // Arrays Mapping
+                    const strExames = (rowObj['lista_exames_iniciais'] || rowObj['examesMarcados'] || '').trim().replace(/^"|"$/g, '');
+                    baseObj.examesMarcados = strExames ? strExames.split(',').map(s => s.trim().toUpperCase()).filter(s => s) : [];
+
+                    const strAnti = (rowObj['detalhe_anticoagulante'] || rowObj['medicacao_alta'] || '').trim().replace(/^"|"$/g, '');
+                    baseObj.medicacao_alta = strAnti ? strAnti.replace(/\+/g, ',').split(',').map(s => s.trim().toUpperCase()).filter(s => s) : [];
+
+                    // Excluir prop vazia
+                    if (!baseObj.id_paciente) continue;
+
+                    parsedData.push(baseObj);
+                } catch (err) {
+                    console.error("Erro ao mapear linha:", i, err);
+                }
+            }
+
+            if (parsedData.length === 0) {
+                toast.error('Nenhum paciente válido encontrado no CSV.');
+                setIsMigrating(false);
+                return;
+            }
+
+            // Commitar Lote (Batch Service)
+            const result = await importarPacientesLoteCSV(parsedData);
+
+            if (result.success) {
+                toast.success(`Migração concluída! ${result.count} pacientes foram importados com sucesso.`);
+                setFilePacientes(null);
+                setShowModalMigracao(false);
+                fetchConfigs(); // Só para forçar re-render caso necessário (ex: kpis)
+            } else {
+                toast.error(`Falha ao importar: ${result.error}`);
+            }
+
+            setIsMigrating(false);
+        };
+
+        reader.onerror = () => {
+            toast.error('Falha ao ler o arquivo CSV selecionado.');
+            setIsMigrating(false);
+        };
+
+        reader.readAsText(filePacientes, 'utf-8');
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full">
@@ -193,20 +321,31 @@ export default function ConfiguracoesAVC() {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-sm font-semibold text-slate-700">Base de Pacientes</label>
+                                <input
+                                    type="file"
+                                    accept=".csv"
+                                    disabled={isMigrating}
+                                    onChange={(e) => setFilePacientes(e.target.files[0])}
+                                    className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 border border-slate-200 rounded-lg cursor-pointer bg-slate-50 focus:outline-none"
+                                />
+                            </div>
+
                             {[
-                                "Base de Pacientes",
                                 "Histórico de Exames",
                                 "Consultas Ambulatoriais",
                                 "Logs do Sistema Antigo",
                                 "Desfechos",
                                 "Contatos Realizados"
                             ].map((label, idx) => (
-                                <div key={idx} className="flex flex-col gap-1.5">
+                                <div key={idx} className="flex flex-col gap-1.5 opacity-50 cursor-not-allowed">
                                     <label className="text-sm font-semibold text-slate-700">{label}</label>
                                     <input
                                         type="file"
                                         accept=".csv"
-                                        className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 border border-slate-200 rounded-lg cursor-pointer bg-slate-50 focus:outline-none"
+                                        disabled={true}
+                                        className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-slate-200 file:text-slate-500 border border-slate-200 rounded-lg cursor-not-allowed bg-slate-100 focus:outline-none"
                                     />
                                 </div>
                             ))}
@@ -214,23 +353,36 @@ export default function ConfiguracoesAVC() {
 
                         <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-slate-100">
                             <button
-                                onClick={() => setShowModalMigracao(false)}
-                                className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
+                                onClick={() => {
+                                    setFilePacientes(null);
+                                    setShowModalMigracao(false);
+                                }}
+                                disabled={isMigrating}
+                                className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors disabled:opacity-50"
                             >
                                 Cancelar
                             </button>
                             <button
-                                onClick={() => {
-                                    console.log("Executar Importação Clicked");
-                                    toast.info("Importação em lote concluída visualmente.");
-                                    setShowModalMigracao(false);
-                                }}
-                                className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-emerald-500 hover:bg-emerald-600 shadow-md shadow-emerald-500/20 transition-all flex items-center gap-2"
+                                onClick={handleMigracaoPacientes}
+                                disabled={isMigrating}
+                                className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-emerald-500 hover:bg-emerald-600 shadow-md shadow-emerald-500/20 transition-all flex items-center gap-2 disabled:bg-emerald-300 disabled:cursor-wait"
                             >
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                                Executar Importação
+                                {isMigrating ? (
+                                    <>
+                                        <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Carregando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        Executar Importação
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>
