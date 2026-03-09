@@ -9,6 +9,7 @@ import {
   getDoc,
 } from 'firebase/firestore';
 import { db } from '../../../services/firebase';
+import { ubsfJoinville } from '../../../utils/UBSFJoinville';
 
 // IMPORTAÇÕES DO TOASTIFY
 import { ToastContainer, toast } from 'react-toastify';
@@ -24,9 +25,7 @@ export default function GestaoAihs() {
   const [solicitacaoParaDeletar, setSolicitacaoParaDeletar] = useState(null);
 
   // Controle dos Acordeões
-  const [grupoAberto, setGrupoAberto] = useState(
-    'Validação SISREG (Fila de Entrada)'
-  );
+  const [grupoAberto, setGrupoAberto] = useState('');
 
   // Estados do Sidebar
   const [sidebarAberto, setSidebarAberto] = useState(false);
@@ -50,6 +49,7 @@ export default function GestaoAihs() {
 
   // 1. Busca TODAS as solicitações em Tempo Real (Ativas, Concluídas e Negadas)
   useEffect(() => {
+    setBusca('');
     const q = query(collection(db, 'nexus_eletivas_solicitacoes'));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const lista = [];
@@ -79,40 +79,55 @@ export default function GestaoAihs() {
       titulo: 'Aguarda Número do SISREG',
       statusOriginais: ['AGUARDA NÚMERO SISREG'],
       cor: 'orange',
+      descricao: 'Pacientes que ainda não possuem número de controle.',
     },
     {
       titulo: 'Validação SISREG (Fila de Entrada)',
       statusOriginais: ['VALIDAÇÃO SISREG'],
       cor: 'amber',
+      descricao: 'Aguardando validação interna do hospital.',
     },
     {
       titulo: 'Aguarda Entrar no mapa',
       statusOriginais: ['AGUARDA ENTRAR NO MAPA'],
       cor: 'emerald',
+      descricao: 'Aprovados e aguardando inclusão no mapa cirúrgico.',
     },
     {
       titulo: 'Devoluções por Divergência / Duplicidade',
       statusOriginais: ['DIVERGENCIA ENCONTRADA', 'DUPLICIDADE'],
       cor: 'red',
+      descricao: 'Retornados devido a CID ou Procedimento incorretos.',
     },
     {
-      titulo: 'Casos Especiais (Deliberações CIB)',
-      statusOriginais: [
-        'DELIBERAÇÃO 66/CIB/2018',
-        'CONTINUIDADE DE ATENDIMENTO',
-        'TRAUMA-FRATURA',
-      ],
+      titulo: 'Deliberação 66/CIB/2018',
+      statusOriginais: ['DELIBERAÇÃO 66/CIB/2018'],
       cor: 'purple',
+      descricao: 'Casos retidos sob diretriz da CIB 66/2018.',
+    },
+    {
+      titulo: 'Continuidade de Atendimento',
+      statusOriginais: ['CONTINUIDADE DE ATENDIMENTO'],
+      cor: 'purple',
+      descricao: 'Pacientes em tratamento contínuo.',
+    },
+    {
+      titulo: 'Trauma-Fratura',
+      statusOriginais: ['TRAUMA-FRATURA'],
+      cor: 'purple',
+      descricao: 'Retidos por fratura/trauma ortopédico.',
     },
     {
       titulo: 'Autorizadas (Mapa Cirúrgico Estadual)',
       statusOriginais: ['AUTORIZADO MAPA CIRURGICO'],
       cor: 'blue',
+      descricao: 'Aprovados no mapa do Estado (SES/SC).',
     },
     {
       titulo: 'Negadas (SES/SC)',
       statusOriginais: ['NEGADO SES/SC'],
       cor: 'slate',
+      descricao: 'Rejeitadas definitivamente pelo Estado.',
     },
   ];
 
@@ -283,8 +298,20 @@ export default function GestaoAihs() {
 
   const formatarData = (d) => {
     if (!d) return '';
-    const [ano, mes, dia] = d.split('-');
-    return `${dia}/${mes}/${ano}`;
+    try {
+      if (typeof d === 'string' && d.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [ano, mes, dia] = d.split('-');
+        return `${dia}/${mes}/${ano}`;
+      }
+      if (d.seconds) {
+        const dataDt = new Date(d.seconds * 1000);
+        return dataDt.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+      }
+      const dataDt = new Date(d);
+      return dataDt.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+    } catch (e) {
+      return d;
+    }
   };
 
   return (
@@ -443,12 +470,18 @@ export default function GestaoAihs() {
               >
                 <div className="flex items-center gap-3">
                   <span
-                    className={`w-3 h-3 rounded-full ${dotColors[grupo.cor]
-                      } shadow-sm`}
+                    className={`w-3 h-3 rounded-full shrink-0 ${dotColors[grupo.cor]} shadow-sm`}
                   ></span>
-                  <h3 className="font-bold text-base uppercase tracking-wide">
-                    {grupo.titulo}
-                  </h3>
+                  <div className="flex flex-col text-left">
+                    <h3 className="font-bold text-base uppercase tracking-wide">
+                      {grupo.titulo}
+                    </h3>
+                    {grupo.descricao && (
+                      <span className="text-sm text-inherit/70 italic normal-case tracking-normal mt-0.5">
+                        {grupo.descricao}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-4">
                   <span className="bg-white/60 font-bold px-3 py-1 rounded-full text-sm backdrop-blur-sm">
@@ -480,7 +513,6 @@ export default function GestaoAihs() {
                         <th className="px-6 py-3">SISREG</th>
                         <th className="px-6 py-3">Solicitado Em</th>
                         <th className="px-6 py-3">Especialidade / Médico</th>
-                        <th className="px-6 py-3">Status Interno</th>
                         <th className="px-6 py-3">Ações</th>
                       </tr>
                     </thead>
@@ -531,11 +563,6 @@ export default function GestaoAihs() {
                               <div className="text-[11px] text-nexus-text/60 line-clamp-1">
                                 {sol.medico}
                               </div>
-                            </td>
-                            <td className="px-6 py-3">
-                              <span className="bg-slate-100 text-slate-600 font-bold px-2 py-1 rounded text-[10px] uppercase border border-slate-200">
-                                {sol.status}
-                              </span>
                             </td>
                             <td className="px-6 py-3 flex items-center gap-2">
                               <button
@@ -1015,14 +1042,17 @@ export default function GestaoAihs() {
                         <label className="block text-xs font-bold text-purple-700 mb-1">
                           Unidade de Referência
                         </label>
-                        <input
-                          type="text"
+                        <select
                           required
                           value={unidadeReferencia}
                           onChange={(e) => setUnidadeReferencia(e.target.value)}
                           className="w-full bg-white border border-purple-300 text-nexus-text rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 uppercase"
-                          placeholder="Ex: UBS Fátima"
-                        />
+                        >
+                          <option value="" disabled>SELECIONE A UNIDADE...</option>
+                          {ubsfJoinville.map((ubsf) => (
+                            <option key={ubsf} value={ubsf}>{ubsf}</option>
+                          ))}
+                        </select>
                       </div>
                     </div>
                   )}
