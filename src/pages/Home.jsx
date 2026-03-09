@@ -152,57 +152,56 @@ export default function Home() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="flex-1 flex flex-col lg:flex-row items-center justify-center p-4 sm:p-8 lg:p-12 gap-8 lg:gap-16 z-10 w-full max-w-[1400px] mx-auto mt-6 lg:mt-0"
+        className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 gap-4 lg:gap-6 z-10 w-full max-w-[1500px] mx-auto"
       >
-
-        {/* Coluna Esquerda: Informações e Correlação */}
-        <div className="flex flex-col items-center justify-center w-full lg:w-2/5 shrink-0 text-center lg:text-left">
+        {/* Bloco Superior: Informações e Correlação (Centralizado) */}
+        <div className="flex flex-col items-center justify-center w-full text-center max-w-4xl shrink-0">
           <img
             src="/Nexus_Logo_Completo.png"
             alt="Nexus Hub Logo"
-            className="w-48 sm:w-64 lg:w-80 object-contain drop-shadow-2xl mb-4 lg:mb-6"
+            className="w-40 sm:w-56 lg:w-64 object-contain drop-shadow-2xl mb-2 sm:mb-4"
           />
-          <p className="text-slate-300 text-xs sm:text-sm font-light leading-relaxed tracking-wide mb-6 lg:mb-8 px-2 sm:px-8 lg:px-0">
+          <p className="text-slate-300 text-xs sm:text-sm font-light leading-relaxed tracking-wide mb-4 lg:mb-6 px-2 sm:px-8">
             O Nexus é o coração tecnológico do Hospital Municipal São José. Mais do que uma plataforma, ele é o elo que une cada profissional e cada dado, garantindo que a jornada do paciente seja fluida, segura e inteligente, do momento da internação até o cuidado em casa.
           </p>
 
-          {/* Bloco de Correlação (Glassmorphism sutil) */}
-          <div className="w-full max-w-sm lg:max-w-none bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-5 backdrop-blur-md shadow-lg relative overflow-hidden group text-left">
+          {/* Bloco de Correlação (Glassmorphism sutil, centralizado) */}
+          <div className="w-full max-w-2xl bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-4 backdrop-blur-md shadow-lg relative overflow-hidden group text-left mx-auto">
             <div className="absolute top-0 left-0 w-1 h-full bg-sky-500/50 group-hover:bg-sky-400 transition-colors"></div>
-            <h3 className="flex items-center gap-2 text-[11px] sm:text-xs font-semibold text-sky-400 uppercase tracking-widest mb-2 sm:mb-3">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <h3 className="flex items-center gap-2 text-[10px] sm:text-[11px] font-semibold text-sky-400 uppercase tracking-widest mb-1.5 sm:mb-2">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
               Sincronicidade de Dados
             </h3>
-            <p className="text-slate-400 text-[11px] sm:text-xs leading-relaxed text-justify">
-              No HMSJ, nada acontece isolado. Imagine que quando uma cirurgia é marcada no módulo de Eletivas, a Higienização já se prepara para o próximo leito e o Serviço Social organiza o apoio para a alta. O Nexus funciona como um fio invisível que conecta todos esses pontos: se uma vaga se abre na UTI ou um exame fica pronto, o hospital inteiro 'ouve' e reage em tempo real. Assim, o paciente não fica parado em filas invisíveis e o cuidado nunca sofre interrupções.
+            <p className="text-slate-400 text-[10px] sm:text-[11px] leading-relaxed text-justify">
+              No HMSJ, nada acontece isolado. Imagine que quando uma cirurgia é marcada, a Higienização já se prepara e o Serviço Social organiza o apoio da alta. O Nexus interliga tudo isso em tempo real: se uma vaga abre ou um exame sai, todos reagem, impedindo a inércia assistencial.
             </p>
           </div>
         </div>
 
-        {/* Coluna Direita: Grid de Módulos */}
-        <div className="w-full lg:w-3/5 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl lg:rounded-[2rem] p-4 sm:p-6 lg:p-8 shadow-2xl">
-          <div className="flex items-center justify-between mb-4 sm:mb-6 px-1 sm:px-2">
+        {/* Bloco Inferior: Grid de Módulos */}
+        <div className="w-full bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-3 sm:p-5 shadow-2xl">
+          <div className="flex items-center justify-between mb-2 sm:mb-4 px-1 sm:px-2">
             <h2 className="text-[10px] sm:text-xs font-medium text-sky-400 uppercase tracking-widest opacity-80">
               Ecossistema Nexus
             </h2>
             <div className="h-px bg-gradient-to-r from-white/20 to-transparent flex-1 ml-3 sm:ml-4"></div>
           </div>
 
-          {/* Grid responsivo: 2 colunas no celular, 3 no tablet/desktop */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+          {/* Grid responsivo: até 5 colunas no desktop single-screen */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3">
             {modulosAtivos.map((module, index) => (
               <button
                 key={index}
                 onClick={() => navigate(module.path)}
-                className="group relative overflow-hidden bg-white/10 backdrop-blur-md rounded-xl p-2.5 sm:p-3 text-left transition-all duration-300 hover:-translate-y-1 hover:bg-white border border-white/20 hover:border-sky-400 hover:shadow-[0_10px_20px_-5px_rgba(2,132,199,0.4)] flex flex-col items-center justify-center h-24 sm:h-28"
+                className="group relative overflow-hidden bg-white/10 backdrop-blur-md rounded-xl p-2.5 sm:p-3 text-left transition-all duration-300 hover:-translate-y-1 hover:bg-white border border-white/20 hover:border-sky-400 hover:shadow-[0_10px_20px_-5px_rgba(2,132,199,0.4)] flex flex-col items-center justify-center h-20 sm:h-24"
               >
                 <div className="relative z-10 flex flex-col items-center gap-1.5 sm:gap-2 w-full">
-                  <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-sky-500/20 border border-sky-400/50 flex items-center justify-center text-sky-300 group-hover:scale-110 group-hover:bg-sky-500 group-hover:text-white transition-all duration-300">
-                    <div className="w-4 h-4 sm:w-6 sm:h-6">{module.icon}</div>
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-sky-500/20 border border-sky-400/50 flex items-center justify-center text-sky-300 group-hover:scale-110 group-hover:bg-sky-500 group-hover:text-white transition-all duration-300">
+                    <div className="w-4 h-4 sm:w-5 sm:h-5">{module.icon}</div>
                   </div>
-                  <span className="font-normal text-slate-100 text-[11px] sm:text-sm text-center leading-tight group-hover:text-slate-800 transition-colors tracking-wide">
+                  <span className="font-normal text-slate-100 text-[10px] sm:text-xs text-center leading-tight group-hover:text-slate-800 transition-colors tracking-wide">
                     {module.title}
                   </span>
                 </div>
@@ -210,23 +209,23 @@ export default function Home() {
             ))}
           </div>
 
-          <hr className="my-8 sm:my-10 border-white/10" />
+          <hr className="my-3 sm:my-5 border-white/10" />
 
-          <h3 className="text-sm font-bold text-sky-400/80 mb-6 flex items-center gap-2">
+          <h3 className="text-xs sm:text-sm font-bold text-sky-400/80 mb-3 sm:mb-4 flex items-center gap-2">
             Módulos em Desenvolvimento (Breve)
           </h3>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3">
             {modulosFuturos.map((module, index) => (
               <div
                 key={index}
-                className="group relative overflow-hidden bg-white/5 backdrop-blur-sm rounded-xl p-2.5 sm:p-3 text-left transition-all duration-500 border border-white/5 flex flex-col items-center justify-center h-24 sm:h-28 cursor-not-allowed opacity-80"
+                className="group relative overflow-hidden bg-white/5 backdrop-blur-sm rounded-xl p-2.5 sm:p-3 text-left transition-all duration-500 border border-white/5 flex flex-col items-center justify-center h-20 sm:h-24 cursor-not-allowed opacity-80"
               >
                 <div className="relative z-10 flex flex-col items-center gap-1.5 sm:gap-2 w-full transition-all duration-500 group-hover:opacity-10 group-hover:blur-[2px]">
-                  <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-slate-500/10 border border-white/10 flex items-center justify-center text-slate-400/40 transition-all duration-300">
-                    <div className="w-4 h-4 sm:w-6 sm:h-6">{module.icon}</div>
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-500/10 border border-white/10 flex items-center justify-center text-slate-400/40 transition-all duration-300">
+                    <div className="w-4 h-4 sm:w-5 sm:h-5">{module.icon}</div>
                   </div>
-                  <span className="font-light text-slate-400/50 text-[10px] sm:text-sm text-center leading-tight tracking-wide">
+                  <span className="font-light text-slate-400/50 text-[10px] sm:text-[11px] text-center leading-tight tracking-wide">
                     {module.title}
                   </span>
                 </div>
@@ -243,14 +242,14 @@ export default function Home() {
             ))}
 
             {/* Placeholder Visual de Expansão */}
-            <div className="group relative overflow-hidden bg-transparent border-2 border-dashed border-sky-500/20 rounded-xl p-2.5 sm:p-3 text-left transition-all duration-300 flex flex-col items-center justify-center h-24 sm:h-28 cursor-default opacity-50">
+            <div className="group relative overflow-hidden bg-transparent border-2 border-dashed border-sky-500/20 rounded-xl p-2.5 sm:p-3 text-left transition-all duration-300 flex flex-col items-center justify-center h-20 sm:h-24 cursor-default opacity-50">
               <div className="relative z-10 flex flex-col items-center gap-1.5 sm:gap-2 w-full">
-                <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-sky-500/5 border border-sky-400/20 flex items-center justify-center text-sky-400/60 group-hover:bg-sky-500/10 transition-all duration-300">
-                  <svg className="w-4 h-4 sm:w-6 sm:h-6 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-sky-500/5 border border-sky-400/20 flex items-center justify-center text-sky-400/60 group-hover:bg-sky-500/10 transition-all duration-300">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                   </svg>
                 </div>
-                <span className="font-medium text-sky-400/50 text-[10px] sm:text-xs text-center leading-tight tracking-wide">
+                <span className="font-medium text-sky-400/50 text-[10px] sm:text-[11px] text-center leading-tight tracking-wide">
                   Novos módulos em <br className="hidden sm:block" /> avaliação
                 </span>
               </div>

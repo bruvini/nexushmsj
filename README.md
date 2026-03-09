@@ -18,14 +18,14 @@
 
 O **Nexus** atua como o **Hub de Inteligência Hospitalar** no ambiente do **HMSJ (Hospital Municipal São José)**. Seu objetivo principal é centralizar a inteligência e a gestão hospitalar em uma única plataforma, promovendo eficiência, transparência e agilidade na tomada de decisão em processos cruciais do hospital.
 
-Atualmente, o Nexus contempla os seguintes módulos integrados:
-- 📅 **AIHs Cirurgias Eletivas**: Gestão e inteligência de cirurgias e procedimentos eletivos. Inclui fluxo de entrada em duas etapas mitigando ruídos de inserção no mapa estadual ("Aguarda Número do SISREG" -> "Validação SISREG").
-- 📋 **Kanban de Altas (Giro de Leitos)**: Núcleo avançado de gestão operacional do NIR. Combina automação de importações via RPA (Censo MV) com a **Soberania da Decisão Clínica**. Destacam-se:
-  - **Gestão Semântica de Especialidades**: Sistema dual de equipe (Principal e Acompanhantes) com proteção de nível banco de dados (`is_manual`) contra sobreposições robóticas.
-  - **Filtros e KPIs de Alta Performance**: Motor Reativo que calcula o tempo de giro de leito (Verde a Preto), monitora antibióticos cronometrados e acusa fluxos setoriais (EMAD, Trauma) instantaneamente.
-  - **Auditoria Transparente (Nexus Logs)**: O "Sino de Atividades", suportado pelo Firestore, rastreia e consolida _Logs Semânticos_ de quem fez cada ação clínica/documental em tempo real.
-  - **Universidade Nexus**: Módulo *in-app* projetado para fixar o _Onboarding_ visual prático para todo novo médico ou enfermeiro da base.
-- 🧠 **Telemonitoramento AVC (Pós-Alta)**: Fluxo completo de navegação do paciente (Triagem, Exames, Agendamentos, Desfechos e CRM) com disparos automáticos de e-mail e Kanban Reativo.
+Atualmente, o Nexus contempla os seguintes **Módulos Ativos**:
+- 📅 **AIHs Cirurgias Eletivas (Concluído)**: Gestão e inteligência de cirurgias eletivos. Integra regras de validação SISREG (duas etapas) e manuais modulares (Universidade Nexus).
+- 📊 **Indicadores & Relatórios**: Rota preparada para a malha de KPIs gerais e exportações para instâncias gerenciais.
+- 📋 **Kanban de Altas (Giro de Leitos)**: Núcleo avançado de gestão operacional do NIR. Combina automação de importações via RPA com a Soberania Clínica, Painel de Logs Semânticos e Universide Nexus acoplada.
+- 🧠 **Telemonitoramento AVC (Pós-Alta)**: Fluxo completo de navegação do paciente com disparos automáticos de e-mail e Kanban Reativo.
+
+Os próximos horizontes **(Módulos Futuros/Em Breve)** abrangerão fluxos interligados, incluindo:
+- **Atendimento Equipe MULTI**, **Automações**, **CCIH**, **EMAD**, **Gestão de Leitos UTI**, **Gestão de Usuários**, **Higienização**, **Marcação Cirúrgica**, **Plano Operativo Anual (POA)**, **Regulação de Leitos** e **Solicitação de Ajustes (TI)**.
 
 ---
 
