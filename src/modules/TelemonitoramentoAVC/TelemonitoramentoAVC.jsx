@@ -19,6 +19,7 @@ export default function TelemonitoramentoAVC() {
     const [activeTab, setActiveTab] = useState('painel')
     const [loading, setLoading] = useState(false)
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+    const [isCollapsed, setIsCollapsed] = useState(false)
 
     useEffect(() => {
         document.title = "NEXUS HMSJ | Telemonitoramento AVC"
@@ -95,11 +96,11 @@ export default function TelemonitoramentoAVC() {
                 )}
 
                 {/* Sidebar Esquerda (Drawer no Mobile, Fixo no Desktop) */}
-                <aside className={`fixed inset-y-0 left-0 w-64 bg-white border-r border-slate-200 flex flex-col shadow-xl z-50 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                <aside className={`fixed inset-y-0 left-0 ${isCollapsed ? 'w-20' : 'w-64'} bg-white border-r border-slate-200 flex flex-col shadow-xl z-50 transform transition-all duration-300 ease-in-out md:relative ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
 
                     {/* Header Sidebar Mobile */}
                     <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between md:hidden">
-                        <span className="font-bold text-sky-700 text-sm">Menu Nexus</span>
+                        <span className="font-bold text-sky-700 text-sm whitespace-nowrap">Menu Nexus</span>
                         <button onClick={() => setIsMobileMenuOpen(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200">
                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -107,13 +108,20 @@ export default function TelemonitoramentoAVC() {
                         </button>
                     </div>
 
-                    <div className="p-4 border-b border-slate-100 bg-slate-50/50 hidden md:block">
-                        <h3 className="text-xs font-bold tracking-widest text-slate-400 uppercase">Menu de Navegação</h3>
+                    {/* Toggle Desktop */}
+                    <div className={`p-4 border-b border-slate-100 bg-slate-50/50 hidden md:flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+                        {!isCollapsed && <h3 className="text-xs font-bold tracking-widest text-slate-400 uppercase whitespace-nowrap overflow-hidden transition-all duration-300">Menu de Navegação</h3>}
+                        <button onClick={() => setIsCollapsed(!isCollapsed)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 focus:outline-none transition-colors mx-auto md:mx-0" title={isCollapsed ? "Expandir Menu" : "Recolher Menu"}>
+                            <svg className={`w-5 h-5 transform transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                            </svg>
+                        </button>
                     </div>
-                    <nav className="flex-1 overflow-y-auto pt-2 pb-6 custom-scrollbar">
+
+                    <nav className="flex-1 overflow-y-auto pt-2 pb-6 custom-scrollbar overflow-x-hidden">
                         {menuGroups.map((group, gIdx) => (
                             <div key={gIdx} className="mb-4">
-                                <h3 className="text-[10px] font-bold text-slate-400 px-5 mb-2.5 uppercase tracking-wider">
+                                <h3 className={`text-[10px] font-bold text-slate-400 px-5 mb-2.5 uppercase tracking-wider whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'opacity-0 h-0 hidden m-0 p-0' : 'opacity-100'}`}>
                                     {group.title}
                                 </h3>
                                 <div className="px-3 space-y-1">
@@ -122,20 +130,21 @@ export default function TelemonitoramentoAVC() {
                                             key={item.id}
                                             onClick={() => {
                                                 setActiveTab(item.id);
-                                                setIsMobileMenuOpen(false); // Fecha menu mobile ao clicar
+                                                setIsMobileMenuOpen(false);
                                             }}
-                                            className={`group w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === item.id
+                                            title={isCollapsed ? item.label : undefined}
+                                            className={`group w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-start gap-3'} px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === item.id
                                                 ? (item.danger ? 'bg-rose-50 text-rose-700 shadow-sm border border-rose-100' : 'bg-sky-50 text-sky-700 shadow-sm border border-sky-100')
                                                 : (item.danger ? 'text-slate-600 hover:bg-rose-50 hover:text-rose-700 border border-transparent' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent')
                                                 }`}
                                         >
-                                            <svg className={`w-5 h-5 ${activeTab === item.id
+                                            <svg className={`shrink-0 w-5 h-5 ${activeTab === item.id
                                                 ? (item.danger ? 'text-rose-500' : 'text-sky-500')
                                                 : (item.danger ? 'text-slate-400 group-hover:text-rose-400' : 'text-slate-400')
                                                 }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 {item.icon}
                                             </svg>
-                                            {item.label}
+                                            <span className={`whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>{item.label}</span>
                                         </button>
                                     ))}
                                 </div>

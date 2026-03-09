@@ -1,0 +1,46 @@
+========================================================================
+DOCUMENTO DE REGRAS DE NEGÓCIO E UI - KANBAN TELEMONITORAMENTO AVC
+Projeto: Nexus HMSJ
+========================================================================
+
+1. MAPEAMENTO DE COLUNAS (Roteamento de Pacientes)
+A exibição e a posição de cada paciente no Dashboard (Kanban) dependem restritamente do valor do campo `status_monitoramento_atual` na coleção de pacientes (nexus_avc_pacientes). 
+Pacientes com status conclusivos ('ÓBITO', 'DESISTÊNCIA', 'MONITORAMENTO CONCLUÍDO', 'ENCAMINHADO PARA EMAD') não são exibidos no Kanban ativo.
+
+As colunas ativas operam sob as seguintes trigagens:
+
+-> Coluna 1: Acolhimento
+   Condição: status_monitoramento_atual == 'REALIZAR ACOLHIMENTO'
+   Resumo Injetado: "Aguardando contato inicial"
+
+-> Coluna 2: Exames Pendentes
+   Condição: status_monitoramento_atual == 'VERIFICAR EXAMES'
+   Resumo Injetado: "Checar exames em andamento"
+
+-> Coluna 3: Precisa Agendar
+   Condição: status_monitoramento_atual == 'AGENDAR CONSULTA'
+   Resumo Injetado: "Prioridade: Marcar retorno"
+
+-> Coluna 4: Próximas Consultas
+   Condição: status_monitoramento_atual == 'AGUARDANDO CONSULTA'
+   Comportamento Especial:
+   - O sistema rastreia as consultas ativas futuras (`data_agendamento >= Hoje` e `status == AGENDADO`).
+   - Se houver consulta acoplada: Resumo Injetado será "Consulta em {DATA}".
+   - Se houver falha de consistência temporal: Resumo Injetado será "Consulta futura agendada".
+   - Ordenação: Exclusivo dessa coluna. Os cards são ordenados de forma crescente pela data da consulta, exibindo as mais próximas do topo.
+
+-> Coluna 5: Desfecho Pendente
+   Condição: status_monitoramento_atual == 'VERIFICAR DESFECHO'
+   Resumo Injetado: "Realizou consulta, aguardando parecer"
+
+
+2. ANATOMIA DOS CARTÕES (Cards Conditionals)
+A interface de cada cartão (renderizado em DashboardAVC.jsx) exibe uma microcópia compacta para leitura dinâmica no fluxo hospitalar.
+A estrutura visual segue a seguinte hierarquia top-down:
+
+* Bordas de Significação: Cada cartão herda uma faixa sutil lateral esquerda com a cor exata do tema de sua coluna (Orange, Yellow, Red, Blue ou Purple).
+* Título Primário: Nome completo do paciente em destaque (Negrito) na parte superior.
+* Bloco Secundário (Dados Identificadores em text-10px):
+  - À Esquerda: O número do Prontuário, antecedido por "Pr:".
+  - À Direita: Telefone de contato prioritário do paciente (ou "Sem telefone").
+* Bloco Terciário (Call to Action/Resumo de Feedback): Uma caixa cinza de destaque exibindo estritamente a string processada dinamicamente pelo servidor baseada na Coluna em que o paciente se encontra (Os "Resumos Injetados" descritos na Seção 1 deste documento).
