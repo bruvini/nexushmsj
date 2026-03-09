@@ -5,6 +5,8 @@ const PACIENTES_COLLECTION = 'nexus_avc_pacientes';
 const LOGS_COLLECTION = 'nexus_avc_logs';
 const CONFIG_COLLECTION = 'nexus_avc_config';
 const EXAMES_COLLECTION = 'nexus_avc_exames';
+const CONSULTAS_COLLECTION = 'nexus_avc_consultas';
+const DESFECHOS_COLLECTION = 'nexus_avc_desfechos';
 
 /**
  * Registra um log operacional de qualquer ação de salvamento
@@ -293,6 +295,55 @@ export const importarConsultasLoteCSV = async (consultasArray) => {
 };
 
 /**
+ * Realiza upload agressivo em Lotes (Batches) para a Coleção de Desfechos (Max 500 por transação)
+ * @param {Array} desfechosArray Array de objetos higienizados de desfechos com vínculo obrigatório
+ */
+export const importarDesfechosLoteCSV = async (desfechosArray) => {
+    try {
+        if (!desfechosArray || desfechosArray.length === 0) return { success: false, error: 'Lista vazia' };
+
+        const chunkSize = 500;
+        let totalImported = 0;
+
+        for (let i = 0; i < desfechosArray.length; i += chunkSize) {
+            const chunk = desfechosArray.slice(i, i + chunkSize);
+            const batch = writeBatch(db);
+
+            chunk.forEach((desfechoObj) => {
+                const { id_desfecho, ...dadosDesfecho } = desfechoObj;
+
+                // Vínculo obrigatório ao paciente
+                if (!dadosDesfecho.pacienteId) return;
+
+                const docRef = id_desfecho
+                    ? doc(db, DESFECHOS_COLLECTION, id_desfecho)
+                    : doc(collection(db, DESFECHOS_COLLECTION));
+
+                const cleanData = {
+                    ...dadosDesfecho,
+                    isImportadoLegado: true,
+                    importedAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                };
+                if (!cleanData.createdAt) cleanData.createdAt = serverTimestamp();
+
+                batch.set(docRef, cleanData, { merge: true });
+            });
+
+            await batch.commit();
+            totalImported += chunk.length;
+        }
+
+        await logOperation('IMPORTACAO_LOTE_DESFECHOS_CSV', `Foram importados/atualizados ${totalImported} desfechos do legado.`);
+
+        return { success: true, count: totalImported };
+    } catch (error) {
+        console.error("Erro crítico ao executar Batch Import de Desfechos:", error);
+        return { success: false, error: error.message };
+    }
+};
+
+/**
  * ==========================================
  * ARQUITETURA DE ROTEAMENTO DO KANBAN AVC
  * ==========================================
@@ -312,6 +363,19 @@ export const importarConsultasLoteCSV = async (consultasArray) => {
  * 
  * Isso exige um onSnapshot root em Pacientes, cruzando em tempo real com getDocs 
  * ou onSnapshot nas coleções nexus_avc_exames e nexus_avc_consultas.
+ * 
+ * ==========================================
+ * ROTAS DE CONCLUSÃO E REATIVAÇÃO (DESFECHOS)
+ * ==========================================
+ * O Kanban derivará o status final avaliando cronologicamente os Desfechos (nexus_avc_desfechos):
+ * 
+ * - REATIVAÇÃO DE CICLO: Se o desfecho mais recente for `RETORNO_EXAMES`, `RETORNO_MEDICO`, 
+ *   ou `FALTA_REAGENDAR`, ou o array `novos_exames` possuir itens atrelados, o paciente não 
+ *   está encerrado. Retorna às dinâmicas ativas ("Verificar Exames", "Precisa Agendar").
+ * 
+ * - ENCERRAMENTO DE CICLO: Se culminar em `ALTA`, `DESISTÊNCIA`, `FALTA_ENCERRAR`, 
+ *   `ALTA_EMAD` ou `ÓBITO`, o front tranca o paciente na macroetapa "Concluídos" (Oculto 
+ *   do fluxo diário caso determinado pelas views).
  */
 
 /**
@@ -433,8 +497,6 @@ export const updateConfigList = async (tipo, acao, valor) => {
         return { success: false, error };
     }
 };
-
-const CONSULTAS_COLLECTION = 'nexus_avc_consultas';
 
 /**
  * Busca pacientes para a tela de Agendamento
@@ -722,8 +784,6 @@ export const updateExamStatus = async (examId, newStatus, patientId) => {
         return { success: false, error };
     }
 };
-
-const DESFECHOS_COLLECTION = 'nexus_avc_desfechos';
 
 /**
  * Busca pacientes na fase de Desfecho, cruzando com os dados da consulta original

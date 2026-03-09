@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { getAVCConfigs, updateConfigList, importarPacientesLoteCSV, importarExamesLoteCSV, importarConsultasLoteCSV } from '../services/avcService';
+import { getAVCConfigs, updateConfigList, importarPacientesLoteCSV, importarExamesLoteCSV, importarConsultasLoteCSV, importarDesfechosLoteCSV } from '../services/avcService';
 
 export default function ConfiguracoesAVC() {
     const [loading, setLoading] = useState(true);
@@ -8,6 +8,7 @@ export default function ConfiguracoesAVC() {
     const [filePacientes, setFilePacientes] = useState(null);
     const [fileExames, setFileExames] = useState(null);
     const [fileConsultas, setFileConsultas] = useState(null);
+    const [fileDesfechos, setFileDesfechos] = useState(null);
     const [isMigrating, setIsMigrating] = useState(false);
     const [configs, setConfigs] = useState({ exames: [], medicacoes: [], emails: [] });
 
@@ -405,8 +406,108 @@ export default function ConfiguracoesAVC() {
         });
     };
 
+    const handleMigracaoDesfechos = async () => {
+        return new Promise((resolve) => {
+            if (!fileDesfechos) {
+                resolve({ success: false, skipped: true });
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const text = e.target.result;
+                if (!text) {
+                    toast.error('O arquivo de Desfechos está vazio.');
+                    resolve({ success: false }); return;
+                }
+
+                const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+                if (lines.length < 2) {
+                    toast.error('O arquivo CSV de Desfechos parece não conter dados.');
+                    resolve({ success: false }); return;
+                }
+
+                const headerLine = lines[0];
+                const separator = headerLine.includes(';') ? ';' : ',';
+                const headers = headerLine.split(separator).map(h => h.trim().replace(/^"|"$/g, ''));
+                const sanitizeString = (val) => val ? val.trim().replace(/^"|"$/g, '').toUpperCase() : '';
+
+                const parsedData = [];
+                let orphanosCount = 0;
+
+                for (let i = 1; i < lines.length; i++) {
+                    const currentLine = lines[i].split(separator);
+                    if (currentLine.length < headers.length - 2) continue;
+
+                    const rowObj = {};
+                    headers.forEach((h, index) => {
+                        rowObj[h] = currentLine[index] !== undefined ? currentLine[index] : '';
+                    });
+
+                    try {
+                        const idPaciente = rowObj['id_paciente'] ? rowObj['id_paciente'].trim().replace(/^"|"$/g, '') : null;
+
+                        // Validação Crítica (Vínculo)
+                        if (!idPaciente) {
+                            orphanosCount++;
+                            continue;
+                        }
+
+                        // Formatação do timestamp ISO Completo
+                        const parseDateTime = (val) => {
+                            if (!val) return null;
+                            const clean = val.trim().replace(/^"|"$/g, '');
+                            if (clean.includes('/') && clean.includes(':')) {
+                                const [datePart, timePart] = clean.split(' ');
+                                const dParts = datePart.split('/');
+                                if (dParts.length === 3) {
+                                    return `${dParts[2]}-${dParts[1].padStart(2, '0')}-${dParts[0].padStart(2, '0')}T${timePart}`;
+                                }
+                            }
+                            return clean;
+                        };
+
+                        const baseObj = {
+                            id_desfecho: rowObj['id_desfecho'] ? rowObj['id_desfecho'].trim().replace(/^"|"$/g, '') : null,
+                            pacienteId: idPaciente,
+                            consultaRefId: rowObj['id_consulta_ref'] ? rowObj['id_consulta_ref'].trim().replace(/^"|"$/g, '') : null,
+                            tipo_desfecho: sanitizeString(rowObj['tipo_desfecho'] || 'OUTROS'),
+                            dh_desfecho: parseDateTime(rowObj['dh_desfecho']) || null,
+                            observacoes: rowObj['observacoes'] ? rowObj['observacoes'].trim().replace(/^"|"$/g, '') : ''
+                        };
+
+                        // Novos Exames => string com + virando Array
+                        const strExames = (rowObj['novos_exames'] || '').trim().replace(/^"|"$/g, '');
+                        baseObj.novos_exames = strExames ? strExames.replace(/\+/g, ',').split(',').map(s => s.trim().toUpperCase()).filter(s => s) : [];
+
+                        parsedData.push(baseObj);
+                    } catch (err) {
+                        console.error("Erro ao mapear linha de desfecho:", i, err);
+                    }
+                }
+
+                if (parsedData.length === 0) {
+                    toast.error('Nenhum desfecho válido (com paciente) encontrado no CSV.');
+                    resolve({ success: false }); return;
+                }
+
+                const result = await importarDesfechosLoteCSV(parsedData);
+                if (result.success && orphanosCount > 0) {
+                    result.orphanosCount = orphanosCount;
+                }
+                resolve(result);
+            };
+
+            reader.onerror = () => {
+                toast.error('Falha ao ler o arquivo CSV de Desfechos.');
+                resolve({ success: false });
+            };
+            reader.readAsText(fileDesfechos, 'utf-8');
+        });
+    };
+
     const handleExecutarImportacaoGeral = async () => {
-        if (!filePacientes && !fileExames && !fileConsultas) {
+        if (!filePacientes && !fileExames && !fileConsultas && !fileDesfechos) {
             toast.warn('Selecione ao menos um arquivo CSV para a importação.');
             return;
         }
@@ -448,6 +549,19 @@ export default function ConfiguracoesAVC() {
             mudouAlgo = true;
         } else if (resConsultas && resConsultas.error) {
             toast.error(`Falha Consultas: ${resConsultas.error}`);
+        }
+
+        // Tries Desfechos
+        const resDesfechos = await handleMigracaoDesfechos();
+        if (resDesfechos && resDesfechos.success) {
+            toast.success(`${resDesfechos.count} desfechos importados e vinculados aos pacientes com sucesso!`);
+            if (resDesfechos.orphanosCount > 0) {
+                toast.warning(`${resDesfechos.orphanosCount} desfechos ignorados pois não possuíam paciente vinculado.`);
+            }
+            setFileDesfechos(null);
+            mudouAlgo = true;
+        } else if (resDesfechos && resDesfechos.error) {
+            toast.error(`Falha Desfechos: ${resDesfechos.error}`);
         }
 
         if (mudouAlgo) {
@@ -576,9 +690,20 @@ export default function ConfiguracoesAVC() {
                                 />
                             </div>
 
+                            {/* DESFECHOS ATIVO */}
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-sm font-semibold text-slate-700">Desfechos</label>
+                                <input
+                                    type="file"
+                                    accept=".csv"
+                                    disabled={isMigrating}
+                                    onChange={(e) => setFileDesfechos(e.target.files[0])}
+                                    className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 border border-slate-200 rounded-lg cursor-pointer bg-slate-50 focus:outline-none"
+                                />
+                            </div>
+
                             {[
                                 "Logs do Sistema Antigo",
-                                "Desfechos",
                                 "Contatos Realizados"
                             ].map((label, idx) => (
                                 <div key={idx} className="flex flex-col gap-1.5 opacity-50 cursor-not-allowed">
@@ -599,6 +724,7 @@ export default function ConfiguracoesAVC() {
                                     setFilePacientes(null);
                                     setFileExames(null);
                                     setFileConsultas(null);
+                                    setFileDesfechos(null);
                                     setShowModalMigracao(false);
                                 }}
                                 disabled={isMigrating}
