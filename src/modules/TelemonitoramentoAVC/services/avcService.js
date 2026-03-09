@@ -394,6 +394,52 @@ export const importarContatosLoteCSV = async (contatosArray) => {
 };
 
 /**
+ * Realiza upload agressivo em Lotes (Batches) para a Coleção de Logs (Max 500 por transação)
+ * @param {Array} logsArray Array de objetos higienizados de logs com vínculo obrigatório
+ */
+export const importarLogsLoteCSV = async (logsArray) => {
+    try {
+        if (!logsArray || logsArray.length === 0) return { success: false, error: 'Lista vazia' };
+
+        const chunkSize = 500;
+        let totalImported = 0;
+
+        for (let i = 0; i < logsArray.length; i += chunkSize) {
+            const chunk = logsArray.slice(i, i + chunkSize);
+            const batch = writeBatch(db);
+
+            chunk.forEach((logObj) => {
+                // Vínculo obrigatório ao paciente
+                if (!logObj.pacienteId) return;
+
+                // Gera auto-ID pois logs não têm e nem precisam de ID legado resgatável
+                const newLogRef = doc(collection(db, LOGS_COLLECTION));
+
+                const cleanData = {
+                    ...logObj,
+                    isImportadoLegado: true,
+                    importedAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                };
+                if (!cleanData.createdAt) cleanData.createdAt = serverTimestamp();
+
+                batch.set(newLogRef, cleanData); // Não precisa merge pois a doc_ref é sempre nova
+            });
+
+            await batch.commit();
+            totalImported += chunk.length;
+        }
+
+        await logOperation('IMPORTACAO_LOTE_LOGS_CSV', `Foram importados ${totalImported} logs históricos do legado.`);
+
+        return { success: true, count: totalImported };
+    } catch (error) {
+        console.error("Erro crítico ao executar Batch Import de Logs:", error);
+        return { success: false, error: error.message };
+    }
+};
+
+/**
  * ==========================================
  * ARQUITETURA DE ROTEAMENTO DO KANBAN AVC
  * ==========================================

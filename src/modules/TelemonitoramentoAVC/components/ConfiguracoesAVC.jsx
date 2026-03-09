@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { getAVCConfigs, updateConfigList, importarPacientesLoteCSV, importarExamesLoteCSV, importarConsultasLoteCSV, importarDesfechosLoteCSV, importarContatosLoteCSV } from '../services/avcService';
+import { getAVCConfigs, updateConfigList, importarPacientesLoteCSV, importarExamesLoteCSV, importarConsultasLoteCSV, importarDesfechosLoteCSV, importarContatosLoteCSV, importarLogsLoteCSV } from '../services/avcService';
 
 export default function ConfiguracoesAVC() {
     const [loading, setLoading] = useState(true);
@@ -10,6 +10,7 @@ export default function ConfiguracoesAVC() {
     const [fileConsultas, setFileConsultas] = useState(null);
     const [fileDesfechos, setFileDesfechos] = useState(null);
     const [fileContatos, setFileContatos] = useState(null);
+    const [fileLogs, setFileLogs] = useState(null);
     const [isMigrating, setIsMigrating] = useState(false);
     const [configs, setConfigs] = useState({ exames: [], medicacoes: [], emails: [] });
 
@@ -618,8 +619,105 @@ export default function ConfiguracoesAVC() {
         });
     };
 
+    const handleMigracaoLogs = async () => {
+        return new Promise((resolve) => {
+            if (!fileLogs) {
+                resolve({ success: false, skipped: true });
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const text = e.target.result;
+                if (!text) {
+                    toast.error('O arquivo de Logs está vazio.');
+                    resolve({ success: false }); return;
+                }
+
+                const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+                if (lines.length < 2) {
+                    toast.error('O arquivo CSV de Logs parece não conter dados.');
+                    resolve({ success: false }); return;
+                }
+
+                const headerLine = lines[0];
+                const separator = headerLine.includes(';') ? ';' : ',';
+                const headers = headerLine.split(separator).map(h => h.trim().replace(/^"|"$/g, ''));
+
+                const sanitizeString = (val) => val ? val.trim().replace(/^"|"$/g, '') : '';
+
+                const parsedData = [];
+                let orphanosCount = 0;
+
+                for (let i = 1; i < lines.length; i++) {
+                    const currentLine = lines[i].split(separator);
+                    // Logs podem ter arrays de detalhes com vírgulas internas soltas, pegamos os limitadores padrão
+                    if (currentLine.length < headers.length - 2) continue;
+
+                    const rowObj = {};
+                    headers.forEach((h, index) => {
+                        rowObj[h] = currentLine[index] !== undefined ? currentLine[index] : '';
+                    });
+
+                    try {
+                        const idPaciente = rowObj['id_paciente'] ? rowObj['id_paciente'].trim().replace(/^"|"$/g, '') : null;
+
+                        // Validação Crítica (Vínculo Órfão)
+                        if (!idPaciente) {
+                            orphanosCount++;
+                            continue;
+                        }
+
+                        // Formatação `dh_log` para ISO (YYYY-MM-DDTHH:mm:ss)
+                        const parseDateTime = (val) => {
+                            if (!val) return null;
+                            const clean = val.trim().replace(/^"|"$/g, '');
+                            if (clean.includes('/') && clean.includes(':')) {
+                                const [datePart, timePart] = clean.split(' ');
+                                const dParts = datePart.split('/');
+                                if (dParts.length === 3) {
+                                    return `${dParts[2]}-${dParts[1].padStart(2, '0')}-${dParts[0].padStart(2, '0')}T${timePart}`;
+                                }
+                            }
+                            return clean;
+                        };
+
+                        const baseObj = {
+                            pacienteId: idPaciente,
+                            dh_log: parseDateTime(rowObj['dh_log']),
+                            usuario: sanitizeString(rowObj['usuario']).toLowerCase(),
+                            tipo_acao: sanitizeString(rowObj['tipo_acao']).toUpperCase(),
+                            detalhe_mudanca: sanitizeString(rowObj['detalhe_mudanca'])
+                        };
+
+                        parsedData.push(baseObj);
+                    } catch (err) {
+                        console.error("Erro ao mapear linha de log:", i, err);
+                    }
+                }
+
+                if (parsedData.length === 0) {
+                    toast.error('Nenhum log válido (com paciente) encontrado no CSV.');
+                    resolve({ success: false }); return;
+                }
+
+                const result = await importarLogsLoteCSV(parsedData);
+                if (result.success && orphanosCount > 0) {
+                    result.orphanosCount = orphanosCount;
+                }
+                resolve(result);
+            };
+
+            reader.onerror = () => {
+                toast.error('Falha ao ler o arquivo CSV de Logs.');
+                resolve({ success: false });
+            };
+            reader.readAsText(fileLogs, 'utf-8');
+        });
+    };
+
     const handleExecutarImportacaoGeral = async () => {
-        if (!filePacientes && !fileExames && !fileConsultas && !fileDesfechos && !fileContatos) {
+        if (!filePacientes && !fileExames && !fileConsultas && !fileDesfechos && !fileContatos && !fileLogs) {
             toast.warn('Selecione ao menos um arquivo CSV para a importação.');
             return;
         }
@@ -687,6 +785,19 @@ export default function ConfiguracoesAVC() {
             mudouAlgo = true;
         } else if (resContatos && resContatos.error) {
             toast.error(`Falha Contatos: ${resContatos.error}`);
+        }
+
+        // Tries Logs
+        const resLogs = await handleMigracaoLogs();
+        if (resLogs && resLogs.success) {
+            toast.success(`${resLogs.count} logs de histórico do sistema importados com sucesso!`);
+            if (resLogs.orphanosCount > 0) {
+                toast.warning(`${resLogs.orphanosCount} logs ignorados pois não possuíam paciente vinculado.`);
+            }
+            setFileLogs(null);
+            mudouAlgo = true;
+        } else if (resLogs && resLogs.error) {
+            toast.error(`Falha Logs: ${resLogs.error}`);
         }
 
         if (mudouAlgo) {
@@ -839,19 +950,17 @@ export default function ConfiguracoesAVC() {
                                 />
                             </div>
 
-                            {[
-                                "Logs do Sistema Antigo"
-                            ].map((label, idx) => (
-                                <div key={idx} className="flex flex-col gap-1.5 opacity-50 cursor-not-allowed">
-                                    <label className="text-sm font-semibold text-slate-700">{label}</label>
-                                    <input
-                                        type="file"
-                                        accept=".csv"
-                                        disabled={true}
-                                        className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-slate-200 file:text-slate-500 border border-slate-200 rounded-lg cursor-not-allowed bg-slate-100 focus:outline-none"
-                                    />
-                                </div>
-                            ))}
+                            {/* LOGS DO SISTEMA ATIVO */}
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-sm font-semibold text-slate-700">Logs do Sistema Antigo</label>
+                                <input
+                                    type="file"
+                                    accept=".csv"
+                                    disabled={isMigrating}
+                                    onChange={(e) => setFileLogs(e.target.files[0])}
+                                    className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 border border-slate-200 rounded-lg cursor-pointer bg-slate-50 focus:outline-none"
+                                />
+                            </div>
                         </div>
 
                         <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-slate-100">
@@ -862,6 +971,7 @@ export default function ConfiguracoesAVC() {
                                     setFileConsultas(null);
                                     setFileDesfechos(null);
                                     setFileContatos(null);
+                                    setFileLogs(null);
                                     setShowModalMigracao(false);
                                 }}
                                 disabled={isMigrating}
