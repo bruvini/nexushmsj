@@ -22,10 +22,6 @@ export default function FormAgendamento() {
 
     const [lotacao, setLotacao] = useState(null);
 
-    useEffect(() => {
-        fetchInitialData();
-    }, []);
-
     const fetchInitialData = async () => {
         setLoadingInitial(true);
         const pRes = await getAgendamentoPatients();
@@ -34,6 +30,11 @@ export default function FormAgendamento() {
         }
         setLoadingInitial(false);
     };
+
+    useEffect(() => {
+        fetchInitialData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handlePacienteChange = async (e) => {
         const pId = e.target.value;

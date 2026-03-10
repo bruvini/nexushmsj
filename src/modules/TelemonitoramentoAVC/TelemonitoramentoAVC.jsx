@@ -19,7 +19,7 @@ export default function TelemonitoramentoAVC() {
     const [activeTab, setActiveTab] = useState('painel')
     const [loading, setLoading] = useState(false)
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-    const [isCollapsed, setIsCollapsed] = useState(false)
+    const [isCollapsed, setIsCollapsed] = useState(true);
 
     useEffect(() => {
         document.title = "NEXUS HMSJ | Telemonitoramento AVC"

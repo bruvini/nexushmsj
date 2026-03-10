@@ -256,7 +256,7 @@ function KanbanColumn({ title, icon, colorTheme, items }) {
                             <h4 className="text-sm font-bold text-slate-800 mb-1 leading-tight group-hover:text-slate-900 transition-colors">{card.nome}</h4>
 
                             <div className="flex justify-between items-center text-[10px] text-slate-500 font-medium mb-3">
-                                <span>Nasc: {formatNascimento(card.dataNascimento)}</span>
+                                <span>Nasc: {formatNascimento(card.data_nascimento)}</span>
                             </div>
 
                             <div className="text-xs text-slate-600 bg-slate-50 p-2 rounded border border-slate-100 font-medium">

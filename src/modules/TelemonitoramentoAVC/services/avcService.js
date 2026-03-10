@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, doc, setDoc, updateDoc, query, where, orderBy, limit, serverTimestamp, getDoc, arrayUnion, arrayRemove, writeBatch, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, setDoc, updateDoc, query, where, orderBy, limit, serverTimestamp, getDoc, arrayUnion, arrayRemove, writeBatch, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../services/firebase';
 
 const PACIENTES_COLLECTION = 'nexus_avc_pacientes';
@@ -932,7 +932,7 @@ export const getPatientsForOutcome = async () => {
                 if (!cSnap.empty) {
                     ultimaConsulta = { id: cSnap.docs[0].id, ...cSnap.docs[0].data() };
                 }
-            } catch (e) {
+            } catch (error) {
                 console.warn("Nenhuma consulta confirmada atrelada encontrada para", pId);
             }
 
@@ -1572,9 +1572,10 @@ export const subscribeDashboardData = (callback) => {
                 id: p.id,
                 nome: p.nome,
                 prontuario: p.prontuario || 'N/I',
-                data_nascimento: p.data_nascimento,
+                data_nascimento: p.dataNascimento || p.data_nascimento,
                 status: p.status_monitoramento_atual,
                 telefone: p.telefone || p.telefone2 || 'Sem telefone',
+                data_inclusao: p.data_inclusao,
                 resumo: ''
             };
 

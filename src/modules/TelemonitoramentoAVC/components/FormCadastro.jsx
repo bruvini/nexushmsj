@@ -217,7 +217,7 @@ export default function FormCadastro() {
 
                         <div className="flex flex-col gap-2 lg:col-span-1">
                             <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Profissional solicitante <span className="text-red-500">*</span></label>
-                            <input required type="text" name="profissionalResponsavel" value={formData.profissionalResponsavel} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-sm text-slate-700" placeholder="Seu Nome" />
+                            <input required type="text" name="profissionalResponsavel" value={formData.profissionalResponsavel} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-sm text-slate-700" placeholder="Ex: Dr. João Silva" />
                         </div>
                     </div>
                 </div>

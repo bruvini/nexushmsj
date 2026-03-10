@@ -12,10 +12,6 @@ export default function FormPerfil() {
     // Unified state for patient profile (from 5 collections)
     const [perfilData, setPerfilData] = useState(null);
 
-    useEffect(() => {
-        fetchPacientesList();
-    }, []);
-
     const fetchPacientesList = async () => {
         setLoadingInitial(true);
         const res = await getPacientes();
@@ -28,6 +24,11 @@ export default function FormPerfil() {
         }
         setLoadingInitial(false);
     };
+
+    useEffect(() => {
+        fetchPacientesList();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handlePatientChange = async (e) => {
         const pId = e.target.value;
