@@ -15,10 +15,6 @@ export default function FormExames() {
     const [novoExameNome, setNovoExameNome] = useState('');
     const [salvandoExameManual, setSalvandoExameManual] = useState(false);
 
-    useEffect(() => {
-        fetchInitialData();
-    }, []);
-
     const fetchInitialData = async () => {
         setLoadingInitial(true);
 
@@ -36,6 +32,11 @@ export default function FormExames() {
 
         setLoadingInitial(false);
     };
+
+    useEffect(() => {
+        fetchInitialData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handlePacienteChange = async (e) => {
         const pId = e.target.value;
@@ -226,7 +227,7 @@ export default function FormExames() {
                                             {examesPaciente.map((exame) => (
                                                 <tr key={exame.id} className="hover:bg-slate-50 transition-colors">
                                                     <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="text-sm font-medium text-slate-800">{exame.nome}</div>
+                                                        <div className="text-sm font-medium text-slate-800">{exame.nome_exame || exame.nome || exame.exame || 'NOME INDISPONÍVEL'}</div>
                                                         <div className="text-[10px] text-slate-400 font-mono mt-0.5 md:hidden">{exame.origem}</div>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">

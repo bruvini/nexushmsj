@@ -17,6 +17,7 @@ export default function FormAcolhimento() {
         motivo_inelegibilidade: '',
         dataInternacao: '',
         prontuario: '',
+        sexo: '', // ADDED
         telefone1: '',
         telefone2: '',
         cidade: '',
@@ -228,7 +229,16 @@ export default function FormAcolhimento() {
                                         <input required type="date" name="dataInternacao" value={formData.dataInternacao} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-[#8e44ad] transition-all text-sm text-slate-700" />
                                     </div>
 
-                                    <div className="flex flex-col gap-2 lg:col-span-2">
+                                    <div className="flex flex-col gap-2 lg:col-span-1">
+                                        <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Sexo <span className="text-red-500">*</span></label>
+                                        <select required name="sexo" value={formData.sexo} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-[#8e44ad] transition-all text-sm text-slate-700">
+                                            <option value="">SELECIONE...</option>
+                                            <option value="MASCULINO">MASCULINO</option>
+                                            <option value="FEMININO">FEMININO</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="flex flex-col gap-2 lg:col-span-1">
                                         <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Cidade Residente <span className="text-red-500">*</span></label>
                                         <select required name="cidade" value={formData.cidade} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-[#8e44ad] transition-all text-sm text-slate-700">
                                             <option value="">-- SELECIONE A CIDADE --</option>

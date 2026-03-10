@@ -273,7 +273,7 @@ function KanbanColumn({ title, icon, colorTheme, items }) {
                                             {card.exames.map(ex => (
                                                 <li key={ex.id} className="text-[10px] flex items-center gap-1 text-slate-600 leading-tight">
                                                     <span>{ex.status === 'PENDENTE' ? '⏳' : ex.status === 'CONCLUÍDO' || ex.status === 'REALIZADO' ? '✅' : '❌'}</span>
-                                                    <span className="truncate" title={ex.nome}>{ex.nome}</span>
+                                                    <span className="truncate" title={ex.nome_exame || ex.nome || ex.exame || 'NOME INDISPONÍVEL'}>{ex.nome_exame || ex.nome || ex.exame || 'NOME INDISPONÍVEL'}</span>
                                                 </li>
                                             ))}
                                         </ul>

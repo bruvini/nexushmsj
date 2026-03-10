@@ -797,14 +797,20 @@ export const getExamsByPatient = async (patientId) => {
     try {
         const q = query(
             collection(db, EXAMES_COLLECTION),
-            where("id_paciente", "==", patientId),
-            orderBy("createdAt", "asc")
+            where("id_paciente", "==", patientId)
         );
         const querySnapshot = await getDocs(q);
 
         let exames = [];
         querySnapshot.forEach((doc) => {
             exames.push({ id: doc.id, ...doc.data() });
+        });
+
+        // Ordenação em memória para não depender de Composite Index (Bug Fix)
+        exames.sort((a, b) => {
+            const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+            const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+            return timeA - timeB;
         });
 
         if (exames.length === 0) {
