@@ -2,11 +2,27 @@ import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { subscribeDashboardData } from '../services/avcService';
 import { differenceInDays, parseISO, format, isValid } from 'date-fns';
+import FormAcolhimento from './FormAcolhimento';
+import FormExames from './FormExames';
 
 export default function DashboardAVC() {
     const [loading, setLoading] = useState(true);
     const [dashboardData, setDashboardData] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+
+    const [modalAcolhimentoAberto, setModalAcolhimentoAberto] = useState(false);
+    const [modalExamesAberto, setModalExamesAberto] = useState(false);
+    const [pacienteAlvo, setPacienteAlvo] = useState(null);
+
+    const handleAcolhimentoClose = () => {
+        setModalAcolhimentoAberto(false);
+        setPacienteAlvo(null);
+    };
+
+    const handleExamesClose = () => {
+        setModalExamesAberto(false);
+        setPacienteAlvo(null);
+    };
 
     useEffect(() => {
         const unsubscribe = subscribeDashboardData((res) => {
@@ -138,6 +154,7 @@ export default function DashboardAVC() {
                     icon="✋"
                     colorTheme="orange"
                     items={filterKanban(kanban.acolhimento).filter(item => item.status === 'REALIZAR ACOLHIMENTO')}
+                    onCardClick={(card) => { setPacienteAlvo(card); setModalAcolhimentoAberto(true); }}
                 />
 
                 {/* COL 2: Exames */}
@@ -146,6 +163,7 @@ export default function DashboardAVC() {
                     icon="🔬"
                     colorTheme="yellow"
                     items={filterKanban(kanban.exames)}
+                    onCardClick={(card) => { setPacienteAlvo(card); setModalExamesAberto(true); }}
                 />
 
                 {/* COL 3: Agendar */}
@@ -172,12 +190,20 @@ export default function DashboardAVC() {
                     items={filterKanban(kanban.desfecho)}
                 />
             </div>
+
+            {/* Modais Contextuais */}
+            {modalAcolhimentoAberto && (
+                <FormAcolhimento pacientePreSelecionado={pacienteAlvo} onClose={handleAcolhimentoClose} />
+            )}
+            {modalExamesAberto && (
+                <FormExames pacientePreSelecionado={pacienteAlvo} onClose={handleExamesClose} />
+            )}
         </div>
     );
 }
 
 // Componente Columns (Renderização Interna)
-function KanbanColumn({ title, icon, colorTheme, items }) {
+function KanbanColumn({ title, icon, colorTheme, items, onCardClick }) {
 
     const themeMaps = {
         orange: { bg: 'bg-orange-50/50', borderTop: 'border-t-orange-400', badge: 'bg-orange-100 text-orange-800' },
@@ -249,7 +275,11 @@ function KanbanColumn({ title, icon, colorTheme, items }) {
                     </div>
                 ) : (
                     items.map((card) => (
-                        <div key={card.id} className="bg-white p-3.5 rounded-lg shadow-sm border border-slate-200 hover:shadow-md transition-shadow cursor-default group relative overflow-hidden">
+                        <div
+                            key={card.id}
+                            onClick={onCardClick ? () => onCardClick(card) : undefined}
+                            className={`bg-white p-3.5 rounded-lg shadow-sm border border-slate-200 transition-all group relative overflow-hidden ${onCardClick ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:ring-2 ' + theme.borderTop.replace('border-t-', 'hover:ring-') : 'cursor-default hover:shadow-md'}`}
+                        >
                             {/* Accent indicator */}
                             <div className={`absolute left-0 top-0 bottom-0 w-1 ${theme.borderTop.replace('border-t-', 'bg-')} opacity-0 group-hover:opacity-100 transition-opacity`}></div>
 

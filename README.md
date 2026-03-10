@@ -22,7 +22,7 @@ Atualmente, o Nexus contempla os seguintes **Módulos Ativos**:
 - 📅 **AIHs Cirurgias Eletivas (Concluído)**: Gestão e inteligência de cirurgias eletivos. Integra regras de validação SISREG (duas etapas) e manuais modulares (Universidade Nexus).
 - 📊 **Indicadores & Relatórios**: Rota preparada para a malha de KPIs gerais e exportações para instâncias gerenciais.
 - 📋 **Kanban de Altas (Giro de Leitos)**: Núcleo avançado de gestão operacional do NIR. Combina automação de importações via RPA com a Soberania Clínica, Painel de Logs Semânticos e Universide Nexus acoplada.
-- 🧠 **Telemonitoramento AVC (Pós-Alta)**: Fluxo completo de navegação do paciente com disparos automáticos de e-mail e Kanban Reativo.
+- 🧠 **Telemonitoramento AVC (Pós-Alta) (Concluído)**: Navegação Reativa via Kanban (pacientes transferidos sistemicamente por resolução de exames), UX estritamente contextual (Progressive Profiling no Acolhimento e Ações via Modal) e completude da ferramenta integrada de Importação em Massa Legada (CSV Batch Import).
 
 Os próximos horizontes **(Módulos Futuros/Em Breve)** abrangerão fluxos interligados, incluindo:
 - **Atendimento Equipe MULTI**, **Automações**, **CCIH**, **EMAD**, **Gestão de Leitos UTI**, **Gestão de Usuários**, **Higienização**, **Marcação Cirúrgica**, **Plano Operativo Anual (POA)**, **Regulação de Leitos** e **Solicitação de Ajustes (TI)**.

@@ -3,7 +3,7 @@ import { toast } from 'react-toastify';
 import { getPendingAcolhimento, saveAcolhimento, getAVCConfigs } from '../services/avcService';
 import { cidadesSC } from '../../../utils/cidadesSC';
 
-export default function FormAcolhimento() {
+export default function FormAcolhimento({ pacientePreSelecionado, onClose }) {
     const [loading, setLoading] = useState(false);
     const [loadingInitial, setLoadingInitial] = useState(true);
 
@@ -30,10 +30,19 @@ export default function FormAcolhimento() {
     const fetchInitialData = async () => {
         setLoadingInitial(true);
 
-        // Busca pacientes pendentes
-        const pRes = await getPendingAcolhimento();
-        if (pRes.success) {
-            setPacientesPendentes(pRes.data);
+        if (!pacientePreSelecionado) {
+            // Busca pacientes pendentes
+            const pRes = await getPendingAcolhimento();
+            if (pRes.success) {
+                setPacientesPendentes(pRes.data);
+            }
+        } else {
+            setSelectedPacienteId(pacientePreSelecionado.id);
+            setFormData(prev => ({
+                ...initialState, // Reseta form antes de preencher
+                prontuario: pacientePreSelecionado.prontuario || '',
+                telefone1: pacientePreSelecionado.telefone || '',
+            }));
         }
 
         // Busca configurações clínicas (para a lista de Anticoagulantes)
@@ -154,11 +163,22 @@ export default function FormAcolhimento() {
         );
     }
 
-    return (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 max-w-4xl mx-auto animate-fadeIn">
+    const content = (
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 md:p-8 max-w-4xl w-full mx-auto animate-fadeIn relative">
+            {onClose && (
+                <button
+                    onClick={onClose}
+                    type="button"
+                    className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors p-2 rounded-full hover:bg-slate-100"
+                >
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            )}
             <div className="mb-8 border-b border-slate-100 pb-4 flex justify-between items-end">
                 <div>
-                    <h2 className="text-2xl font-semibold text-slate-800 tracking-tight">Acolhimento Clínico</h2>
+                    <h2 className="text-2xl font-semibold text-slate-800 tracking-tight">Acolhimento Clínico {pacientePreSelecionado ? `- ${pacientePreSelecionado.nome}` : ''}</h2>
                     <p className="text-sm text-slate-500 mt-1 font-light">Efetivação do cadastro e checklist primário.</p>
                 </div>
             </div>
@@ -166,30 +186,32 @@ export default function FormAcolhimento() {
             <form onSubmit={handleSubmit} className="space-y-6">
 
                 {/* Seleção do Paciente */}
-                <div className="bg-[#8e44ad]/5 p-5 rounded-xl border border-[#8e44ad]/20 mb-6">
-                    <label className="text-[11px] font-semibold text-[#8e44ad] uppercase tracking-wider mb-2 block">
-                        Selecione o Paciente Aguardando Acolhimento
-                    </label>
+                {!pacientePreSelecionado && (
+                    <div className="bg-[#8e44ad]/5 p-5 rounded-xl border border-[#8e44ad]/20 mb-6">
+                        <label className="text-[11px] font-semibold text-[#8e44ad] uppercase tracking-wider mb-2 block">
+                            Selecione o Paciente Aguardando Acolhimento
+                        </label>
 
-                    {pacientesPendentes.length === 0 ? (
-                        <div className="p-4 bg-white border border-[#8e44ad]/10 rounded-lg text-sm text-slate-500 italic text-center text-[#8e44ad]">
-                            Nenhum paciente aguardando etapa de acolhimento nesta célula.
-                        </div>
-                    ) : (
-                        <select
-                            value={selectedPacienteId}
-                            onChange={handlePacienteChange}
-                            className="w-full px-4 py-3 bg-white border border-[#8e44ad]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e44ad] transition-all text-sm text-slate-700 font-medium cursor-pointer"
-                        >
-                            <option value="">-- Clique aqui para selecionar --</option>
-                            {pacientesPendentes.map(p => (
-                                <option key={p.id} value={p.id}>
-                                    {p.nome} (Elegível na Triagem: {p.elegivelMonitoramento ? 'Sim' : 'Não'})
-                                </option>
-                            ))}
-                        </select>
-                    )}
-                </div>
+                        {pacientesPendentes.length === 0 ? (
+                            <div className="p-4 bg-white border border-[#8e44ad]/10 rounded-lg text-sm text-slate-500 italic text-center text-[#8e44ad]">
+                                Nenhum paciente aguardando etapa de acolhimento nesta célula.
+                            </div>
+                        ) : (
+                            <select
+                                value={selectedPacienteId}
+                                onChange={handlePacienteChange}
+                                className="w-full px-4 py-3 bg-white border border-[#8e44ad]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e44ad] transition-all text-sm text-slate-700 font-medium cursor-pointer"
+                            >
+                                <option value="">-- Clique aqui para selecionar --</option>
+                                {pacientesPendentes.map(p => (
+                                    <option key={p.id} value={p.id}>
+                                        {p.nome} (Elegível na Triagem: {p.elegivelMonitoramento ? 'Sim' : 'Não'})
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
+                )}
 
                 {selectedPacienteId && (
                     <div className="animate-fadeIn space-y-6">
@@ -327,4 +349,16 @@ export default function FormAcolhimento() {
             </form>
         </div>
     );
+
+    if (pacientePreSelecionado) {
+        return (
+            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                <div className="max-h-[90vh] overflow-y-auto w-full max-w-4xl no-scrollbar flex items-start justify-center">
+                    {content}
+                </div>
+            </div>
+        );
+    }
+
+    return content;
 }

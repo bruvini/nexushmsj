@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { getPendingExamesPatients, getExamsByPatient, updateExamStatus, addExamManually, getAVCConfigs } from '../services/avcService';
 
-export default function FormExames() {
+export default function FormExames({ pacientePreSelecionado, onClose }) {
     const [loadingInitial, setLoadingInitial] = useState(true);
     const [pacientesPendentes, setPacientesPendentes] = useState([]);
     const [selectedPacienteId, setSelectedPacienteId] = useState('');
@@ -18,10 +18,22 @@ export default function FormExames() {
     const fetchInitialData = async () => {
         setLoadingInitial(true);
 
-        // Busca pacientes na fila
-        const pRes = await getPendingExamesPatients();
-        if (pRes.success) {
-            setPacientesPendentes(pRes.data);
+        if (!pacientePreSelecionado) {
+            // Busca pacientes na fila
+            const pRes = await getPendingExamesPatients();
+            if (pRes.success) {
+                setPacientesPendentes(pRes.data);
+            }
+        } else {
+            setSelectedPacienteId(pacientePreSelecionado.id);
+            setLoadingExames(true);
+            const res = await getExamsByPatient(pacientePreSelecionado.id);
+            if (res.success) {
+                setExamesPaciente(res.data);
+            } else {
+                toast.error('Gargalo ao buscar os exames.');
+            }
+            setLoadingExames(false);
         }
 
         // Busca dicionário de exames predefinidos para datalist
@@ -135,37 +147,50 @@ export default function FormExames() {
         );
     }
 
-    return (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 max-w-5xl mx-auto animate-fadeIn min-h-[500px]">
+    const content = (
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 md:p-8 max-w-5xl w-full mx-auto animate-fadeIn min-h-[500px] relative">
+            {onClose && (
+                <button
+                    onClick={onClose}
+                    type="button"
+                    className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors p-2 rounded-full hover:bg-slate-100"
+                >
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            )}
             <div className="mb-6 border-b border-slate-100 pb-4">
-                <h2 className="text-2xl font-semibold text-slate-800 tracking-tight">Gestão de Exames</h2>
+                <h2 className="text-2xl font-semibold text-slate-800 tracking-tight">Gestão de Exames {pacientePreSelecionado ? `- ${pacientePreSelecionado.nome}` : ''}</h2>
                 <p className="text-sm text-slate-500 mt-1 font-light">Valide e rastreie o status das imagens de laudos laboratoriais pendentes.</p>
             </div>
 
             <div className="space-y-6">
                 {/* Filtro do Paciente */}
-                <div className="bg-sky-50/50 p-5 rounded-xl border border-sky-100">
-                    <label className="text-xs font-semibold text-sky-800 uppercase tracking-wider mb-2 block">
-                        Selecione o Paciente (Fila: {pacientesPendentes.length})
-                    </label>
+                {!pacientePreSelecionado && (
+                    <div className="bg-sky-50/50 p-5 rounded-xl border border-sky-100">
+                        <label className="text-xs font-semibold text-sky-800 uppercase tracking-wider mb-2 block">
+                            Selecione o Paciente (Fila: {pacientesPendentes.length})
+                        </label>
 
-                    {pacientesPendentes.length === 0 ? (
-                        <div className="p-4 bg-white border border-sky-100 rounded-lg text-sm text-slate-500 italic text-center">
-                            Não há pacientes aguardando checagem de exames no momento. 🙌
-                        </div>
-                    ) : (
-                        <select
-                            value={selectedPacienteId}
-                            onChange={handlePacienteChange}
-                            className="w-full px-4 py-3 bg-white border border-sky-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all text-sm text-slate-700 font-medium cursor-pointer"
-                        >
-                            <option value="">-- Clique aqui para selecionar --</option>
-                            {pacientesPendentes.map(p => (
-                                <option key={p.id} value={p.id}>{p.nome}</option>
-                            ))}
-                        </select>
-                    )}
-                </div>
+                        {pacientesPendentes.length === 0 ? (
+                            <div className="p-4 bg-white border border-sky-100 rounded-lg text-sm text-slate-500 italic text-center">
+                                Não há pacientes aguardando checagem de exames no momento. 🙌
+                            </div>
+                        ) : (
+                            <select
+                                value={selectedPacienteId}
+                                onChange={handlePacienteChange}
+                                className="w-full px-4 py-3 bg-white border border-sky-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all text-sm text-slate-700 font-medium cursor-pointer"
+                            >
+                                <option value="">-- Clique aqui para selecionar --</option>
+                                {pacientesPendentes.map(p => (
+                                    <option key={p.id} value={p.id}>{p.nome}</option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
+                )}
 
                 {selectedPacienteId && (
                     <div className="animate-fadeIn">
@@ -286,4 +311,16 @@ export default function FormExames() {
             </div>
         </div>
     );
+
+    if (pacientePreSelecionado) {
+        return (
+            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                <div className="max-h-[90vh] overflow-y-auto w-full max-w-5xl no-scrollbar flex items-start justify-center">
+                    {content}
+                </div>
+            </div>
+        );
+    }
+
+    return content;
 }
