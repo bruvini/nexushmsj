@@ -44,7 +44,6 @@ export default function GestaoAihs() {
   const [unidadeReferencia, setUnidadeReferencia] = useState('');
 
   // NOVOS CAMPOS PARA DECISÃO DA SES/SC
-  const [numeroMapaEstado, setNumeroMapaEstado] = useState('');
   const [motivoNegativaSes, setMotivoNegativaSes] = useState('');
 
   // 1. Busca TODAS as solicitações em Tempo Real (Ativas, Concluídas e Negadas)
@@ -141,7 +140,6 @@ export default function GestaoAihs() {
     setDataSisregOriginal(solicitacao.dataSisregOriginal || '');
     setContraReferencia(solicitacao.contraReferencia || '');
     setUnidadeReferencia(solicitacao.unidadeReferencia || '');
-    setNumeroMapaEstado(solicitacao.numeroMapaEstado || '');
     setMotivoNegativaSes(solicitacao.motivoNegativaSes || '');
 
     setSidebarAberto(true);
@@ -192,6 +190,7 @@ export default function GestaoAihs() {
       if (solicitacaoAtiva?.id === solicitacaoParaDeletar.id) fecharSidebar();
       toast.success('Solicitação excluída permanentemente.');
     } catch (error) {
+      console.error('Erro ao excluir:', error);
       toast.error('Erro ao excluir solicitação do banco de dados.');
     } finally {
       setLoading(false);
@@ -211,10 +210,6 @@ export default function GestaoAihs() {
       (!contraReferencia || !unidadeReferencia)
     )
       return toast.warning('Informe a contrarreferência e a unidade.');
-    if (decisao === 'AUTORIZADO MAPA CIRURGICO' && !numeroMapaEstado)
-      return toast.warning(
-        'Informe o número da solicitação no mapa do estado.'
-      );
     if (decisao === 'NEGADO SES/SC' && !motivoNegativaSes)
       return toast.warning('Informe o motivo da negativa da SES.');
 
@@ -253,8 +248,6 @@ export default function GestaoAihs() {
         payloadAtualizacao.contraReferencia = contraReferencia.trim();
         payloadAtualizacao.unidadeReferencia = unidadeReferencia.trim();
       }
-      if (decisao === 'AUTORIZADO MAPA CIRURGICO')
-        payloadAtualizacao.numeroMapaEstado = numeroMapaEstado.trim();
       if (decisao === 'NEGADO SES/SC')
         payloadAtualizacao.motivoNegativaSes = motivoNegativaSes.trim();
 
@@ -269,7 +262,7 @@ export default function GestaoAihs() {
         if (decisao === 'DELIBERAÇÃO 66/CIB/2018')
           detalhesExtra = `Olostech: ${contraReferencia} / Unid: ${unidadeReferencia}`;
         if (decisao === 'AUTORIZADO MAPA CIRURGICO')
-          detalhesExtra = `Nº Mapa Estadual: ${numeroMapaEstado.trim()}`;
+          detalhesExtra = `Autorizado no Mapa Estadual`;
         if (decisao === 'NEGADO SES/SC')
           detalhesExtra = `Motivo SES: ${motivoNegativaSes.trim()}`;
 
@@ -290,6 +283,7 @@ export default function GestaoAihs() {
       );
       fecharSidebar();
     } catch (error) {
+      console.error('Erro ao salvar parecer:', error);
       toast.error('Erro ao salvar o parecer no banco de dados.');
     } finally {
       setLoading(false);
@@ -310,6 +304,7 @@ export default function GestaoAihs() {
       const dataDt = new Date(d);
       return dataDt.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
     } catch (e) {
+      console.error('Erro na conversão de data:', e);
       return d;
     }
   };
@@ -545,6 +540,42 @@ export default function GestaoAihs() {
                               <div className="text-[11px] text-nexus-text/50 font-mono mt-0.5">
                                 {sol.cns}
                               </div>
+                              {/* Novo campo de Procedimento (SIGTAP) */}
+                              {(() => {
+                                let cod = sol.codigoProcedimento;
+                                let desc = sol.descricaoProcedimento;
+
+                                // Fallback caso os dados estejam numa única string 'procedimento'
+                                if (!cod && !desc && sol.procedimento) {
+                                  const parts = sol.procedimento.split(' - ');
+                                  if (parts.length >= 2) {
+                                    cod = parts[0];
+                                    desc = parts.slice(1).join(' - ');
+                                  } else {
+                                    desc = sol.procedimento;
+                                  }
+                                }
+
+                                if (!cod && !desc) return null;
+
+                                return (
+                                  <div className="flex items-center gap-2 mt-1.5">
+                                    {cod && (
+                                      <span className="bg-slate-100 text-slate-600 text-[10px] px-2.5 py-0.5 rounded-full font-mono border border-slate-200 shrink-0 shadow-sm leading-tight">
+                                        {cod}
+                                      </span>
+                                    )}
+                                    {desc && (
+                                      <span
+                                        className="text-[11px] text-slate-500 truncate max-w-[140px] md:max-w-[200px]"
+                                        title={desc}
+                                      >
+                                        {desc}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </td>
                             <td className="px-6 py-3 font-mono font-bold text-nexus-text">
                               {sol.numeroSisreg || (
@@ -814,16 +845,6 @@ export default function GestaoAihs() {
                   </div>
 
                   {/* Informações pós-decisão mostradas na leitura */}
-                  {solicitacaoAtiva.numeroMapaEstado && (
-                    <div className="col-span-2 pt-2 border-t border-slate-200">
-                      <p className="text-[10px] text-slate-500 uppercase">
-                        Nº Mapa Estadual (SES/SC)
-                      </p>
-                      <p className="text-nexus-primary font-mono font-bold text-sm">
-                        {solicitacaoAtiva.numeroMapaEstado}
-                      </p>
-                    </div>
-                  )}
                   {solicitacaoAtiva.motivoNegativaSes && (
                     <div className="col-span-2 pt-2 border-t border-slate-200">
                       <p className="text-[10px] text-slate-500 uppercase">
@@ -1058,24 +1079,6 @@ export default function GestaoAihs() {
                   )}
 
                   {/* Campos Dinâmicos: Mapa SES/SC */}
-                  {decisao === 'AUTORIZADO MAPA CIRURGICO' && (
-                    <div className="animate-[fadeIn_0.2s_ease-in-out]">
-                      <label className="block text-xs font-bold text-blue-700 mb-1">
-                        Nº da Solicitação no Mapa do Estado
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={numeroMapaEstado}
-                        onChange={(e) =>
-                          setNumeroMapaEstado(e.target.value.replace(/\D/g, ''))
-                        }
-                        className="w-full bg-white border border-blue-300 text-nexus-text rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
-                        placeholder="Ex: 987654"
-                      />
-                    </div>
-                  )}
-
                   {decisao === 'NEGADO SES/SC' && (
                     <div className="animate-[fadeIn_0.2s_ease-in-out]">
                       <label className="block text-xs font-bold text-slate-700 mb-1">
