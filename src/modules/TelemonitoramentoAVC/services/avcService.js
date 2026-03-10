@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, doc, setDoc, updateDoc, query, where, orderBy, serverTimestamp, getDoc, arrayUnion, arrayRemove, writeBatch, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, setDoc, updateDoc, query, where, orderBy, limit, serverTimestamp, getDoc, arrayUnion, arrayRemove, writeBatch, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../services/firebase';
 
 const PACIENTES_COLLECTION = 'nexus_avc_pacientes';
@@ -481,14 +481,21 @@ export const getPendingAcolhimento = async () => {
     try {
         const q = query(
             collection(db, PACIENTES_COLLECTION),
-            where("status_monitoramento_atual", "==", "REALIZAR ACOLHIMENTO"),
-            orderBy("createdAt", "asc")
+            where("status_monitoramento_atual", "==", "REALIZAR ACOLHIMENTO")
         );
         const querySnapshot = await getDocs(q);
         const pacientes = [];
         querySnapshot.forEach((doc) => {
             pacientes.push({ id: doc.id, ...doc.data() });
         });
+
+        // Ordenação em memória para não consumir composite index
+        pacientes.sort((a, b) => {
+            const dateA = a.createdAt?.seconds || 0;
+            const dateB = b.createdAt?.seconds || 0;
+            return dateA - dateB;
+        });
+
         return { success: true, data: pacientes };
     } catch (error) {
         console.error("Erro ao buscar pacientes para acolhimento:", error);
@@ -601,14 +608,21 @@ export const getAgendamentoPatients = async () => {
     try {
         const q = query(
             collection(db, PACIENTES_COLLECTION),
-            where("status_monitoramento_atual", "in", ["VERIFICAR EXAMES", "AGENDAR CONSULTA", "AGUARDANDO CONSULTA", "VERIFICAR DESFECHO"]),
-            orderBy("createdAt", "asc")
+            where("status_monitoramento_atual", "in", ["VERIFICAR EXAMES", "AGENDAR CONSULTA", "AGUARDANDO CONSULTA", "VERIFICAR DESFECHO"])
         );
         const querySnapshot = await getDocs(q);
         const pacientes = [];
         querySnapshot.forEach((doc) => {
             pacientes.push({ id: doc.id, ...doc.data() });
         });
+
+        // Ordenação em memória para não consumir composite index
+        pacientes.sort((a, b) => {
+            const dateA = a.createdAt?.seconds || 0;
+            const dateB = b.createdAt?.seconds || 0;
+            return dateA - dateB;
+        });
+
         return { success: true, data: pacientes };
     } catch (error) {
         console.error("Erro ao buscar pacientes para agendamento:", error);
@@ -718,14 +732,21 @@ export const getPendingExamesPatients = async () => {
     try {
         const q = query(
             collection(db, PACIENTES_COLLECTION),
-            where("status_monitoramento_atual", "==", "VERIFICAR EXAMES"),
-            orderBy("createdAt", "asc")
+            where("status_monitoramento_atual", "==", "VERIFICAR EXAMES")
         );
+
         const querySnapshot = await getDocs(q);
         const pacientes = [];
         querySnapshot.forEach((doc) => {
             pacientes.push({ id: doc.id, ...doc.data() });
         });
+
+        pacientes.sort((a, b) => {
+            const dateA = a.createdAt?.seconds || 0;
+            const dateB = b.createdAt?.seconds || 0;
+            return dateA - dateB;
+        });
+
         return { success: true, data: pacientes };
     } catch (error) {
         console.error("Erro ao buscar pacientes para exames:", error);
@@ -888,37 +909,46 @@ export const getPatientsForOutcome = async () => {
     try {
         const q = query(
             collection(db, PACIENTES_COLLECTION),
-            where("status_monitoramento_atual", "==", "VERIFICAR DESFECHO"),
-            orderBy("createdAt", "desc")
+            where("status_monitoramento_atual", "==", "VERIFICAR DESFECHO")
         );
-        const querySnapshot = await getDocs(q);
-        const pacientes = [];
 
-        // Fazer um loop paralelo para buscar a consulta
-        for (const docSnap of querySnapshot.docs) {
+        const snapshot = await getDocs(q);
+        const data = [];
+
+        for (const docSnap of snapshot.docs) {
             const pData = docSnap.data();
             const pId = docSnap.id;
 
-            let consultaData = null;
+            let ultimaConsulta = null;
             try {
                 const qC = query(
                     collection(db, CONSULTAS_COLLECTION),
                     where("id_paciente", "==", pId),
                     where("status", "==", "CONFIRMADO"),
-                    orderBy("createdAt", "desc")
+                    orderBy("createdAt", "desc"),
+                    limit(1)
                 );
                 const cSnap = await getDocs(qC);
                 if (!cSnap.empty) {
-                    consultaData = { id: cSnap.docs[0].id, ...cSnap.docs[0].data() };
+                    ultimaConsulta = { id: cSnap.docs[0].id, ...cSnap.docs[0].data() };
                 }
             } catch (e) {
                 console.warn("Nenhuma consulta confirmada atrelada encontrada para", pId);
             }
 
-            pacientes.push({ id: pId, ...pData, consulta_ref: consultaData });
+            data.push({
+                id_paciente: pId,
+                nome: pData.nome || "Não informado",
+                data_consulta: ultimaConsulta?.data_agendamento || "N/A",
+                especialidade: ultimaConsulta?.especialidade || "N/A",
+                data_sort: ultimaConsulta?.createdAt?.seconds || pData.createdAt?.seconds || 0
+            });
         }
 
-        return { success: true, data: pacientes };
+        // Sort descending
+        data.sort((a, b) => b.data_sort - a.data_sort);
+
+        return { success: true, data };
     } catch (error) {
         console.error("Erro ao buscar pacientes para desfecho:", error);
         return { success: false, error };
@@ -1421,6 +1451,13 @@ export const getDashboardData = async () => {
         // Populate Kanban (Only active patients)
         const pacientesAtivos = todosPacientes.filter(p => !['ÓBITO', 'DESISTÊNCIA', 'MONITORAMENTO CONCLUÍDO', 'ENCAMINHADO PARA EMAD'].includes(p.status_monitoramento_atual));
 
+        // Ordenar globalmente por data_inclusao (ascendente front-end sorting para evitar Composite Index)
+        pacientesAtivos.sort((a, b) => {
+            const dateA = a.data_inclusao ? new Date(a.data_inclusao).getTime() : 0;
+            const dateB = b.data_inclusao ? new Date(b.data_inclusao).getTime() : 0;
+            return dateA - dateB;
+        });
+
         for (const p of pacientesAtivos) {
 
             // Format basic card data
@@ -1523,6 +1560,13 @@ export const subscribeDashboardData = (callback) => {
         const kanban = { acolhimento: [], exames: [], agendar: [], proximas: [], desfecho: [] };
         const pacientesAtivos = todosPacientes.filter(p => !['ÓBITO', 'DESISTÊNCIA', 'MONITORAMENTO CONCLUÍDO', 'ENCAMINHADO PARA EMAD'].includes(p.status_monitoramento_atual));
 
+        // Ordenar globalmente por data_inclusao (ascendente front-end sorting para evitar Composite Index em tempo real)
+        pacientesAtivos.sort((a, b) => {
+            const dateA = a.data_inclusao ? new Date(a.data_inclusao).getTime() : 0;
+            const dateB = b.data_inclusao ? new Date(b.data_inclusao).getTime() : 0;
+            return dateA - dateB;
+        });
+
         for (const p of pacientesAtivos) {
             const cardData = {
                 id: p.id,
@@ -1547,7 +1591,7 @@ export const subscribeDashboardData = (callback) => {
                     cardData.resumo = 'Prioridade: Marcar retorno';
                     kanban.agendar.push(cardData);
                     break;
-                case 'AGUARDANDO CONSULTA':
+                case 'AGUARDANDO CONSULTA': {
                     const consultaProj = consultasFuturas.find(c => c.id_paciente === p.id);
                     if (consultaProj) {
                         cardData.resumo = `Consulta em ${consultaProj.data_agendamento}`;
@@ -1558,6 +1602,7 @@ export const subscribeDashboardData = (callback) => {
                     }
                     kanban.proximas.push(cardData);
                     break;
+                }
                 case 'VERIFICAR DESFECHO':
                     cardData.resumo = 'Realizou consulta, aguardando parecer';
                     kanban.desfecho.push(cardData);
@@ -1658,12 +1703,6 @@ export const generateEmailHtml = (data) => {
     if (previewList.length === 0) {
         htmlStr += `<tr><td colspan="5" style="padding: 20px; text-align: center; color: #94a3b8; font-style: italic; background-color: #fff;">Nenhum paciente agendado para esta data.</td></tr>`;
     }
-
-    const examesIconMap = {
-        'CONCLUÍDO': 'https://raw.githubusercontent.com/google/material-design-icons/master/png/action/done/materialicons/24dp/2x/baseline_done_black_24dp.png',
-        'PENDENTE': 'https://raw.githubusercontent.com/google/material-design-icons/master/png/alert/error_outline/materialicons/24dp/2x/baseline_error_outline_black_24dp.png',
-        'CANCELADO': 'https://raw.githubusercontent.com/google/material-design-icons/master/png/content/block/materialicons/24dp/2x/baseline_block_black_24dp.png'
-    };
 
     previewList.forEach((item, index) => {
         const bg = index % 2 === 0 ? '#ffffff' : '#f8fafc';

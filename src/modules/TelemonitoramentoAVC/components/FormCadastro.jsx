@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { savePatient, checkPatientDuplicity, getInitialConfigs, updateConfigList } from '../services/avcService';
+import { setoresHmsj } from '../../../utils/setores';
 
 export default function FormCadastro() {
     const [loading, setLoading] = useState(false);
@@ -215,7 +216,7 @@ export default function FormCadastro() {
                         </div>
 
                         <div className="flex flex-col gap-2 lg:col-span-1">
-                            <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Responsável/Triador <span className="text-red-500">*</span></label>
+                            <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Profissional solicitante <span className="text-red-500">*</span></label>
                             <input required type="text" name="profissionalResponsavel" value={formData.profissionalResponsavel} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-sm text-slate-700" placeholder="Seu Nome" />
                         </div>
                     </div>
@@ -242,7 +243,12 @@ export default function FormCadastro() {
                             <>
                                 <div className="flex flex-col gap-2">
                                     <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Setor <span className="text-red-500">*</span></label>
-                                    <input required type="text" name="setor" value={formData.setor} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-sm text-slate-700" placeholder="Ex: UTI, Enfermaria" />
+                                    <select required name="setor" value={formData.setor} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-sm text-slate-700">
+                                        <option value="" disabled>SELECIONE O SETOR...</option>
+                                        {setoresHmsj.map(setorOp => (
+                                            <option key={setorOp} value={setorOp}>{setorOp}</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div className="flex flex-col gap-2">
                                     <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Leito <span className="text-red-500">*</span></label>

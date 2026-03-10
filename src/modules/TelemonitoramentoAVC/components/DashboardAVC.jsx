@@ -137,7 +137,7 @@ export default function DashboardAVC() {
                     title="Acolhimento"
                     icon="✋"
                     colorTheme="orange"
-                    items={filterKanban(kanban.acolhimento).filter(item => item.status_monitoramento_atual === 'REALIZAR ACOLHIMENTO')}
+                    items={filterKanban(kanban.acolhimento).filter(item => item.status === 'REALIZAR ACOLHIMENTO')}
                 />
 
                 {/* COL 2: Exames */}
