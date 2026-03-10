@@ -19,14 +19,13 @@ export default function FormCadastro() {
         nome: '',
         dataNascimento: '',
         idade: '',
-        prontuario: '',
-        telefone: '',
-        cpf: '',
         profissionalResponsavel: '',
         status: 'Internado', // 'Internado' | 'Alta'
         setor: '',
         leito: '',
-        dataAlta: '',
+        data_alta_hospitalar: '',
+        data_inclusao: '',
+        data_provavel_alta: '',
         elegivelMonitoramento: true,
         motivoInelegibilidade: '',
         examesMarcados: []
@@ -148,7 +147,12 @@ export default function FormCadastro() {
             return;
         }
 
-        const { success, error } = await savePatient(formData, type, oldPatientId);
+        const payload = {
+            ...formData,
+            status_monitoramento_atual: 'REALIZAR ACOLHIMENTO'
+        };
+
+        const { success, error } = await savePatient(payload, type, oldPatientId);
 
         if (success) {
             toast.success(type === 'reinternacao' ? 'Reinternação registrada com sucesso!' : 'Paciente cadastrado com sucesso!');
@@ -205,19 +209,9 @@ export default function FormCadastro() {
                             <input type="text" readOnly value={formData.idade ? `${formData.idade} anos` : ''} className="px-3 py-2 bg-slate-100 border border-slate-200 rounded-md text-sm text-slate-500 cursor-not-allowed" placeholder="Auto" />
                         </div>
 
-                        <div className="flex flex-col gap-2 lg:col-span-1">
-                            <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">CPF <span className="text-red-500">*</span></label>
-                            <input required type="text" name="cpf" value={formData.cpf} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-sm text-slate-700" placeholder="000.000.000-00" />
-                        </div>
-
-                        <div className="flex flex-col gap-2 lg:col-span-1">
-                            <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Prontuário <span className="text-red-500">*</span></label>
-                            <input required type="text" name="prontuario" value={formData.prontuario} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-sm text-slate-700" placeholder="Ex: 123456" />
-                        </div>
-
-                        <div className="flex flex-col gap-2 lg:col-span-1">
-                            <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Telefone <span className="text-red-500">*</span></label>
-                            <input required type="tel" name="telefone" value={formData.telefone} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-sm text-slate-700" placeholder="(00) 00000-0000" />
+                        <div className="flex flex-col gap-2">
+                            <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Data da Solicitação Médica <span className="text-red-500">*</span></label>
+                            <input required type="date" name="data_inclusao" value={formData.data_inclusao} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-sm text-slate-700" />
                         </div>
 
                         <div className="flex flex-col gap-2 lg:col-span-1">
@@ -247,19 +241,23 @@ export default function FormCadastro() {
                         {formData.status === 'Internado' && (
                             <>
                                 <div className="flex flex-col gap-2">
-                                    <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Setor</label>
-                                    <input type="text" name="setor" value={formData.setor} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-sm text-slate-700" placeholder="Ex: UTI, Enfermaria" />
+                                    <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Setor <span className="text-red-500">*</span></label>
+                                    <input required type="text" name="setor" value={formData.setor} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-sm text-slate-700" placeholder="Ex: UTI, Enfermaria" />
                                 </div>
                                 <div className="flex flex-col gap-2">
-                                    <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Leito</label>
-                                    <input type="text" name="leito" value={formData.leito} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-sm text-slate-700" placeholder="Ex: L-01" />
+                                    <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Leito <span className="text-red-500">*</span></label>
+                                    <input required type="text" name="leito" value={formData.leito} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-sm text-slate-700" placeholder="Ex: L-01" />
+                                </div>
+                                <div className="flex flex-col gap-2 md:col-span-2">
+                                    <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Data Prevista de Alta</label>
+                                    <input type="date" name="data_provavel_alta" value={formData.data_provavel_alta} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-sm text-slate-700 lg:w-1/2" />
                                 </div>
                             </>
                         )}
                         {formData.status === 'Alta' && (
                             <div className="flex flex-col gap-2 md:col-span-2">
-                                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Data da Alta</label>
-                                <input type="date" name="dataAlta" value={formData.dataAlta} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-sm text-slate-700 lg:w-1/2" />
+                                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Data da Alta <span className="text-red-500">*</span></label>
+                                <input required type="date" name="data_alta_hospitalar" value={formData.data_alta_hospitalar} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-sm text-slate-700 lg:w-1/2" />
                             </div>
                         )}
                     </div>
@@ -353,7 +351,7 @@ export default function FormCadastro() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
                         )}
-                        {loading ? 'Processando...' : 'Registrar Paciente na Célula AVC'}
+                        {loading ? 'Processando...' : 'Cadastrar paciente'}
                     </button>
                 </div>
             </form>

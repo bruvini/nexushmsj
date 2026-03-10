@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { subscribeDashboardData } from '../services/avcService';
+import { differenceInDays, parseISO, format, isValid } from 'date-fns';
 
 export default function DashboardAVC() {
     const [loading, setLoading] = useState(true);
@@ -136,7 +137,7 @@ export default function DashboardAVC() {
                     title="Acolhimento"
                     icon="✋"
                     colorTheme="orange"
-                    items={filterKanban(kanban.acolhimento)}
+                    items={filterKanban(kanban.acolhimento).filter(item => item.status_monitoramento_atual === 'REALIZAR ACOLHIMENTO')}
                 />
 
                 {/* COL 2: Exames */}
@@ -188,6 +189,45 @@ function KanbanColumn({ title, icon, colorTheme, items }) {
 
     const theme = themeMaps[colorTheme] || themeMaps.blue;
 
+    const renderCardSummary = (card) => {
+        if (card.data_inclusao) {
+            let diffDias = 0;
+            let dataSolicitacaoFormatada = card.data_inclusao;
+
+            try {
+                const dataIso = parseISO(card.data_inclusao);
+                if (isValid(dataIso)) {
+                    diffDias = Math.max(0, differenceInDays(new Date(), dataIso));
+                    dataSolicitacaoFormatada = format(dataIso, 'dd/MM/yyyy');
+                }
+            } catch (err) {
+                console.warn('Erro ao formatar data de inclusão', err);
+            }
+
+            const textoEspera = diffDias === 0 ? "Solicitado hoje" : `Aguardando há ${diffDias} ${diffDias === 1 ? 'dia' : 'dias'}`;
+
+            return (
+                <div className="flex flex-col gap-1">
+                    <div><strong>Data da Solicitação:</strong> {dataSolicitacaoFormatada}</div>
+                    <div className="text-amber-600 font-semibold">{textoEspera}</div>
+                    <div><strong>Status de Internação:</strong> {card.status || 'Não informado'}</div>
+                </div>
+            );
+        }
+        return card.resumo;
+    };
+
+    const formatNascimento = (data) => {
+        if (!data) return 'N/I';
+        try {
+            const d = parseISO(data);
+            if (isValid(d)) return format(d, 'dd/MM/yyyy');
+        } catch (err) {
+            console.warn('Erro ao formatar data de nascimento', err);
+        }
+        return data; // fallback value
+    };
+
     return (
         <div className={`flex flex-col w-full rounded-xl border border-slate-200 ${theme.bg} shadow-sm`}>
             {/* Header da Coluna */}
@@ -216,12 +256,11 @@ function KanbanColumn({ title, icon, colorTheme, items }) {
                             <h4 className="text-sm font-bold text-slate-800 mb-1 leading-tight group-hover:text-slate-900 transition-colors">{card.nome}</h4>
 
                             <div className="flex justify-between items-center text-[10px] text-slate-500 font-medium mb-3">
-                                <span>Pr: {card.prontuario}</span>
-                                <span>{card.telefone}</span>
+                                <span>Nasc: {formatNascimento(card.dataNascimento)}</span>
                             </div>
 
                             <div className="text-xs text-slate-600 bg-slate-50 p-2 rounded border border-slate-100 font-medium">
-                                {card.resumo}
+                                {renderCardSummary(card)}
                             </div>
                         </div>
                     ))
