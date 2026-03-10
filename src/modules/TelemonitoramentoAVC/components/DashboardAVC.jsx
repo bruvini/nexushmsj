@@ -262,6 +262,24 @@ function KanbanColumn({ title, icon, colorTheme, items }) {
                             <div className="text-xs text-slate-600 bg-slate-50 p-2 rounded border border-slate-100 font-medium">
                                 {renderCardSummary(card)}
                             </div>
+
+                            {card.alertaExame && (
+                                <div className="mt-2 pt-2 border-t border-slate-100 border-dashed">
+                                    <div className={`text-[10px] font-bold px-1.5 py-0.5 rounded inline-block mb-1.5 ${card.alertaExame === 'Registre Exames' ? 'bg-red-100 text-red-700' : card.alertaExame === 'Exame(s) Pendentes' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
+                                        {card.alertaExame}
+                                    </div>
+                                    {card.exames && card.exames.length > 0 && (
+                                        <ul className="space-y-1">
+                                            {card.exames.map(ex => (
+                                                <li key={ex.id} className="text-[10px] flex items-center gap-1 text-slate-600 leading-tight">
+                                                    <span>{ex.status === 'PENDENTE' ? '⏳' : ex.status === 'CONCLUÍDO' || ex.status === 'REALIZADO' ? '✅' : '❌'}</span>
+                                                    <span className="truncate" title={ex.nome}>{ex.nome}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     ))
                 )}

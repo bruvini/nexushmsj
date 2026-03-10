@@ -18,10 +18,6 @@ export default function ConfiguracoesAVC() {
     const [newMedicacao, setNewMedicacao] = useState('');
     const [newEmail, setNewEmail] = useState('');
 
-    useEffect(() => {
-        fetchConfigs();
-    }, []);
-
     const fetchConfigs = async () => {
         setLoading(true);
         const { success, data } = await getAVCConfigs();
@@ -32,6 +28,11 @@ export default function ConfiguracoesAVC() {
         }
         setLoading(false);
     };
+
+    useEffect(() => {
+        fetchConfigs();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleAction = async (tipo, acao, valor, resetInputFn) => {
         if (acao === 'add' && !valor.trim()) return;

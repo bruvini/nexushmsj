@@ -1527,13 +1527,15 @@ export const subscribeDashboardData = (callback) => {
     let todosPacientes = [];
     let todosContatosSize = 0;
     let todasConsultas = [];
+    let todosExames = [];
 
     let isPacientesLoaded = false;
     let isContatosLoaded = false;
     let isConsultasLoaded = false;
+    let isExamesLoaded = false;
 
     const emitIfReady = () => {
-        if (!isPacientesLoaded || !isContatosLoaded || !isConsultasLoaded) return;
+        if (!isPacientesLoaded || !isContatosLoaded || !isConsultasLoaded || !isExamesLoaded) return;
 
         const now = new Date();
         const consultasFuturas = todasConsultas.filter(c => {
@@ -1584,10 +1586,31 @@ export const subscribeDashboardData = (callback) => {
                     cardData.resumo = 'Aguardando contato inicial';
                     kanban.acolhimento.push(cardData);
                     break;
-                case 'VERIFICAR EXAMES':
-                    cardData.resumo = `Checar exames em andamento`;
-                    kanban.exames.push(cardData);
+                case 'VERIFICAR EXAMES': {
+                    const pExames = todosExames.filter(e => e.id_paciente === p.id);
+                    cardData.exames = pExames;
+
+                    if (pExames.length === 0) {
+                        cardData.resumo = 'Nenhum exame cadastrado. Por favor, adicione os exames solicitados.';
+                        cardData.alertaExame = 'Registre Exames';
+                        kanban.exames.push(cardData);
+                    } else if (pExames.some(e => e.status === 'PENDENTE')) {
+                        cardData.resumo = 'Aguardando resultados laboratoriais/imagem.';
+                        cardData.alertaExame = 'Exame(s) Pendentes';
+                        kanban.exames.push(cardData);
+                    } else {
+                        // Todos REALIZADO ou CANCELADO
+                        cardData.resumo = 'Retornos Prontos. Migrando fase...';
+                        cardData.alertaExame = 'Avaliando...';
+                        kanban.exames.push(cardData);
+
+                        // Auto transição para AGENDAR CONSULTA
+                        updateDoc(doc(db, PACIENTES_COLLECTION, p.id), { status_monitoramento_atual: 'AGENDAR CONSULTA' })
+                            .then(() => logOperation('MIGRAÇÃO_SISTÊMICA_KBN', `Paciente ${p.nome} promovido auto para AGENDAR CONSULTA via Exames`, 'Sistema'))
+                            .catch(e => console.error("Erro Auto-Transition", e));
+                    }
                     break;
+                }
                 case 'AGENDAR CONSULTA':
                     cardData.resumo = 'Prioridade: Marcar retorno';
                     kanban.agendar.push(cardData);
@@ -1643,10 +1666,19 @@ export const subscribeDashboardData = (callback) => {
         console.error("Erro consultas onSnapshot:", error);
     });
 
+    const unsubExames = onSnapshot(collection(db, EXAMES_COLLECTION), (snap) => {
+        todosExames = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        isExamesLoaded = true;
+        emitIfReady();
+    }, (error) => {
+        console.error("Erro exames onSnapshot:", error);
+    });
+
     return () => {
         unsubPacientes();
         unsubContatos();
         unsubConsultas();
+        unsubExames();
     };
 };
 

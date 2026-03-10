@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { getPendingAcolhimento, saveAcolhimento, getAVCConfigs } from '../services/avcService';
+import { cidadesSC } from '../../../utils/cidadesSC';
 
 export default function FormAcolhimento() {
     const [loading, setLoading] = useState(false);
@@ -25,10 +26,6 @@ export default function FormAcolhimento() {
 
     const [formData, setFormData] = useState(initialState);
 
-    useEffect(() => {
-        fetchInitialData();
-    }, []);
-
     const fetchInitialData = async () => {
         setLoadingInitial(true);
 
@@ -46,6 +43,11 @@ export default function FormAcolhimento() {
 
         setLoadingInitial(false);
     };
+
+    useEffect(() => {
+        fetchInitialData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handlePacienteChange = (e) => {
         const pId = e.target.value;
@@ -70,6 +72,24 @@ export default function FormAcolhimento() {
             ...prev,
             [name]: value
         }));
+    };
+
+    const handlePhoneChange = (e) => {
+        const { name, value } = e.target;
+        let v = value.replace(/\D/g, '');
+        if (v.length > 11) v = v.slice(0, 11);
+
+        if (v.length > 10) {
+            v = v.replace(/^(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+        } else if (v.length > 6) {
+            v = v.replace(/^(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
+        } else if (v.length > 2) {
+            v = v.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
+        } else if (v.length > 0) {
+            v = v.replace(/^(\d{0,2})/, '($1');
+        }
+
+        setFormData(prev => ({ ...prev, [name]: v }));
     };
 
     const handleMedicacaoToggle = (med) => {
@@ -98,7 +118,13 @@ export default function FormAcolhimento() {
 
         setLoading(true);
 
-        const { success, error } = await saveAcolhimento(selectedPacienteId, formData);
+        const payload = {
+            ...formData,
+            telefone1: formData.telefone1.replace(/\D/g, ''),
+            telefone2: formData.telefone2 ? formData.telefone2.replace(/\D/g, '') : '',
+        };
+
+        const { success, error } = await saveAcolhimento(selectedPacienteId, payload);
 
         if (success) {
             toast.success('Acolhimento registrado com sucesso!');
@@ -204,17 +230,22 @@ export default function FormAcolhimento() {
 
                                     <div className="flex flex-col gap-2 lg:col-span-2">
                                         <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Cidade Residente <span className="text-red-500">*</span></label>
-                                        <input required type="text" name="cidade" value={formData.cidade} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-[#8e44ad] transition-all text-sm text-slate-700" placeholder="Ex: Joinville, SC" />
+                                        <select required name="cidade" value={formData.cidade} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-[#8e44ad] transition-all text-sm text-slate-700">
+                                            <option value="">-- SELECIONE A CIDADE --</option>
+                                            {cidadesSC.map(c => (
+                                                <option key={c} value={c}>{c}</option>
+                                            ))}
+                                        </select>
                                     </div>
 
                                     <div className="flex flex-col gap-2 lg:col-span-2">
                                         <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Telefone Principal (Acolhimento) <span className="text-red-500">*</span></label>
-                                        <input required type="tel" name="telefone1" value={formData.telefone1} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-[#8e44ad] transition-all text-sm text-slate-700" placeholder="(00) 00000-0000" />
+                                        <input required type="tel" name="telefone1" value={formData.telefone1} onChange={handlePhoneChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-[#8e44ad] transition-all text-sm text-slate-700" placeholder="(XX) XXXXX-XXXX" />
                                     </div>
 
                                     <div className="flex flex-col gap-2 lg:col-span-2">
                                         <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Telefone Cônjuge/Familiar</label>
-                                        <input type="tel" name="telefone2" value={formData.telefone2} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-[#8e44ad] transition-all text-sm text-slate-700" placeholder="(Opcional)" />
+                                        <input type="tel" name="telefone2" value={formData.telefone2} onChange={handlePhoneChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-[#8e44ad] transition-all text-sm text-slate-700" placeholder="(Opcional)" />
                                     </div>
                                 </div>
                             )}
@@ -224,7 +255,7 @@ export default function FormAcolhimento() {
                         {formData.elegivel_monitoramento === 'SIM' && (
                             <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 animate-fadeIn">
                                 <div className="flex items-center justify-between mb-4 border-b border-slate-200 pb-2">
-                                    <h3 className="text-sm font-semibold text-slate-700">Faz uso de Anticoagulante?</h3>
+                                    <h3 className="text-sm font-semibold text-slate-700">Faz uso de Anticoagulante/Antiagregante?</h3>
                                     <div className="flex items-center gap-4">
                                         <label className="flex items-center gap-2 cursor-pointer group">
                                             <input type="radio" name="fazUsoAnticoagulante" value="SIM" checked={formData.fazUsoAnticoagulante === 'SIM'} onChange={handleChange} className="w-4 h-4 text-[#8e44ad] focus:ring-[#8e44ad] border-slate-300" />
