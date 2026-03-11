@@ -92,12 +92,6 @@ export default function GestaoAihs() {
       descricao: 'Aguardando validação interna do hospital.',
     },
     {
-      titulo: 'Aguarda Entrar no mapa',
-      statusOriginais: ['AGUARDA ENTRAR NO MAPA'],
-      cor: 'emerald',
-      descricao: 'Aprovados e aguardando inclusão no mapa cirúrgico.',
-    },
-    {
       titulo: 'Devoluções por Divergência / Duplicidade',
       statusOriginais: ['DIVERGENCIA ENCONTRADA', 'DUPLICIDADE'],
       cor: 'red',
@@ -1186,9 +1180,6 @@ export default function GestaoAihs() {
                       </option>
                       <option value="VALIDAÇÃO SISREG">
                         PENDENTE - Validação SISREG
-                      </option>
-                      <option value="AGUARDA ENTRAR NO MAPA">
-                        APROVADA - Aguarda entrar no mapa
                       </option>
                       <option value="AUTORIZADO MAPA CIRURGICO">
                         CONCLUÍDA - Autorizado Mapa SES/SC
