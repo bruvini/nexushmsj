@@ -231,9 +231,9 @@ export default function PainelKanban() {
       if (filtroKanban && pKanban !== filtroKanban) validBase = false;
 
       if (filtroEspecialidade) {
-        const isPrincipal = p.especialidade_gestao?.principal === filtroEspecialidade || p.especialidade === filtroEspecialidade;
-        const inAdicionais = p.especialidade_gestao?.adicionais?.includes(filtroEspecialidade) || false;
-        if (!isPrincipal && !inAdicionais) validBase = false;
+        const especialidadeEfetiva = p.especialidade_gestao?.principal || p.especialidade || 'NÃO INFORMADA';
+        const isPrincipal = especialidadeEfetiva === filtroEspecialidade;
+        if (!isPrincipal) validBase = false;
       }
 
       if (validBase) {
