@@ -61,9 +61,15 @@ export default function Eletivas() {
             </div>
           </div>
 
-          {/* Botão de Ajuda */}
-          <div className="shrink-0 mb-2 md:mb-0">
-            <button onClick={() => setShowUniversidade(true)} className="flex items-center justify-center gap-2 bg-sky-100 hover:bg-sky-200 text-sky-700 font-bold py-2 px-4 rounded-xl transition-all shadow-sm group w-full sm:w-auto">
+          {/* Botões do Topo */}
+          <div className="shrink-0 mb-2 md:mb-0 flex items-center gap-3 w-full sm:w-auto">
+            <a href="https://www.cosemssc.org.br/wp-content/uploads/2020/12/deliberaCAo-066_2018-retificada-em-05_12_2024.pdf" target="_blank" rel="noopener noreferrer" className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-purple-100 hover:bg-purple-200 text-purple-700 font-bold py-2 px-4 rounded-xl transition-all shadow-sm group">
+              <svg className="w-5 h-5 text-purple-500 group-hover:scale-110 transition-transform shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span className="text-xs sm:text-sm">Deliberação 66/CIB</span>
+            </a>
+            <button onClick={() => setShowUniversidade(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-sky-100 hover:bg-sky-200 text-sky-700 font-bold py-2 px-4 rounded-xl transition-all shadow-sm group">
               <svg className="w-5 h-5 text-sky-500 group-hover:rotate-12 transition-transform shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>

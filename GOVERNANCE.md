@@ -37,6 +37,12 @@ O ecossistema Nexus deve, sob qualquer hipótese, aderir aos seguintes framework
 - **DB-01 (Mínimo de Leituras Firestore e Cálculos In-Memory):**  
   Toda busca estrutural reativa deve ser orquestrada com `onSnapshot()` acoplado estritamente à montagem raiz do container pai. Requisições estáticas em loop fechado `.get()` para Dashboards ao vivo são severamente proibidas.  
   Além disso, algoritmos computacionais pesados (como a reatividade diária do Tempo de Internação, Filtros Multidiscplanares ou Flags Cronometradas de Antibióticos) **devem ser delegados unicamente em Client-Side (memória temporal do Browser)** a partir do espelho inicial da Query, isentando os servidores e as chaves de precificação Opex do HMSJ.
+- **UI-08 (Acessibilidade e UX em PT-BR):**  
+  Fica proibido o uso de jargões técnicos em inglês na interface para o usuário final. Termos como "Entity Resolution" ou "Dry Run" devem ser devidamente nacionalizados (ex: "Limpeza de Duplicatas", "Simulação").
+- **DB-02 (Fuzzy Search e Tolerância):**  
+  Mecanismos de busca por SIGTAP ou indexadores numéricos devem tolerar a presença ou ausência de zeros à esquerda (ex: 0416 = 416).
+- **DB-03 (Preservação de Identidade e Integridade Referencial):**  
+  Na resolução de entidades (como fusão de pacientes duplicados), o ID do registro mais antigo deve sempre ser priorizado (sobrevivente) para manter a integridade referencial legada e links históricos.
 
 ---
 

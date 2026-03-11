@@ -19,7 +19,10 @@
 O **Nexus** atua como o **Hub de Inteligência Hospitalar** no ambiente do **HMSJ (Hospital Municipal São José)**. Seu objetivo principal é centralizar a inteligência e a gestão hospitalar em uma única plataforma, promovendo eficiência, transparência e agilidade na tomada de decisão em processos cruciais do hospital.
 
 Atualmente, o Nexus contempla os seguintes **Módulos Ativos**:
-- 📅 **AIHs Cirurgias Eletivas (Concluído)**: Gestão e inteligência de cirurgias eletivos. Integra regras de validação SISREG (duas etapas) e manuais modulares (Universidade Nexus).
+- 📅 **AIHs Cirurgias Eletivas (Concluído)**: Gestão e inteligência de cirurgias eletivas. Integra regras de validação SISREG (duas etapas) e manuais modulares (Universidade Nexus).
+  - **Smart Upsert na Importação CSV:** O sistema agora deduplica pacientes (priorizando CNS 7) e atualiza solicitações existentes sem criar cópias, unificando históricos.
+  - **Classificação Oncológica Automática:** Procedimentos com SIGTAP iniciando em "0416" ou "416" recebem prioridade "ONCOLOGIA" automaticamente de forma silenciosa e econômica.
+  - **Entity Resolution (Limpeza em Produção):** Ferramenta com "Dry Run" em memória para encontrar e unificar pacientes e AIHs legados duplicados.
 - 📊 **Indicadores & Relatórios**: Rota preparada para a malha de KPIs gerais e exportações para instâncias gerenciais.
 - 📋 **Kanban de Altas (Giro de Leitos)**: Núcleo avançado de gestão operacional do NIR. Combina automação de importações via RPA com a Soberania Clínica, Painel de Logs Semânticos e Universide Nexus acoplada.
 - 🧠 **Telemonitoramento AVC (Pós-Alta) (Concluído)**: Navegação Reativa via Kanban (pacientes transferidos sistemicamente por resolução de exames), UX estritamente contextual (Progressive Profiling no Acolhimento e Ações via Modal) e completude da ferramenta integrada de Importação em Massa Legada (CSV Batch Import).
