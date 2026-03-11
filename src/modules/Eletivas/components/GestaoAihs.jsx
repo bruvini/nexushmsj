@@ -554,8 +554,19 @@ export default function GestaoAihs() {
             placeholder="Buscar Nome, CNS ou SISREG..."
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            className="w-full bg-nexus-card border border-nexus-border text-nexus-text rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-nexus-primary/50 shadow-sm transition-shadow"
+            className="w-full bg-nexus-card border border-nexus-border text-nexus-text rounded-xl pl-10 pr-10 py-2.5 focus:outline-none focus:ring-2 focus:ring-nexus-primary/50 shadow-sm transition-shadow"
           />
+          {busca && (
+            <button
+              onClick={() => setBusca('')}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-red-500 transition-colors"
+              title="Limpar Busca"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 
@@ -672,11 +683,18 @@ export default function GestaoAihs() {
                         solicitacoesDoGrupo.map((sol) => (
                           <tr
                             key={sol.id}
-                            className="hover:bg-slate-50 transition-colors group cursor-pointer"
-                            onClick={() => abrirDetalhes(sol)}
+                            className="hover:bg-slate-50 transition-colors group"
                           >
                             <td className="px-6 py-3">
-                              <div className="font-bold text-nexus-text flex items-center gap-2">
+                              <div
+                                className="font-bold text-nexus-text flex items-center gap-2 cursor-pointer hover:text-nexus-primary transition-colors inline-flex"
+                                title="Copiar Nome"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(sol.nomePaciente);
+                                  toast.success('Nome copiado para a área de transferência!');
+                                }}
+                              >
                                 {sol.nomePaciente}
                                 {sol.prioridade === 'SIM' && (
                                   <span className="bg-red-100 text-red-700 text-[9px] px-1.5 py-0.5 rounded animate-pulse">
@@ -684,7 +702,15 @@ export default function GestaoAihs() {
                                   </span>
                                 )}
                               </div>
-                              <div className="text-[11px] text-nexus-text/50 font-mono mt-0.5">
+                              <div
+                                className="text-[11px] text-nexus-text/50 font-mono mt-0.5 cursor-pointer hover:text-nexus-primary transition-colors inline-block block"
+                                title="Copiar CNS"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(sol.cns || '');
+                                  toast.success('CNS copiado para a área de transferência!');
+                                }}
+                              >
                                 {sol.cns}
                               </div>
                               {/* Novo campo de Procedimento (SIGTAP) */}
@@ -764,6 +790,19 @@ export default function GestaoAihs() {
                             </td>
                             <td className="px-6 py-3">
                               <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    abrirDetalhes(sol);
+                                  }}
+                                  className="text-blue-500 hover:text-blue-700 p-1.5 transition-colors bg-blue-50 hover:bg-blue-100 rounded-lg"
+                                  title="Visualizar Detalhes"
+                                >
+                                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                  </svg>
+                                </button>
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
