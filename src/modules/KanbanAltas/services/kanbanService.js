@@ -1,4 +1,4 @@
-import { doc, getDoc, updateDoc, serverTimestamp, deleteField, collection, addDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp, deleteField, collection, addDoc, increment, arrayUnion } from 'firebase/firestore';
 import { db, auth } from '../../../services/firebase';
 
 export const saveActivityLog = async (patientId, action, description) => {
@@ -209,6 +209,38 @@ export const updatePatientSpecialties = async (patientId, primary, additional = 
         // Log específico é feito no componente PainelKanban.jsx
     } catch (error) {
         console.error(`Erro ao atualizar Especialidades da Gestão:`, error);
+        throw error;
+    }
+};
+
+/**
+ * Salva a alteração de status/histórico do SISREG e computa estatística global.
+ * @param {string} patientId 
+ * @param {object} payload Dados exatos que subirão no updateDoc do paciente.
+ * @param {string} logMessage 
+ * @param {string} statKey (Opcional) Chave da estatística na nexus_estatisticas/sisreg_global a incrementar.
+ */
+export const saveSisregWorkflow = async (patientId, payload, logMessage, statKey = null) => {
+    if (!patientId || !payload) return;
+    try {
+        const patientRef = doc(db, 'nexus_kanban_pacientes', patientId);
+        await updateDoc(patientRef, payload);
+
+        if (logMessage) {
+            await saveActivityLog(patientId, 'SISREG', logMessage);
+        }
+
+        if (statKey) {
+            const statRef = doc(db, 'nexus_estatisticas', 'sisreg_global');
+            await updateDoc(statRef, {
+                [statKey]: increment(1),
+                ultima_atualizacao: serverTimestamp()
+            }).catch(async (e) => {
+                // Ignore missing error quietly to avoid breaking flow if document doesn't exist
+            });
+        }
+    } catch (error) {
+        console.error("Erro ao salvar SISREG Workflow:", error);
         throw error;
     }
 };
