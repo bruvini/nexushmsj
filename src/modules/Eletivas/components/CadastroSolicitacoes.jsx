@@ -341,12 +341,12 @@ export default function CadastroSolicitacoes() {
       toast.success(
         <div className="flex flex-col gap-1">
           <strong className="text-sm">Importação Concluída!</strong>
-          <span className="text-xs">Linhas processadas: {totalAmbulatorial} / {totalLinhas}</span>
+          <span className="text-sm">Linhas processadas: {totalAmbulatorial} / {totalLinhas}</span>
           <hr className="my-1 border-white/30" />
-          <span className="text-xs"><strong className="text-emerald-100">+ {countPacientesNovos}</strong> pacientes novos</span>
-          <span className="text-xs"><strong className="text-emerald-100">+ {countSolicsNovas}</strong> solicitações criadas</span>
-          <span className="text-xs"><strong className="text-amber-200">~ {countSolicsAtualizadas}</strong> solicitações atualizadas</span>
-          <span className="text-xs"><strong className="text-slate-300">= {countSolicsIgnoradas}</strong> no banco (ignoradas)</span>
+          <span className="text-sm"><strong className="text-emerald-100">+ {countPacientesNovos}</strong> pacientes novos</span>
+          <span className="text-sm"><strong className="text-emerald-100">+ {countSolicsNovas}</strong> solicitações criadas</span>
+          <span className="text-sm"><strong className="text-amber-200">~ {countSolicsAtualizadas}</strong> solicitações atualizadas</span>
+          <span className="text-sm"><strong className="text-slate-300">= {countSolicsIgnoradas}</strong> no banco (ignoradas)</span>
           {linhasDuplicadasNoExcel > 0 && (
             <span className="text-[10px] text-red-200 leading-tight mt-1 border-t border-white/20 pt-1">
               * {linhasDuplicadasNoExcel} duplicidades no próprio Excel foram removidas (mantendo a data mais recente).
@@ -609,7 +609,7 @@ export default function CadastroSolicitacoes() {
           <div className="bg-nexus-card p-8 rounded-2xl shadow-2xl flex flex-col items-center max-w-sm w-full mx-4 animate-[fadeIn_0.2s_ease-in-out]">
             <div className="w-14 h-14 border-4 border-nexus-border border-t-nexus-primary rounded-full animate-spin mb-4"></div>
             <h3 className="text-lg font-bold text-nexus-text mb-1">Processando Dados...</h3>
-            <p className="text-sm text-nexus-text/70 text-center">
+            <p className="text-base text-nexus-text/70 text-center">
               Isso pode levar alguns instantes. Por favor, aguarde e não feche a página.
             </p>
           </div>
@@ -627,7 +627,7 @@ export default function CadastroSolicitacoes() {
                 </svg>
               </div>
               <h3 className="text-xl font-bold text-nexus-text mb-2">Excluir Paciente?</h3>
-              <p className="text-nexus-text/80 text-sm mb-6">
+              <p className="text-nexus-text/80 text-base mb-6">
                 Tem certeza que deseja excluir <span className="font-bold text-nexus-text uppercase">{pacienteParaDeletar.nome}</span>? Essa ação é permanente e <strong>apagará todas as solicitações</strong> vinculadas a este cadastro.
               </p>
               <div className="flex w-full gap-3">
@@ -677,32 +677,32 @@ export default function CadastroSolicitacoes() {
           </h3>
           <form ref={formPacienteRef} className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="md:col-span-2">
-              <label className="block text-xs font-medium text-slate-500 mb-1">Nome Completo</label>
+              <label className="block text-sm font-medium text-slate-500 mb-1">Nome Completo</label>
               <input type="text" required onInvalid={(e) => e.target.setCustomValidity('Por favor, digite o nome completo do paciente.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataPaciente({ ...formDataPaciente, nome: e.target.value }); }} value={formDataPaciente.nome} className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 uppercase focus:ring-2 focus:ring-sky-500/50" disabled={loading} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">CNS</label>
+              <label className="block text-sm font-medium text-slate-500 mb-1">CNS</label>
               <input type="text" required readOnly value={formDataPaciente.cns} className="w-full bg-slate-100 border px-3 py-2 rounded-lg cursor-not-allowed font-mono text-slate-500" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Nascimento</label>
+              <label className="block text-sm font-medium text-slate-500 mb-1">Nascimento</label>
               <input type="date" required onInvalid={(e) => e.target.setCustomValidity('Informe a data exata de nascimento do paciente.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataPaciente({ ...formDataPaciente, dataNascimento: e.target.value }); }} value={formDataPaciente.dataNascimento} className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-sky-500/50" disabled={loading} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Cidade</label>
+              <label className="block text-sm font-medium text-slate-500 mb-1">Cidade</label>
               <select required onInvalid={(e) => e.target.setCustomValidity('Você precisa selecionar a cidade do paciente.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataPaciente({ ...formDataPaciente, cidade: e.target.value }); }} value={formDataPaciente.cidade} className="w-full border px-3 py-2 rounded-lg uppercase focus:ring-2 focus:ring-sky-500/50" disabled={loading}>
                 <option value="">SELECIONE...</option>
                 {cidadesSC.map((c) => (<option key={c} value={c}>{c}</option>))}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Sexo</label>
+              <label className="block text-sm font-medium text-slate-500 mb-1">Sexo</label>
               <select required onInvalid={(e) => e.target.setCustomValidity('Selecione o sexo do paciente.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataPaciente({ ...formDataPaciente, sexo: e.target.value }); }} value={formDataPaciente.sexo} className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-sky-500/50" disabled={loading}>
                 <option value="">Selecione...</option><option value="M">Masculino</option><option value="F">Feminino</option>
               </select>
             </div>
             <div className="md:col-span-2">
-              <label className="block text-xs font-medium text-slate-500 mb-1">Nome da Mãe</label>
+              <label className="block text-sm font-medium text-slate-500 mb-1">Nome da Mãe</label>
               <input type="text" required onInvalid={(e) => e.target.setCustomValidity('Por favor, digite o nome completo da mãe.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataPaciente({ ...formDataPaciente, nomeMae: e.target.value }); }} value={formDataPaciente.nomeMae} className="w-full border px-3 py-2 rounded-lg uppercase focus:ring-2 focus:ring-sky-500/50" disabled={loading} />
             </div>
             <div className="md:col-span-2 flex justify-end gap-3 mt-4">
@@ -725,7 +725,7 @@ export default function CadastroSolicitacoes() {
           </h3>
           <form onSubmit={handleSalvarSolicitacao} className="grid grid-cols-1 md:grid-cols-4 gap-5">
             <div className="md:col-span-2">
-              <label className="block text-xs font-medium text-slate-500 mb-1">Origem da Solicitação</label>
+              <label className="block text-sm font-medium text-slate-500 mb-1">Origem da Solicitação</label>
               <select required onInvalid={(e) => e.target.setCustomValidity('Por favor, clique aqui e selecione de onde vem essa solicitação.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataSolicitacao({ ...formDataSolicitacao, origem: e.target.value }); }} value={formDataSolicitacao.origem} className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500/50" disabled={loading}>
                 <option value="">Selecione...</option>
                 <option value="Ambulatório de Especialidades">Ambulatório de Especialidades</option>
@@ -734,11 +734,11 @@ export default function CadastroSolicitacoes() {
               </select>
             </div>
             <div className="md:col-span-1">
-              <label className="block text-xs font-medium text-slate-500 mb-1">Data da Solicitação</label>
+              <label className="block text-sm font-medium text-slate-500 mb-1">Data da Solicitação</label>
               <input type="date" required onInvalid={(e) => e.target.setCustomValidity('Informe a data exata em que o pedido foi feito pelo médico.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataSolicitacao({ ...formDataSolicitacao, dataSolicitacao: e.target.value }); }} value={formDataSolicitacao.dataSolicitacao} className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-emerald-500/50" disabled={loading} />
             </div>
             <div className="md:col-span-1">
-              <label className="block text-xs font-medium text-slate-500 mb-1">Prioridade Urgente?</label>
+              <label className="block text-sm font-medium text-slate-500 mb-1">Prioridade Urgente?</label>
               <select required onInvalid={(e) => e.target.setCustomValidity('Selecione uma prioridade válida.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataSolicitacao({ ...formDataSolicitacao, prioridade: e.target.value }); }} value={formDataSolicitacao.prioridade} className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-emerald-500/50" disabled={loading}>
                 <option value="NÃO">Não</option><option value="SIM">Sim</option><option value="Oncologia">Oncologia</option><option value="Carta de Prioridade">Carta de Prioridade</option>
               </select>
@@ -746,21 +746,21 @@ export default function CadastroSolicitacoes() {
             {!isPamBoaVista && (
               <>
                 <div className="md:col-span-1">
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Prontuário MV PEP</label>
+                  <label className="block text-sm font-medium text-slate-500 mb-1">Prontuário MV PEP</label>
                   <input type="text" required onInvalid={(e) => e.target.setCustomValidity('Digite o número do prontuário do paciente no MV PEP.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataSolicitacao({ ...formDataSolicitacao, prontuario: e.target.value }); }} value={formDataSolicitacao.prontuario} className="w-full border px-3 py-2 rounded-lg" disabled={loading} />
                 </div>
                 <div className="md:col-span-3">
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Nº Consulta Ambulatorial</label>
+                  <label className="block text-sm font-medium text-slate-500 mb-1">Nº Consulta Ambulatorial</label>
                   <input type="text" required onInvalid={(e) => e.target.setCustomValidity('Informe o número da respectiva consulta no Ambulatório.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataSolicitacao({ ...formDataSolicitacao, consulta: e.target.value }); }} value={formDataSolicitacao.consulta} className="w-full border px-3 py-2 rounded-lg" disabled={loading} />
                 </div>
               </>
             )}
             <div className="md:col-span-1">
-              <label className="block text-xs font-medium text-slate-500 mb-1">CID 10</label>
+              <label className="block text-sm font-medium text-slate-500 mb-1">CID 10</label>
               <input type="text" required onInvalid={(e) => e.target.setCustomValidity('Informe o código CID principal do diagnóstico.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataSolicitacao({ ...formDataSolicitacao, cid: e.target.value.toUpperCase() }); }} value={formDataSolicitacao.cid} className="w-full border px-3 py-2 rounded-lg uppercase" placeholder="M17" disabled={loading} />
             </div>
             <div className="md:col-span-3 relative">
-              <label className="block text-xs font-medium text-slate-500 mb-1">Procedimento (SIGTAP)</label>
+              <label className="block text-sm font-medium text-slate-500 mb-1">Procedimento (SIGTAP)</label>
               <input type="text" required onInvalid={(e) => e.target.setCustomValidity('Você precisa pesquisar e selecionar um procedimento da lista para continuar.')} onInput={(e) => { e.target.setCustomValidity(''); handleBuscaProcChange(e); }} placeholder="Buscar código ou nome..." value={buscaProc} onFocus={() => setMostrarDropdownProc(true)} onBlur={() => setTimeout(() => setMostrarDropdownProc(false), 200)} className="w-full border px-3 py-2 rounded-lg uppercase focus:ring-2 focus:ring-emerald-500/50" disabled={loading} />
               {mostrarDropdownProc && buscaProc && (
                 <ul className="absolute z-20 w-full bg-white border shadow-xl rounded-lg mt-1 max-h-60 overflow-y-auto custom-scrollbar">
@@ -773,21 +773,21 @@ export default function CadastroSolicitacoes() {
               )}
             </div>
             <div className="md:col-span-2">
-              <label className="block text-xs font-medium text-slate-500 mb-1">Especialidade Médica</label>
+              <label className="block text-sm font-medium text-slate-500 mb-1">Especialidade Médica</label>
               <select required onInvalid={(e) => e.target.setCustomValidity('Selecione uma especialidade referenciada para o procedimento.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataSolicitacao({ ...formDataSolicitacao, especialidade: e.target.value, medico: '' }); }} value={formDataSolicitacao.especialidade} disabled={especialidadesDisponiveis.length === 0 || loading} className="w-full border px-3 py-2 rounded-lg disabled:bg-slate-50">
                 <option value="">SELECIONE...</option>
                 {especialidadesDisponiveis.map((esp) => (<option key={esp} value={esp}>{esp}</option>))}
               </select>
             </div>
             <div className="md:col-span-2">
-              <label className="block text-xs font-medium text-slate-500 mb-1">Médico Solicitante</label>
+              <label className="block text-sm font-medium text-slate-500 mb-1">Médico Solicitante</label>
               <select required onInvalid={(e) => e.target.setCustomValidity('Selecione o médico responsável na lista.')} onInput={(e) => { e.target.setCustomValidity(''); setFormDataSolicitacao({ ...formDataSolicitacao, medico: e.target.value }); }} value={formDataSolicitacao.medico} disabled={medicosDisponiveis.length === 0 || loading} className="w-full border px-3 py-2 rounded-lg disabled:bg-slate-50">
                 <option value="">SELECIONE...</option>
                 {medicosDisponiveis.map((m) => (<option key={m.id} value={m.nome}>{m.nome}</option>))}
               </select>
             </div>
             <div className="md:col-span-4 bg-slate-50 border border-slate-200 rounded-xl p-4 mt-2">
-              <label className="block text-xs font-bold text-slate-600 mb-1">Número do SISREG (Opcional)</label>
+              <label className="block text-sm font-bold text-slate-600 mb-1">Número do SISREG (Opcional)</label>
               <p className="text-[10px] text-slate-400 mb-2 leading-tight">Se preenchido, o paciente cairá direto em Validação. Do contrário, ficará retido aguardando o número.</p>
               <input type="text" value={formDataSolicitacao.numeroSisreg} onChange={(e) => setFormDataSolicitacao({ ...formDataSolicitacao, numeroSisreg: e.target.value.replace(/\D/g, '') })} className="w-full md:w-1/3 border px-3 py-2 rounded-lg font-mono placeholder:text-slate-300 focus:ring-2 focus:ring-slate-400" placeholder="Apenas números..." disabled={loading} />
             </div>
@@ -803,7 +803,7 @@ export default function CadastroSolicitacoes() {
       {/* TABELA DE PACIENTES */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden mt-4">
         <div className="px-6 py-4 border-b bg-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+          <h3 className="text-base font-semibold text-slate-700 uppercase tracking-wider flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-sky-500"></span> Últimos Pacientes Cadastrados
           </h3>
           <div className="relative w-full md:w-96 flex gap-2">
@@ -832,7 +832,7 @@ export default function CadastroSolicitacoes() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-600 whitespace-nowrap">
-            <thead className="bg-slate-50 text-xs text-slate-500 font-medium border-b border-slate-200">
+            <thead className="bg-slate-50 text-sm text-slate-500 font-medium border-b border-slate-200">
               <tr>
                 <th className="px-6 py-3 text-center">Ações</th><th className="px-6 py-3">CNS / Nome Completo</th><th className="px-6 py-3">Cidade</th><th className="px-6 py-3 text-center">AIHs Ativas</th>
               </tr>
@@ -855,7 +855,7 @@ export default function CadastroSolicitacoes() {
                     <div className="font-bold text-slate-700 uppercase leading-tight">{p.nome}</div>
                     <div className="text-[10px] font-mono text-slate-400 mt-0.5">CNS: {p.cns}</div>
                   </td>
-                  <td className="px-6 py-3 text-xs uppercase">{p.cidade}</td>
+                  <td className="px-6 py-3 text-sm uppercase">{p.cidade}</td>
                   <td className="px-6 py-3 text-center">
                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${contagemSolicitacoes[p.id] > 0 ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
                       {contagemSolicitacoes[p.id] || 0}
@@ -875,7 +875,7 @@ export default function CadastroSolicitacoes() {
         </div>
         {totalPaginas > 1 && (
           <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-            <span className="text-xs text-slate-500 font-medium">
+            <span className="text-sm text-slate-500 font-medium">
               Página {paginaAtual} de {totalPaginas} — Total: {pacientesFiltradosSorted.length} registros
             </span>
             <div className="flex gap-2">

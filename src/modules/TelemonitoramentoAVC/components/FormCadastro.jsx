@@ -185,39 +185,39 @@ export default function FormCadastro() {
             <div className="mb-8 border-b border-slate-100 pb-4 flex justify-between items-end">
                 <div>
                     <h2 className="text-2xl font-semibold text-slate-800 tracking-tight">Novo Paciente (Triagem)</h2>
-                    <p className="text-sm text-slate-500 mt-1 font-light">Cadastro primário e definição de elegibilidade centralizada.</p>
+                    <p className="text-base text-slate-500 mt-1 font-light">Cadastro primário e definição de elegibilidade centralizada.</p>
                 </div>
-                {loadingConfigs && <span className="text-xs text-sky-500 animate-pulse font-medium">Carregando formulário...</span>}
+                {loadingConfigs && <span className="text-sm text-sky-500 animate-pulse font-medium">Carregando formulário...</span>}
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Dados Pessoais */}
                 <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 mb-6">
-                    <h3 className="text-sm font-semibold text-slate-700 mb-4 border-b border-slate-200 pb-2">Dados Pessoais e Clínicos</h3>
+                    <h3 className="text-base font-semibold text-slate-700 mb-4 border-b border-slate-200 pb-2">Dados Pessoais e Clínicos</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="flex flex-col gap-2 lg:col-span-2">
                             <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Nome Completo <span className="text-red-500">*</span></label>
-                            <input required type="text" name="nome" value={formData.nome} onChange={handleChange} onBlur={handleBlurNomeDuplicates} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-sm text-slate-700" placeholder="Nome do Paciente" />
+                            <input required type="text" name="nome" value={formData.nome} onChange={handleChange} onBlur={handleBlurNomeDuplicates} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-base text-slate-700" placeholder="Nome do Paciente" />
                         </div>
 
                         <div className="flex flex-col gap-2">
                             <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Nascimento <span className="text-red-500">*</span></label>
-                            <input required type="date" name="dataNascimento" value={formData.dataNascimento} onChange={handleChange} onBlur={handleBlurNomeDuplicates} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-sm text-slate-700" />
+                            <input required type="date" name="dataNascimento" value={formData.dataNascimento} onChange={handleChange} onBlur={handleBlurNomeDuplicates} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-base text-slate-700" />
                         </div>
 
                         <div className="flex flex-col gap-2">
                             <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Idade</label>
-                            <input type="text" readOnly value={formData.idade ? `${formData.idade} anos` : ''} className="px-3 py-2 bg-slate-100 border border-slate-200 rounded-md text-sm text-slate-500 cursor-not-allowed" placeholder="Auto" />
+                            <input type="text" readOnly value={formData.idade ? `${formData.idade} anos` : ''} className="px-3 py-2 bg-slate-100 border border-slate-200 rounded-md text-base text-slate-500 cursor-not-allowed" placeholder="Auto" />
                         </div>
 
                         <div className="flex flex-col gap-2">
                             <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Data da Solicitação Médica <span className="text-red-500">*</span></label>
-                            <input required type="date" name="data_inclusao" value={formData.data_inclusao} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-sm text-slate-700" />
+                            <input required type="date" name="data_inclusao" value={formData.data_inclusao} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-base text-slate-700" />
                         </div>
 
                         <div className="flex flex-col gap-2 lg:col-span-1">
                             <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Profissional solicitante <span className="text-red-500">*</span></label>
-                            <input required type="text" name="profissionalResponsavel" value={formData.profissionalResponsavel} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-sm text-slate-700" placeholder="Ex: Dr. João Silva" />
+                            <input required type="text" name="profissionalResponsavel" value={formData.profissionalResponsavel} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-base text-slate-700" placeholder="Ex: Dr. João Silva" />
                         </div>
                     </div>
                 </div>
@@ -225,15 +225,15 @@ export default function FormCadastro() {
                 {/* Status Hospitalar */}
                 <div className="bg-sky-50/50 p-5 rounded-xl border border-sky-100 mb-6 transition-all duration-300">
                     <div className="flex items-center justify-between mb-4 border-b border-sky-200/50 pb-2">
-                        <h3 className="text-sm font-semibold text-sky-800">Status Hospitalar</h3>
+                        <h3 className="text-base font-semibold text-sky-800">Status Hospitalar</h3>
                         <div className="flex items-center gap-4">
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <input type="radio" name="status" value="Internado" checked={formData.status === 'Internado'} onChange={handleChange} className="w-4 h-4 text-sky-600 focus:ring-sky-500 border-slate-300" />
-                                <span className="text-sm text-slate-700 font-medium">Internado</span>
+                                <span className="text-base text-slate-700 font-medium">Internado</span>
                             </label>
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <input type="radio" name="status" value="Alta" checked={formData.status === 'Alta'} onChange={handleChange} className="w-4 h-4 text-sky-600 focus:ring-sky-500 border-slate-300" />
-                                <span className="text-sm text-slate-700 font-medium">Alta</span>
+                                <span className="text-base text-slate-700 font-medium">Alta</span>
                             </label>
                         </div>
                     </div>
@@ -243,7 +243,7 @@ export default function FormCadastro() {
                             <>
                                 <div className="flex flex-col gap-2">
                                     <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Setor <span className="text-red-500">*</span></label>
-                                    <select required name="setor" value={formData.setor} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-sm text-slate-700">
+                                    <select required name="setor" value={formData.setor} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-base text-slate-700">
                                         <option value="" disabled>SELECIONE O SETOR...</option>
                                         {setoresHmsj.map(setorOp => (
                                             <option key={setorOp} value={setorOp}>{setorOp}</option>
@@ -252,18 +252,18 @@ export default function FormCadastro() {
                                 </div>
                                 <div className="flex flex-col gap-2">
                                     <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Leito <span className="text-red-500">*</span></label>
-                                    <input required type="text" name="leito" value={formData.leito} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-sm text-slate-700" placeholder="Ex: L-01" />
+                                    <input required type="text" name="leito" value={formData.leito} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-base text-slate-700" placeholder="Ex: L-01" />
                                 </div>
                                 <div className="flex flex-col gap-2 md:col-span-2">
                                     <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Data Prevista de Alta</label>
-                                    <input type="date" name="data_provavel_alta" value={formData.data_provavel_alta} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-sm text-slate-700 lg:w-1/2" />
+                                    <input type="date" name="data_provavel_alta" value={formData.data_provavel_alta} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-base text-slate-700 lg:w-1/2" />
                                 </div>
                             </>
                         )}
                         {formData.status === 'Alta' && (
                             <div className="flex flex-col gap-2 md:col-span-2">
                                 <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Data da Alta <span className="text-red-500">*</span></label>
-                                <input required type="date" name="data_alta_hospitalar" value={formData.data_alta_hospitalar} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-sm text-slate-700 lg:w-1/2" />
+                                <input required type="date" name="data_alta_hospitalar" value={formData.data_alta_hospitalar} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all text-base text-slate-700 lg:w-1/2" />
                             </div>
                         )}
                     </div>
@@ -273,13 +273,13 @@ export default function FormCadastro() {
                 <div className="pt-2">
                     <div className="flex items-center gap-3 mb-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
                         <input type="checkbox" id="elegivel" name="elegivelMonitoramento" checked={formData.elegivelMonitoramento} onChange={handleChange} className="w-5 h-5 text-sky-500 bg-white border-slate-300 rounded focus:ring-sky-500 focus:ring-2 transition-all cursor-pointer" />
-                        <label htmlFor="elegivel" className="text-sm font-semibold text-slate-700 cursor-pointer">Paciente ELEGÍVEL para Linha de Cuidado (Telemonitoramento)</label>
+                        <label htmlFor="elegivel" className="text-base font-semibold text-slate-700 cursor-pointer">Paciente ELEGÍVEL para Linha de Cuidado (Telemonitoramento)</label>
                     </div>
 
                     {formData.elegivelMonitoramento ? (
                         <div className="mt-4 p-5 border border-slate-200 rounded-xl bg-white shadow-sm animate-fadeIn">
                             <div className="flex items-center justify-between mb-4">
-                                <h4 className="text-xs font-semibold text-slate-500 uppercase">Exames Solicitados/Realizados</h4>
+                                <h4 className="text-sm font-semibold text-slate-500 uppercase">Exames Solicitados/Realizados</h4>
 
                                 {!showNewExameInput ? (
                                     <button
@@ -306,7 +306,7 @@ export default function FormCadastro() {
                                         <button
                                             type="button"
                                             onClick={handleAdicionarExame}
-                                            className="text-white bg-sky-600 hover:bg-sky-700 px-2 py-1 rounded text-xs font-medium transition-colors"
+                                            className="text-white bg-sky-600 hover:bg-sky-700 px-2 py-1 rounded text-sm font-medium transition-colors"
                                         >
                                             Salvar
                                         </button>
@@ -332,21 +332,21 @@ export default function FormCadastro() {
                                             onChange={() => handleExameToggle(exame)}
                                             className="w-4 h-4 mt-0.5 text-sky-600 bg-slate-50 border-slate-300 rounded focus:ring-sky-500 transition-all"
                                         />
-                                        <span className="text-xs text-slate-600 font-medium group-hover:text-sky-700 leading-tight">{exame}</span>
+                                        <span className="text-sm text-slate-600 font-medium group-hover:text-sky-700 leading-tight">{exame}</span>
                                     </label>
                                 ))}
                             </div>
                         </div>
                     ) : (
                         <div className="flex flex-col gap-2 mt-4 animate-fadeIn">
-                            <label className="text-xs font-semibold text-red-500 uppercase tracking-wider">Motivo da Inelegibilidade <span className="text-red-500">*</span></label>
-                            <textarea name="motivoInelegibilidade" value={formData.motivoInelegibilidade} onChange={handleChange} rows="3" className="px-4 py-3 bg-red-50/50 border border-red-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-all text-sm text-slate-700 w-full resize-none shadow-inner" placeholder="Especifique o motivo clínico ou administrativo (Ex: Óbito, Cuidados Paliativos)."></textarea>
+                            <label className="text-sm font-semibold text-red-500 uppercase tracking-wider">Motivo da Inelegibilidade <span className="text-red-500">*</span></label>
+                            <textarea name="motivoInelegibilidade" value={formData.motivoInelegibilidade} onChange={handleChange} rows="3" className="px-4 py-3 bg-red-50/50 border border-red-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-all text-base text-slate-700 w-full resize-none shadow-inner" placeholder="Especifique o motivo clínico ou administrativo (Ex: Óbito, Cuidados Paliativos)."></textarea>
                         </div>
                     )}
                 </div>
 
                 <div className="flex justify-end pt-6 border-t border-slate-200 mt-8">
-                    <button type="submit" disabled={loading} className="px-8 py-3 bg-sky-600 text-white text-sm font-semibold rounded-lg hover:bg-sky-700 focus:ring-4 focus:ring-sky-500/30 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-sky-500/20 w-full md:w-auto justify-center">
+                    <button type="submit" disabled={loading} className="px-8 py-3 bg-sky-600 text-white text-base font-semibold rounded-lg hover:bg-sky-700 focus:ring-4 focus:ring-sky-500/30 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-sky-500/20 w-full md:w-auto justify-center">
                         {loading ? (
                             <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -375,7 +375,7 @@ export default function FormCadastro() {
                             <h3 className="text-lg leading-6 font-bold text-slate-900 text-center">Registro Duplicado Detectado</h3>
                         </div>
                         <div className="p-6">
-                            <p className="text-sm text-slate-600 text-center mb-6">
+                            <p className="text-base text-slate-600 text-center mb-6">
                                 Já existe um paciente cadastrado com o nome <strong>{formData.nome}</strong> e data de nascimento <strong>{formData.dataNascimento}</strong>. O que deseja fazer?
                             </p>
                             <div className="flex flex-col gap-3">
@@ -385,7 +385,7 @@ export default function FormCadastro() {
                                 <button onClick={() => handleDuplicityChoice('novo')} className="w-full flex justify-center items-center px-4 py-3 border border-slate-300 text-sm font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 shadow-sm transition-colors">
                                     Ignorar e Criar Novo Monitoramento
                                 </button>
-                                <button onClick={fecharModalDuplicidade} className="w-full flex justify-center items-center pt-2 text-sm font-semibold text-slate-400 hover:text-slate-600 transition-colors">
+                                <button onClick={fecharModalDuplicidade} className="w-full flex justify-center items-center pt-2 text-base font-semibold text-slate-400 hover:text-slate-600 transition-colors">
                                     Cancelar Operação
                                 </button>
                             </div>

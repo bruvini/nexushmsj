@@ -179,7 +179,7 @@ export default function FormAcolhimento({ pacientePreSelecionado, onClose }) {
             <div className="mb-8 border-b border-slate-100 pb-4 flex justify-between items-end">
                 <div>
                     <h2 className="text-2xl font-semibold text-slate-800 tracking-tight">Acolhimento Clínico {pacientePreSelecionado ? `- ${pacientePreSelecionado.nome}` : ''}</h2>
-                    <p className="text-sm text-slate-500 mt-1 font-light">Efetivação do cadastro e checklist primário.</p>
+                    <p className="text-base text-slate-500 mt-1 font-light">Efetivação do cadastro e checklist primário.</p>
                 </div>
             </div>
 
@@ -193,14 +193,14 @@ export default function FormAcolhimento({ pacientePreSelecionado, onClose }) {
                         </label>
 
                         {pacientesPendentes.length === 0 ? (
-                            <div className="p-4 bg-white border border-[#8e44ad]/10 rounded-lg text-sm text-slate-500 italic text-center text-[#8e44ad]">
+                            <div className="p-4 bg-white border border-[#8e44ad]/10 rounded-lg text-base text-slate-500 italic text-center text-[#8e44ad]">
                                 Nenhum paciente aguardando etapa de acolhimento nesta célula.
                             </div>
                         ) : (
                             <select
                                 value={selectedPacienteId}
                                 onChange={handlePacienteChange}
-                                className="w-full px-4 py-3 bg-white border border-[#8e44ad]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e44ad] transition-all text-sm text-slate-700 font-medium cursor-pointer"
+                                className="w-full px-4 py-3 bg-white border border-[#8e44ad]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e44ad] transition-all text-base text-slate-700 font-medium cursor-pointer"
                             >
                                 <option value="">-- Clique aqui para selecionar --</option>
                                 {pacientesPendentes.map(p => (
@@ -219,15 +219,15 @@ export default function FormAcolhimento({ pacientePreSelecionado, onClose }) {
                         {/* Decisão de Elegibilidade Real */}
                         <div className="bg-slate-50 p-5 rounded-xl border border-slate-100">
                             <div className="flex items-center justify-between mb-4 border-b border-slate-200 pb-2">
-                                <h3 className="text-sm font-semibold text-slate-700">Mantém Elegibilidade Operacional?</h3>
+                                <h3 className="text-base font-semibold text-slate-700">Mantém Elegibilidade Operacional?</h3>
                                 <div className="flex items-center gap-4">
                                     <label className="flex items-center gap-2 cursor-pointer group">
                                         <input type="radio" name="elegivel_monitoramento" value="SIM" checked={formData.elegivel_monitoramento === 'SIM'} onChange={handleChange} className="w-4 h-4 text-[#8e44ad] focus:ring-[#8e44ad] border-slate-300" />
-                                        <span className="text-sm text-slate-700 font-medium group-hover:text-[#8e44ad]">SIM</span>
+                                        <span className="text-base text-slate-700 font-medium group-hover:text-[#8e44ad]">SIM</span>
                                     </label>
                                     <label className="flex items-center gap-2 cursor-pointer group">
                                         <input type="radio" name="elegivel_monitoramento" value="NÃO" checked={formData.elegivel_monitoramento === 'NÃO'} onChange={handleChange} className="w-4 h-4 text-[#8e44ad] focus:ring-[#8e44ad] border-slate-300" />
-                                        <span className="text-sm text-slate-700 font-medium group-hover:text-[#8e44ad]">NÃO</span>
+                                        <span className="text-base text-slate-700 font-medium group-hover:text-[#8e44ad]">NÃO</span>
                                     </label>
                                 </div>
                             </div>
@@ -235,7 +235,7 @@ export default function FormAcolhimento({ pacientePreSelecionado, onClose }) {
                             {formData.elegivel_monitoramento === 'NÃO' && (
                                 <div className="flex flex-col gap-2 mt-4 animate-fadeIn">
                                     <label className="text-[11px] font-semibold text-red-500 uppercase tracking-wider">Motivo de Desligamento <span className="text-red-500">*</span></label>
-                                    <textarea name="motivo_inelegibilidade" value={formData.motivo_inelegibilidade} onChange={handleChange} rows="3" className="px-4 py-3 bg-red-50/50 border border-red-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-all text-sm text-slate-700 w-full resize-none shadow-inner" placeholder="Especifique o motivo clínico ou administrativo. A linha de cuidado será encerrada para este paciente."></textarea>
+                                    <textarea name="motivo_inelegibilidade" value={formData.motivo_inelegibilidade} onChange={handleChange} rows="3" className="px-4 py-3 bg-red-50/50 border border-red-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-all text-base text-slate-700 w-full resize-none shadow-inner" placeholder="Especifique o motivo clínico ou administrativo. A linha de cuidado será encerrada para este paciente."></textarea>
                                 </div>
                             )}
 
@@ -243,17 +243,17 @@ export default function FormAcolhimento({ pacientePreSelecionado, onClose }) {
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4 animate-fadeIn">
                                     <div className="flex flex-col gap-2 lg:col-span-1">
                                         <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Prontuário <span className="text-red-500">*</span></label>
-                                        <input required type="text" name="prontuario" value={formData.prontuario} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-[#8e44ad] transition-all text-sm text-slate-700" />
+                                        <input required type="text" name="prontuario" value={formData.prontuario} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-[#8e44ad] transition-all text-base text-slate-700" />
                                     </div>
 
                                     <div className="flex flex-col gap-2 lg:col-span-1">
                                         <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Data Internação <span className="text-red-500">*</span></label>
-                                        <input required type="date" name="dataInternacao" value={formData.dataInternacao} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-[#8e44ad] transition-all text-sm text-slate-700" />
+                                        <input required type="date" name="dataInternacao" value={formData.dataInternacao} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-[#8e44ad] transition-all text-base text-slate-700" />
                                     </div>
 
                                     <div className="flex flex-col gap-2 lg:col-span-1">
                                         <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Sexo <span className="text-red-500">*</span></label>
-                                        <select required name="sexo" value={formData.sexo} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-[#8e44ad] transition-all text-sm text-slate-700">
+                                        <select required name="sexo" value={formData.sexo} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-[#8e44ad] transition-all text-base text-slate-700">
                                             <option value="">SELECIONE...</option>
                                             <option value="MASCULINO">MASCULINO</option>
                                             <option value="FEMININO">FEMININO</option>
@@ -262,7 +262,7 @@ export default function FormAcolhimento({ pacientePreSelecionado, onClose }) {
 
                                     <div className="flex flex-col gap-2 lg:col-span-1">
                                         <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Cidade Residente <span className="text-red-500">*</span></label>
-                                        <select required name="cidade" value={formData.cidade} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-[#8e44ad] transition-all text-sm text-slate-700">
+                                        <select required name="cidade" value={formData.cidade} onChange={handleChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-[#8e44ad] transition-all text-base text-slate-700">
                                             <option value="">-- SELECIONE A CIDADE --</option>
                                             {cidadesSC.map(c => (
                                                 <option key={c} value={c}>{c}</option>
@@ -272,12 +272,12 @@ export default function FormAcolhimento({ pacientePreSelecionado, onClose }) {
 
                                     <div className="flex flex-col gap-2 lg:col-span-2">
                                         <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Telefone Principal (Acolhimento) <span className="text-red-500">*</span></label>
-                                        <input required type="tel" name="telefone1" value={formData.telefone1} onChange={handlePhoneChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-[#8e44ad] transition-all text-sm text-slate-700" placeholder="(XX) XXXXX-XXXX" />
+                                        <input required type="tel" name="telefone1" value={formData.telefone1} onChange={handlePhoneChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-[#8e44ad] transition-all text-base text-slate-700" placeholder="(XX) XXXXX-XXXX" />
                                     </div>
 
                                     <div className="flex flex-col gap-2 lg:col-span-2">
                                         <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Telefone Cônjuge/Familiar</label>
-                                        <input type="tel" name="telefone2" value={formData.telefone2} onChange={handlePhoneChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-[#8e44ad] transition-all text-sm text-slate-700" placeholder="(Opcional)" />
+                                        <input type="tel" name="telefone2" value={formData.telefone2} onChange={handlePhoneChange} className="px-3 py-2 bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e44ad] focus:border-[#8e44ad] transition-all text-base text-slate-700" placeholder="(Opcional)" />
                                     </div>
                                 </div>
                             )}
@@ -287,15 +287,15 @@ export default function FormAcolhimento({ pacientePreSelecionado, onClose }) {
                         {formData.elegivel_monitoramento === 'SIM' && (
                             <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 animate-fadeIn">
                                 <div className="flex items-center justify-between mb-4 border-b border-slate-200 pb-2">
-                                    <h3 className="text-sm font-semibold text-slate-700">Faz uso de Anticoagulante/Antiagregante?</h3>
+                                    <h3 className="text-base font-semibold text-slate-700">Faz uso de Anticoagulante/Antiagregante?</h3>
                                     <div className="flex items-center gap-4">
                                         <label className="flex items-center gap-2 cursor-pointer group">
                                             <input type="radio" name="fazUsoAnticoagulante" value="SIM" checked={formData.fazUsoAnticoagulante === 'SIM'} onChange={handleChange} className="w-4 h-4 text-[#8e44ad] focus:ring-[#8e44ad] border-slate-300" />
-                                            <span className="text-sm text-slate-700 font-medium group-hover:text-[#8e44ad]">SIM</span>
+                                            <span className="text-base text-slate-700 font-medium group-hover:text-[#8e44ad]">SIM</span>
                                         </label>
                                         <label className="flex items-center gap-2 cursor-pointer group">
                                             <input type="radio" name="fazUsoAnticoagulante" value="NÃO" checked={formData.fazUsoAnticoagulante === 'NÃO'} onChange={handleChange} className="w-4 h-4 text-[#8e44ad] focus:ring-[#8e44ad] border-slate-300" />
-                                            <span className="text-sm text-slate-700 font-medium group-hover:text-[#8e44ad]">NÃO</span>
+                                            <span className="text-base text-slate-700 font-medium group-hover:text-[#8e44ad]">NÃO</span>
                                         </label>
                                     </div>
                                 </div>
@@ -312,12 +312,12 @@ export default function FormAcolhimento({ pacientePreSelecionado, onClose }) {
                                                         onChange={() => handleMedicacaoToggle(med)}
                                                         className="w-4 h-4 mt-0.5 text-[#8e44ad] bg-slate-50 border-slate-300 rounded focus:ring-[#8e44ad] transition-all"
                                                     />
-                                                    <span className="text-xs text-slate-600 font-medium group-hover:text-[#8e44ad] leading-tight">{med}</span>
+                                                    <span className="text-sm text-slate-600 font-medium group-hover:text-[#8e44ad] leading-tight">{med}</span>
                                                 </label>
                                             ))}
                                         </div>
                                         {medicacoesCadastradas.length === 0 && (
-                                            <p className="text-xs text-amber-600 italic">Nenhum anticoagulante cadastrado. Acesse a área de Configurações para adicionar.</p>
+                                            <p className="text-sm text-amber-600 italic">Nenhum anticoagulante cadastrado. Acesse a área de Configurações para adicionar.</p>
                                         )}
                                     </div>
                                 )}
@@ -328,7 +328,7 @@ export default function FormAcolhimento({ pacientePreSelecionado, onClose }) {
                             <button
                                 type="submit"
                                 disabled={loading || !selectedPacienteId}
-                                className="px-8 py-3 bg-[#8e44ad] text-white text-sm font-semibold rounded-lg hover:bg-[#732d91] focus:ring-4 focus:ring-[#8e44ad]/30 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-purple-500/20 w-full md:w-auto justify-center"
+                                className="px-8 py-3 bg-[#8e44ad] text-white text-base font-semibold rounded-lg hover:bg-[#732d91] focus:ring-4 focus:ring-[#8e44ad]/30 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-purple-500/20 w-full md:w-auto justify-center"
                             >
                                 {loading ? (
                                     <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">

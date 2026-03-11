@@ -258,7 +258,7 @@ function KanbanColumn({ title, icon, colorTheme, items, onCardClick }) {
         <div className={`flex flex-col w-full rounded-xl border border-slate-200 ${theme.bg} shadow-sm`}>
             {/* Header da Coluna */}
             <div className={`p-4 border-b border-slate-200 border-t-4 ${theme.borderTop} rounded-t-xl bg-white/60 backdrop-blur flex justify-between items-center`}>
-                <h3 className="font-bold text-slate-700 text-sm flex items-center gap-2">
+                <h3 className="font-bold text-slate-700 text-base flex items-center gap-2">
                     <span className="text-lg">{icon}</span>
                     {title}
                 </h3>
@@ -270,7 +270,7 @@ function KanbanColumn({ title, icon, colorTheme, items, onCardClick }) {
             {/* Area de scroll dos cartões no Desktop, altura auto no Mobile */}
             <div className="p-3 flex-1 lg:max-h-[60vh] overflow-y-auto custom-scrollbar space-y-3">
                 {items.length === 0 ? (
-                    <div className="min-h-[100px] flex items-center justify-center text-slate-400 text-xs italic border-2 border-dashed border-slate-200/50 rounded-lg">
+                    <div className="min-h-[100px] flex items-center justify-center text-slate-400 text-sm italic border-2 border-dashed border-slate-200/50 rounded-lg">
                         Vazio
                     </div>
                 ) : (
@@ -283,13 +283,13 @@ function KanbanColumn({ title, icon, colorTheme, items, onCardClick }) {
                             {/* Accent indicator */}
                             <div className={`absolute left-0 top-0 bottom-0 w-1 ${theme.borderTop.replace('border-t-', 'bg-')} opacity-0 group-hover:opacity-100 transition-opacity`}></div>
 
-                            <h4 className="text-sm font-bold text-slate-800 mb-1 leading-tight group-hover:text-slate-900 transition-colors">{card.nome}</h4>
+                            <h4 className="text-base font-bold text-slate-800 mb-1 leading-tight group-hover:text-slate-900 transition-colors">{card.nome}</h4>
 
                             <div className="flex justify-between items-center text-[10px] text-slate-500 font-medium mb-3">
                                 <span>Nasc: {formatNascimento(card.data_nascimento)}</span>
                             </div>
 
-                            <div className="text-xs text-slate-600 bg-slate-50 p-2 rounded border border-slate-100 font-medium">
+                            <div className="text-sm text-slate-600 bg-slate-50 p-2 rounded border border-slate-100 font-medium">
                                 {renderCardSummary(card)}
                             </div>
 

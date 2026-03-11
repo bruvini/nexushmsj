@@ -266,13 +266,26 @@ export default function GestaoAihs() {
       );
 
       // Define a 'situacao' macro baseada no status escolhido
+      let decisaoFinal = decisao;
+      let alteracaoAutomaticaStatus = false;
+
+      // REGRAS DE TRANSIÇÃO AUTOMÁTICA
+      if (
+        solicitacaoAtiva.status === 'AGUARDA NÚMERO SISREG' &&
+        decisao === 'AGUARDA NÚMERO SISREG' &&
+        numeroSisreg.trim() !== ''
+      ) {
+        decisaoFinal = 'VALIDAÇÃO SISREG';
+        alteracaoAutomaticaStatus = true;
+      }
+
       let novaSituacao = 'ATIVA';
-      if (decisao === 'AUTORIZADO MAPA CIRURGICO') novaSituacao = 'CONCLUÍDA';
-      if (decisao === 'NEGADO SES/SC') novaSituacao = 'NEGADO';
+      if (decisaoFinal === 'AUTORIZADO MAPA CIRURGICO') novaSituacao = 'CONCLUÍDA';
+      if (decisaoFinal === 'NEGADO SES/SC') novaSituacao = 'NEGADO';
 
       const payloadAtualizacao = {
         numeroSisreg: numeroSisreg.trim(),
-        status: decisao,
+        status: decisaoFinal,
         situacao: novaSituacao,
       };
 
@@ -281,41 +294,47 @@ export default function GestaoAihs() {
       }
 
       // Adiciona os campos específicos da decisão
-      if (decisao === 'DIVERGENCIA ENCONTRADA')
+      if (decisaoFinal === 'DIVERGENCIA ENCONTRADA')
         payloadAtualizacao.motivoDivergencia = motivoDivergencia.trim();
-      if (decisao === 'DUPLICIDADE') {
+      if (decisaoFinal === 'DUPLICIDADE') {
         payloadAtualizacao.sisregOriginal = sisregOriginal.trim();
         payloadAtualizacao.dataSisregOriginal = dataSisregOriginal;
       }
-      if (decisao === 'DELIBERAÇÃO 66/CIB/2018') {
+      if (decisaoFinal === 'DELIBERAÇÃO 66/CIB/2018') {
         payloadAtualizacao.contraReferencia = contraReferencia.trim();
         payloadAtualizacao.unidadeReferencia = unidadeReferencia.trim();
       }
-      if (decisao === 'NEGADO SES/SC')
+      if (decisaoFinal === 'NEGADO SES/SC')
         payloadAtualizacao.motivoNegativaSes = motivoNegativaSes.trim();
 
-      if (solicitacaoAtiva.status !== decisao) {
+      if (alteracaoAutomaticaStatus || solicitacaoAtiva.status !== decisaoFinal) {
         const historicoAntigo = solicitacaoAtiva.historico || [];
 
-        let detalhesExtra = '';
-        if (decisao === 'DIVERGENCIA ENCONTRADA')
-          detalhesExtra = `Motivo: ${motivoDivergencia.trim()}`;
-        if (decisao === 'DUPLICIDADE')
-          detalhesExtra = `SISREG Original: ${sisregOriginal}`;
-        if (decisao === 'DELIBERAÇÃO 66/CIB/2018')
-          detalhesExtra = `Olostech: ${contraReferencia} / Unid: ${unidadeReferencia}`;
-        if (decisao === 'AUTORIZADO MAPA CIRURGICO')
-          detalhesExtra = `Autorizado no Mapa Estadual`;
-        if (decisao === 'NEGADO SES/SC')
-          detalhesExtra = `Motivo SES: ${motivoNegativaSes.trim()}`;
-
-        const novaLinhaHistorico = {
+        let novaLinhaHistorico = {
           dataHora: dataHoraAtual,
           de: solicitacaoAtiva.status,
-          para: decisao,
-          usuario: 'Regulador',
-          detalhes: detalhesExtra,
+          para: decisaoFinal,
+          usuario: alteracaoAutomaticaStatus ? 'Sistema (Auto)' : 'Regulador',
+          detalhes: '',
         };
+
+        if (alteracaoAutomaticaStatus) {
+          novaLinhaHistorico.detalhes = 'Status alterado automaticamente para VALIDAÇÃO SISREG após inserção do número SISREG.';
+        } else {
+          let detalhesExtra = '';
+          if (decisaoFinal === 'DIVERGENCIA ENCONTRADA')
+            detalhesExtra = `Motivo: ${motivoDivergencia.trim()}`;
+          if (decisaoFinal === 'DUPLICIDADE')
+            detalhesExtra = `SISREG Original: ${sisregOriginal}`;
+          if (decisaoFinal === 'DELIBERAÇÃO 66/CIB/2018')
+            detalhesExtra = `Olostech: ${contraReferencia} / Unid: ${unidadeReferencia}`;
+          if (decisaoFinal === 'AUTORIZADO MAPA CIRURGICO')
+            detalhesExtra = `Autorizado no Mapa Estadual`;
+          if (decisaoFinal === 'NEGADO SES/SC')
+            detalhesExtra = `Motivo SES: ${motivoNegativaSes.trim()}`;
+
+          novaLinhaHistorico.detalhes = detalhesExtra;
+        }
 
         payloadAtualizacao.historico = [...historicoAntigo, novaLinhaHistorico];
       }
@@ -364,7 +383,7 @@ export default function GestaoAihs() {
             <h3 className="text-lg font-bold text-nexus-text mb-1">
               Processando...
             </h3>
-            <p className="text-sm text-nexus-text/70 text-center">
+            <p className="text-base text-nexus-text/70 text-center">
               Atualizando os dados no sistema, aguarde.
             </p>
           </div>
@@ -394,7 +413,7 @@ export default function GestaoAihs() {
               <h3 className="text-xl font-bold text-nexus-text mb-2">
                 Excluir Solicitação?
               </h3>
-              <p className="text-nexus-text/80 text-sm mb-6">
+              <p className="text-nexus-text/80 text-base mb-6">
                 Tem certeza que deseja excluir a solicitação de{' '}
                 <span className="font-bold text-nexus-text uppercase">
                   {solicitacaoParaDeletar.nomePaciente}
@@ -429,7 +448,7 @@ export default function GestaoAihs() {
               <h3 className="text-xl font-bold text-nexus-text mb-1 border-b pb-2">
                 Alterar Prioridade
               </h3>
-              <p className="text-nexus-text/80 text-sm mb-4">
+              <p className="text-nexus-text/80 text-base mb-4">
                 Paciente: <span className="font-bold">{pacientePrioridadeAlvo.nomePaciente}</span>
               </p>
 
@@ -443,7 +462,7 @@ export default function GestaoAihs() {
                     onChange={(e) => setPrioridadeSelecionada(e.target.value)}
                     className="w-4 h-4 text-nexus-primary focus:ring-nexus-primary"
                   />
-                  <span className="font-medium text-sm text-nexus-text">NENHUMA</span>
+                  <span className="font-medium text-base text-nexus-text">NENHUMA</span>
                 </label>
 
                 <label className="flex items-center gap-3 cursor-pointer p-3 border rounded-xl hover:bg-amber-50 transition-colors border-amber-200">
@@ -455,7 +474,7 @@ export default function GestaoAihs() {
                     onChange={(e) => setPrioridadeSelecionada(e.target.value)}
                     className="w-4 h-4 text-amber-600 focus:ring-amber-500"
                   />
-                  <span className="font-bold text-sm text-amber-700">CARTA DE PRIORIDADE</span>
+                  <span className="font-bold text-base text-amber-700">CARTA DE PRIORIDADE</span>
                 </label>
 
                 <label className="flex items-center gap-3 cursor-pointer p-3 border rounded-xl hover:bg-red-50 transition-colors border-red-200">
@@ -467,7 +486,7 @@ export default function GestaoAihs() {
                     onChange={(e) => setPrioridadeSelecionada(e.target.value)}
                     className="w-4 h-4 text-red-600 focus:ring-red-500"
                   />
-                  <span className="font-bold text-sm text-red-700">ONCOLOGIA</span>
+                  <span className="font-bold text-base text-red-700">ONCOLOGIA</span>
                 </label>
 
                 <label className="flex items-center gap-3 cursor-pointer p-3 border rounded-xl hover:bg-red-50 transition-colors border-red-200">
@@ -479,7 +498,7 @@ export default function GestaoAihs() {
                     onChange={(e) => setPrioridadeSelecionada(e.target.value)}
                     className="w-4 h-4 text-red-600 focus:ring-red-500"
                   />
-                  <span className="font-bold text-sm text-red-700">JUDICIAL</span>
+                  <span className="font-bold text-base text-red-700">JUDICIAL</span>
                 </label>
               </div>
 
@@ -508,7 +527,7 @@ export default function GestaoAihs() {
           <h2 className="text-xl font-bold text-nexus-text">
             Painel de Gestão e Pareceres
           </h2>
-          <p className="text-sm text-nexus-text/70">
+          <p className="text-base text-nexus-text/70">
             Listagem de solicitações ativas, concluídas e negadas agrupadas por
             status.
           </p>
@@ -597,14 +616,14 @@ export default function GestaoAihs() {
                       {grupo.titulo}
                     </h3>
                     {grupo.descricao && (
-                      <span className="text-sm text-inherit/70 italic normal-case tracking-normal mt-0.5">
+                      <span className="text-base text-inherit/70 italic normal-case tracking-normal mt-0.5">
                         {grupo.descricao}
                       </span>
                     )}
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="bg-white/60 font-bold px-3 py-1 rounded-full text-sm backdrop-blur-sm">
+                  <span className="bg-white/60 font-bold px-3 py-1 rounded-full text-base backdrop-blur-sm">
                     {solicitacoesDoGrupo.length}
                   </span>
                   <svg
@@ -627,10 +646,12 @@ export default function GestaoAihs() {
               {isOpen && (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm text-nexus-text whitespace-nowrap">
-                    <thead className="bg-slate-50 text-xs text-nexus-text/70 font-medium border-b border-nexus-border">
+                    <thead className="bg-slate-50 text-sm text-nexus-text/70 font-medium border-b border-nexus-border">
                       <tr>
                         <th className="px-6 py-3">Nome Completo / CNS</th>
-                        <th className="px-6 py-3">SISREG</th>
+                        {grupo.titulo !== 'Aguarda Número do SISREG' && (
+                          <th className="px-6 py-3">SISREG</th>
+                        )}
                         <th className="px-6 py-3 text-center">Prioridade</th>
                         <th className="px-6 py-3">Solicitado Em</th>
                         <th className="px-6 py-3">Especialidade / Médico</th>
@@ -703,13 +724,15 @@ export default function GestaoAihs() {
                                 );
                               })()}
                             </td>
-                            <td className="px-6 py-3 font-mono font-bold text-nexus-text">
-                              {sol.numeroSisreg || (
-                                <span className="text-nexus-text/40 font-medium italic text-xs">
-                                  Pendente
-                                </span>
-                              )}
-                            </td>
+                            {grupo.titulo !== 'Aguarda Número do SISREG' && (
+                              <td className="px-6 py-3 font-mono font-bold text-nexus-text">
+                                {sol.numeroSisreg || (
+                                  <span className="text-nexus-text/40 font-medium italic text-sm">
+                                    Pendente
+                                  </span>
+                                )}
+                              </td>
+                            )}
                             <td className="px-6 py-3 text-center align-middle">
                               {(() => {
                                 const prio = sol.prioridade || 'NENHUMA';
@@ -830,7 +853,7 @@ export default function GestaoAihs() {
 
             <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-8 custom-scrollbar pb-8">
               <section>
-                <h4 className="text-xs font-bold text-nexus-primary uppercase tracking-widest mb-3 border-b border-slate-100 pb-1 flex items-center gap-2">
+                <h4 className="text-sm font-bold text-nexus-primary uppercase tracking-widest mb-3 border-b border-slate-100 pb-1 flex items-center gap-2">
                   <svg
                     className="w-4 h-4"
                     fill="none"
@@ -852,7 +875,7 @@ export default function GestaoAihs() {
                       <p className="text-[10px] text-slate-500 uppercase">
                         Nome Completo
                       </p>
-                      <p className="font-bold text-nexus-text text-sm">
+                      <p className="font-bold text-nexus-text text-base">
                         {dadosPacienteAtivo.nome}
                       </p>
                     </div>
@@ -860,7 +883,7 @@ export default function GestaoAihs() {
                       <p className="text-[10px] text-slate-500 uppercase">
                         Cartão SUS (CNS)
                       </p>
-                      <p className="font-mono text-nexus-text text-sm">
+                      <p className="font-mono text-nexus-text text-base">
                         {dadosPacienteAtivo.cns}
                       </p>
                     </div>
@@ -868,7 +891,7 @@ export default function GestaoAihs() {
                       <p className="text-[10px] text-slate-500 uppercase">
                         Nascimento
                       </p>
-                      <p className="text-nexus-text text-sm">
+                      <p className="text-nexus-text text-base">
                         {formatarData(dadosPacienteAtivo.dataNascimento)}
                       </p>
                     </div>
@@ -876,7 +899,7 @@ export default function GestaoAihs() {
                       <p className="text-[10px] text-slate-500 uppercase">
                         Município
                       </p>
-                      <p className="text-nexus-text text-sm">
+                      <p className="text-nexus-text text-base">
                         {dadosPacienteAtivo.cidade}
                       </p>
                     </div>
@@ -884,7 +907,7 @@ export default function GestaoAihs() {
                       <p className="text-[10px] text-slate-500 uppercase">
                         Sexo
                       </p>
-                      <p className="text-nexus-text text-sm">
+                      <p className="text-nexus-text text-base">
                         {dadosPacienteAtivo.sexo === 'M'
                           ? 'MASCULINO'
                           : 'FEMININO'}
@@ -894,20 +917,20 @@ export default function GestaoAihs() {
                       <p className="text-[10px] text-slate-500 uppercase">
                         Nome da Mãe
                       </p>
-                      <p className="text-nexus-text text-sm truncate">
+                      <p className="text-nexus-text text-base truncate">
                         {dadosPacienteAtivo.nomeMae}
                       </p>
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center py-4 text-slate-400 text-sm">
+                  <div className="text-center py-4 text-slate-400 text-base">
                     Carregando paciente...
                   </div>
                 )}
               </section>
 
               <section>
-                <h4 className="text-xs font-bold text-nexus-primary uppercase tracking-widest mb-3 border-b border-slate-100 pb-1 flex items-center gap-2">
+                <h4 className="text-sm font-bold text-nexus-primary uppercase tracking-widest mb-3 border-b border-slate-100 pb-1 flex items-center gap-2">
                   <svg
                     className="w-4 h-4"
                     fill="none"
@@ -933,7 +956,7 @@ export default function GestaoAihs() {
                     <p className="text-[10px] text-slate-500 uppercase">
                       Procedimento (SIGTAP)
                     </p>
-                    <p className="font-bold text-nexus-text text-sm leading-tight">
+                    <p className="font-bold text-nexus-text text-base leading-tight">
                       {solicitacaoAtiva.codigoProcedimento} -{' '}
                       {solicitacaoAtiva.descricaoProcedimento}
                     </p>
@@ -942,7 +965,7 @@ export default function GestaoAihs() {
                     <p className="text-[10px] text-slate-500 uppercase">
                       Prioridade Atual
                     </p>
-                    <p className="font-bold text-nexus-primary text-sm">
+                    <p className="font-bold text-nexus-primary text-base">
                       {solicitacaoAtiva.prioridade || 'NENHUMA'}
                     </p>
                   </div>
@@ -950,7 +973,7 @@ export default function GestaoAihs() {
                     <p className="text-[10px] text-slate-500 uppercase">
                       CID 10
                     </p>
-                    <p className="font-mono text-nexus-text text-sm">
+                    <p className="font-mono text-nexus-text text-base">
                       {solicitacaoAtiva.cid}
                     </p>
                   </div>
@@ -958,7 +981,7 @@ export default function GestaoAihs() {
                     <p className="text-[10px] text-slate-500 uppercase">
                       Data do Pedido
                     </p>
-                    <p className="text-nexus-text text-sm">
+                    <p className="text-nexus-text text-base">
                       {formatarData(solicitacaoAtiva.dataSolicitacao)}
                     </p>
                   </div>
@@ -966,7 +989,7 @@ export default function GestaoAihs() {
                     <p className="text-[10px] text-slate-500 uppercase">
                       Origem
                     </p>
-                    <p className="text-nexus-text text-sm">
+                    <p className="text-nexus-text text-base">
                       {solicitacaoAtiva.origem}
                     </p>
                   </div>
@@ -976,7 +999,7 @@ export default function GestaoAihs() {
                         <p className="text-[10px] text-slate-500 uppercase">
                           Prontuário
                         </p>
-                        <p className="text-nexus-text text-sm">
+                        <p className="text-nexus-text text-base">
                           {solicitacaoAtiva.prontuario}
                         </p>
                       </div>
@@ -984,7 +1007,7 @@ export default function GestaoAihs() {
                         <p className="text-[10px] text-slate-500 uppercase">
                           Nº Consulta
                         </p>
-                        <p className="text-nexus-text text-sm">
+                        <p className="text-nexus-text text-base">
                           {solicitacaoAtiva.consulta}
                         </p>
                       </div>
@@ -994,7 +1017,7 @@ export default function GestaoAihs() {
                     <p className="text-[10px] text-slate-500 uppercase">
                       Médico e Especialidade
                     </p>
-                    <p className="text-nexus-text text-sm font-medium">
+                    <p className="text-nexus-text text-base font-medium">
                       {solicitacaoAtiva.medico}{' '}
                       <span className="text-slate-400 font-normal">
                         | {solicitacaoAtiva.especialidade}
@@ -1008,7 +1031,7 @@ export default function GestaoAihs() {
                       <p className="text-[10px] text-slate-500 uppercase">
                         Motivo Negativa SES
                       </p>
-                      <p className="text-red-600 font-medium text-sm">
+                      <p className="text-red-600 font-medium text-base">
                         {solicitacaoAtiva.motivoNegativaSes}
                       </p>
                     </div>
@@ -1017,7 +1040,7 @@ export default function GestaoAihs() {
               </section>
 
               <section>
-                <h4 className="text-xs font-bold text-nexus-primary uppercase tracking-widest mb-3 flex items-center gap-2 border-b border-slate-100 pb-1">
+                <h4 className="text-sm font-bold text-nexus-primary uppercase tracking-widest mb-3 flex items-center gap-2 border-b border-slate-100 pb-1">
                   <svg
                     className="w-4 h-4"
                     fill="none"
@@ -1045,7 +1068,7 @@ export default function GestaoAihs() {
                         <p className="text-[10px] text-slate-400 font-mono">
                           {hist.dataHora} • {hist.usuario}
                         </p>
-                        <p className="text-xs font-medium text-nexus-text mt-0.5">
+                        <p className="text-sm font-medium text-nexus-text mt-0.5">
                           <span className="text-slate-400 line-through mr-1">
                             {hist.de}
                           </span>{' '}
@@ -1062,7 +1085,7 @@ export default function GestaoAihs() {
                       </div>
                     ))
                   ) : (
-                    <p className="text-xs text-slate-400 italic">
+                    <p className="text-sm text-slate-400 italic">
                       Nenhum histórico registrado.
                     </p>
                   )}
@@ -1070,7 +1093,7 @@ export default function GestaoAihs() {
               </section>
 
               <section className="mt-auto">
-                <h4 className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-3 flex items-center gap-2 border-b border-amber-100 pb-1">
+                <h4 className="text-sm font-bold text-amber-600 uppercase tracking-widest mb-3 flex items-center gap-2 border-b border-amber-100 pb-1">
                   <svg
                     className="w-4 h-4"
                     fill="none"
@@ -1091,7 +1114,7 @@ export default function GestaoAihs() {
                   className="bg-amber-50 p-5 rounded-xl border border-amber-200 flex flex-col gap-4 shadow-sm"
                 >
                   <div>
-                    <label className="block text-xs font-bold text-amber-800 mb-1">
+                    <label className="block text-sm font-bold text-amber-800 mb-1">
                       Número do SISREG
                     </label>
                     <input
@@ -1111,7 +1134,7 @@ export default function GestaoAihs() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-amber-800 mb-1">
+                    <label className="block text-sm font-bold text-amber-800 mb-1">
                       Alterar Status do Pedido
                     </label>
                     <select
@@ -1154,7 +1177,7 @@ export default function GestaoAihs() {
 
                   {decisao === 'DIVERGENCIA ENCONTRADA' && (
                     <div className="animate-[fadeIn_0.2s_ease-in-out]">
-                      <label className="block text-xs font-bold text-red-700 mb-1">
+                      <label className="block text-sm font-bold text-red-700 mb-1">
                         Detalhes da Divergência (Obrigatório)
                       </label>
                       <textarea
@@ -1171,7 +1194,7 @@ export default function GestaoAihs() {
                   {decisao === 'DUPLICIDADE' && (
                     <div className="animate-[fadeIn_0.2s_ease-in-out] grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-bold text-red-700 mb-1">
+                        <label className="block text-sm font-bold text-red-700 mb-1">
                           SISREG Original
                         </label>
                         <input
@@ -1186,7 +1209,7 @@ export default function GestaoAihs() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-red-700 mb-1">
+                        <label className="block text-sm font-bold text-red-700 mb-1">
                           Data Original
                         </label>
                         <input
@@ -1205,7 +1228,7 @@ export default function GestaoAihs() {
                   {decisao === 'DELIBERAÇÃO 66/CIB/2018' && (
                     <div className="animate-[fadeIn_0.2s_ease-in-out] grid grid-cols-1 gap-3">
                       <div>
-                        <label className="block text-xs font-bold text-purple-700 mb-1">
+                        <label className="block text-sm font-bold text-purple-700 mb-1">
                           Nº Contrarreferência (Olostech)
                         </label>
                         <input
@@ -1218,20 +1241,23 @@ export default function GestaoAihs() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-purple-700 mb-1">
+                        <label className="block text-base font-bold text-purple-700 mb-1">
                           Unidade de Referência
                         </label>
-                        <select
+                        <input
+                          type="text"
                           required
+                          list="lista-ubsf"
+                          placeholder="Digite para buscar a unidade..."
                           value={unidadeReferencia}
                           onChange={(e) => setUnidadeReferencia(e.target.value)}
-                          className="w-full bg-white border border-purple-300 text-nexus-text rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 uppercase"
-                        >
-                          <option value="" disabled>SELECIONE A UNIDADE...</option>
+                          className="w-full bg-white border border-purple-300 text-nexus-text rounded-lg px-3 py-2 text-base focus:ring-2 focus:ring-purple-500 uppercase"
+                        />
+                        <datalist id="lista-ubsf">
                           {ubsfJoinville.map((ubsf) => (
                             <option key={ubsf} value={ubsf}>{ubsf}</option>
                           ))}
-                        </select>
+                        </datalist>
                       </div>
                     </div>
                   )}
@@ -1239,7 +1265,7 @@ export default function GestaoAihs() {
                   {/* Campos Dinâmicos: Mapa SES/SC */}
                   {decisao === 'NEGADO SES/SC' && (
                     <div className="animate-[fadeIn_0.2s_ease-in-out]">
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                      <label className="block text-sm font-bold text-slate-700 mb-1">
                         Motivo da Negativa SES
                       </label>
                       <textarea
