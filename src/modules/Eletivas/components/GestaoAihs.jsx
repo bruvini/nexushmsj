@@ -24,6 +24,11 @@ export default function GestaoAihs() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [solicitacaoParaDeletar, setSolicitacaoParaDeletar] = useState(null);
 
+  // Estados do Modal de Prioridade
+  const [modalPrioridadeAberto, setModalPrioridadeAberto] = useState(false);
+  const [pacientePrioridadeAlvo, setPacientePrioridadeAlvo] = useState(null);
+  const [prioridadeSelecionada, setPrioridadeSelecionada] = useState('NENHUMA');
+
   // Controle dos Acordeões
   const [grupoAberto, setGrupoAberto] = useState('');
 
@@ -195,6 +200,44 @@ export default function GestaoAihs() {
     } finally {
       setLoading(false);
       setSolicitacaoParaDeletar(null);
+    }
+  };
+
+  const fecharModalPrioridade = () => {
+    setModalPrioridadeAberto(false);
+    setPacientePrioridadeAlvo(null);
+    setPrioridadeSelecionada('NENHUMA');
+  };
+
+  const handleSalvarPrioridade = async () => {
+    if (!pacientePrioridadeAlvo) return;
+
+    setLoading(true);
+    try {
+      const solRef = doc(db, 'nexus_eletivas_solicitacoes', pacientePrioridadeAlvo.id);
+      const dataHoraAtual = new Date().toLocaleString('pt-BR');
+
+      const historicoAntigo = pacientePrioridadeAlvo.historico || [];
+      const novaLinhaHistorico = {
+        dataHora: dataHoraAtual,
+        de: pacientePrioridadeAlvo.prioridade || 'NENHUMA',
+        para: prioridadeSelecionada,
+        usuario: 'Regulador',
+        detalhes: `Prioridade alterada para: ${prioridadeSelecionada}`
+      };
+
+      await updateDoc(solRef, {
+        prioridade: prioridadeSelecionada,
+        historico: [...historicoAntigo, novaLinhaHistorico]
+      });
+
+      toast.success('Prioridade atualizada com sucesso!');
+      fecharModalPrioridade();
+    } catch (error) {
+      console.error('Erro ao atualizar prioridade:', error);
+      toast.error('Erro ao atualizar a prioridade do paciente.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -378,6 +421,88 @@ export default function GestaoAihs() {
         </div>
       )}
 
+      {/* MODAL DE PRIORIDADE */}
+      {modalPrioridadeAberto && pacientePrioridadeAlvo && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-nexus-bg/70 backdrop-blur-sm transition-opacity">
+          <div className="bg-nexus-card border border-nexus-border rounded-2xl shadow-2xl max-w-sm w-full p-6 mx-4 animate-[fadeIn_0.2s_ease-in-out]">
+            <div className="flex flex-col text-left">
+              <h3 className="text-xl font-bold text-nexus-text mb-1 border-b pb-2">
+                Alterar Prioridade
+              </h3>
+              <p className="text-nexus-text/80 text-sm mb-4">
+                Paciente: <span className="font-bold">{pacientePrioridadeAlvo.nomePaciente}</span>
+              </p>
+
+              <div className="flex flex-col gap-3 py-2">
+                <label className="flex items-center gap-3 cursor-pointer p-3 border rounded-xl hover:bg-slate-50 transition-colors">
+                  <input
+                    type="radio"
+                    name="prioridade"
+                    value="NENHUMA"
+                    checked={prioridadeSelecionada === 'NENHUMA'}
+                    onChange={(e) => setPrioridadeSelecionada(e.target.value)}
+                    className="w-4 h-4 text-nexus-primary focus:ring-nexus-primary"
+                  />
+                  <span className="font-medium text-sm text-nexus-text">NENHUMA</span>
+                </label>
+
+                <label className="flex items-center gap-3 cursor-pointer p-3 border rounded-xl hover:bg-amber-50 transition-colors border-amber-200">
+                  <input
+                    type="radio"
+                    name="prioridade"
+                    value="CARTA DE PRIORIDADE"
+                    checked={prioridadeSelecionada === 'CARTA DE PRIORIDADE'}
+                    onChange={(e) => setPrioridadeSelecionada(e.target.value)}
+                    className="w-4 h-4 text-amber-600 focus:ring-amber-500"
+                  />
+                  <span className="font-bold text-sm text-amber-700">CARTA DE PRIORIDADE</span>
+                </label>
+
+                <label className="flex items-center gap-3 cursor-pointer p-3 border rounded-xl hover:bg-red-50 transition-colors border-red-200">
+                  <input
+                    type="radio"
+                    name="prioridade"
+                    value="ONCOLOGIA"
+                    checked={prioridadeSelecionada === 'ONCOLOGIA'}
+                    onChange={(e) => setPrioridadeSelecionada(e.target.value)}
+                    className="w-4 h-4 text-red-600 focus:ring-red-500"
+                  />
+                  <span className="font-bold text-sm text-red-700">ONCOLOGIA</span>
+                </label>
+
+                <label className="flex items-center gap-3 cursor-pointer p-3 border rounded-xl hover:bg-red-50 transition-colors border-red-200">
+                  <input
+                    type="radio"
+                    name="prioridade"
+                    value="JUDICIAL"
+                    checked={prioridadeSelecionada === 'JUDICIAL'}
+                    onChange={(e) => setPrioridadeSelecionada(e.target.value)}
+                    className="w-4 h-4 text-red-600 focus:ring-red-500"
+                  />
+                  <span className="font-bold text-sm text-red-700">JUDICIAL</span>
+                </label>
+              </div>
+
+              <div className="flex w-full gap-3 mt-6">
+                <button
+                  onClick={fecharModalPrioridade}
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-nexus-text font-medium py-2.5 rounded-xl transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSalvarPrioridade}
+                  disabled={loading}
+                  className="flex-1 bg-nexus-primary hover:opacity-90 text-white font-bold py-2.5 rounded-xl transition-all shadow-md"
+                >
+                  Salvar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-nexus-text">
@@ -506,9 +631,10 @@ export default function GestaoAihs() {
                       <tr>
                         <th className="px-6 py-3">Nome Completo / CNS</th>
                         <th className="px-6 py-3">SISREG</th>
+                        <th className="px-6 py-3 text-center">Prioridade</th>
                         <th className="px-6 py-3">Solicitado Em</th>
                         <th className="px-6 py-3">Especialidade / Médico</th>
-                        <th className="px-6 py-3">Ações</th>
+                        <th className="px-6 py-3 text-center">Ações</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-nexus-border/50">
@@ -584,6 +710,24 @@ export default function GestaoAihs() {
                                 </span>
                               )}
                             </td>
+                            <td className="px-6 py-3 text-center align-middle">
+                              {(() => {
+                                const prio = sol.prioridade || 'NENHUMA';
+                                let corBadge = 'bg-slate-100 text-slate-500 border-slate-200';
+
+                                if (prio === 'ONCOLOGIA' || prio === 'JUDICIAL') {
+                                  corBadge = 'bg-red-100 text-red-700 border-red-200 animate-pulse font-bold';
+                                } else if (prio === 'CARTA DE PRIORIDADE') {
+                                  corBadge = 'bg-amber-100 text-amber-700 border-amber-200 font-bold';
+                                }
+
+                                return (
+                                  <span className={`text-[10px] px-2 py-0.5 rounded-full border ${corBadge} shrink-0`}>
+                                    {prio}
+                                  </span>
+                                );
+                              })()}
+                            </td>
                             <td className="px-6 py-3 text-nexus-text/70">
                               {formatarData(sol.dataSolicitacao)}
                             </td>
@@ -595,26 +739,32 @@ export default function GestaoAihs() {
                                 {sol.medico}
                               </div>
                             </td>
-                            <td className="px-6 py-3 flex items-center gap-2">
-                              <button
-                                onClick={(e) => handleClickDeletar(e, sol)}
-                                className="text-slate-300 hover:text-red-500 p-1.5 transition-colors"
-                                title="Excluir"
-                              >
-                                <svg
-                                  className="w-5 h-5"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
+                            <td className="px-6 py-3">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setPacientePrioridadeAlvo(sol);
+                                    setPrioridadeSelecionada(sol.prioridade || 'NENHUMA');
+                                    setModalPrioridadeAberto(true);
+                                  }}
+                                  className="text-amber-400 hover:text-amber-600 p-1.5 transition-colors bg-amber-50 hover:bg-amber-100 rounded-lg"
+                                  title="Alterar Prioridade"
                                 >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                  />
-                                </svg>
-                              </button>
+                                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={(e) => handleClickDeletar(e, sol)}
+                                  className="text-slate-300 hover:text-red-500 p-1.5 transition-colors bg-slate-50 hover:bg-red-50 rounded-lg"
+                                  title="Excluir Solicitação"
+                                >
+                                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))
@@ -786,6 +936,14 @@ export default function GestaoAihs() {
                     <p className="font-bold text-nexus-text text-sm leading-tight">
                       {solicitacaoAtiva.codigoProcedimento} -{' '}
                       {solicitacaoAtiva.descricaoProcedimento}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-500 uppercase">
+                      Prioridade Atual
+                    </p>
+                    <p className="font-bold text-nexus-primary text-sm">
+                      {solicitacaoAtiva.prioridade || 'NENHUMA'}
                     </p>
                   </div>
                   <div>
