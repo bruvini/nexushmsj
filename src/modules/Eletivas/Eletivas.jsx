@@ -31,7 +31,7 @@ export default function Eletivas() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-1">
           {/* Menu de Abas */}
           <div className="flex-1 min-w-0">
-            <div className="flex gap-4 sm:gap-8 overflow-x-auto custom-scrollbar">
+            <div className="flex flex-wrap gap-4 sm:gap-8">
               <button
                 onClick={() => setAbaAtiva('cadastro')}
                 className={`pb-3 text-xs sm:text-sm font-semibold transition-all whitespace-nowrap relative ${abaAtiva === 'cadastro' ? 'text-sky-600' : 'text-slate-400 hover:text-slate-600'

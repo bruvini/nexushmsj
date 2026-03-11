@@ -655,18 +655,18 @@ export default function GestaoAihs() {
               </button>
 
               {isOpen && (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm text-nexus-text whitespace-nowrap">
+                <div>
+                  <table className="w-full table-fixed text-left text-sm text-nexus-text">
                     <thead className="bg-slate-50 text-sm text-nexus-text/70 font-medium border-b border-nexus-border">
                       <tr>
-                        <th className="px-6 py-3">Nome Completo / CNS</th>
+                        <th className="px-6 py-3 w-[35%] lg:w-[40%]">Nome Completo / CNS</th>
                         {grupo.titulo !== 'Aguarda Número do SISREG' && (
-                          <th className="px-6 py-3">SISREG</th>
+                          <th className="px-6 py-3 w-[15%]">SISREG</th>
                         )}
-                        <th className="px-6 py-3 text-center">Prioridade</th>
-                        <th className="px-6 py-3">Solicitado Em</th>
-                        <th className="px-6 py-3">Especialidade / Médico</th>
-                        <th className="px-6 py-3 text-center">Ações</th>
+                        <th className="px-6 py-3 text-center w-[15%]">Prioridade</th>
+                        <th className="px-6 py-3 w-[15%]">Solicitado Em</th>
+                        <th className="px-6 py-3 w-[25%] lg:w-[20%]">Especialidade / Médico</th>
+                        <th className="px-6 py-3 text-center w-28">Ações</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-nexus-border/50">
@@ -685,9 +685,9 @@ export default function GestaoAihs() {
                             key={sol.id}
                             className="hover:bg-slate-50 transition-colors group"
                           >
-                            <td className="px-6 py-3">
+                            <td className="px-6 py-3 break-words whitespace-normal">
                               <div
-                                className="font-bold text-nexus-text flex items-center gap-2 cursor-pointer hover:text-nexus-primary transition-colors inline-flex"
+                                className="font-bold text-nexus-text flex items-center gap-2 cursor-pointer hover:text-nexus-primary transition-colors inline-block break-words"
                                 title="Copiar Nome"
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -697,13 +697,13 @@ export default function GestaoAihs() {
                               >
                                 {sol.nomePaciente}
                                 {sol.prioridade === 'SIM' && (
-                                  <span className="bg-red-100 text-red-700 text-[9px] px-1.5 py-0.5 rounded animate-pulse">
+                                  <span className="bg-red-100 text-red-700 text-[9px] px-1.5 py-0.5 rounded animate-pulse inline-block align-middle ml-1">
                                     URGENTE
                                   </span>
                                 )}
                               </div>
                               <div
-                                className="text-[11px] text-nexus-text/50 font-mono mt-0.5 cursor-pointer hover:text-nexus-primary transition-colors inline-block block"
+                                className="text-[11px] text-nexus-text/50 font-mono mt-0.5 cursor-pointer hover:text-nexus-primary transition-colors block"
                                 title="Copiar CNS"
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -777,25 +777,25 @@ export default function GestaoAihs() {
                                 );
                               })()}
                             </td>
-                            <td className="px-6 py-3 text-nexus-text/70">
+                            <td className="px-6 py-3 break-words whitespace-normal text-nexus-text/70">
                               {formatarData(sol.dataSolicitacao)}
                             </td>
-                            <td className="px-6 py-3">
-                              <div className="font-medium text-nexus-text">
+                            <td className="px-6 py-3 break-words whitespace-normal">
+                              <div className="font-medium text-nexus-text line-clamp-2">
                                 {sol.especialidade}
                               </div>
-                              <div className="text-[11px] text-nexus-text/60 line-clamp-1">
+                              <div className="text-[11px] text-nexus-text/60 line-clamp-2 mt-0.5">
                                 {sol.medico}
                               </div>
                             </td>
                             <td className="px-6 py-3">
-                              <div className="flex items-center justify-center gap-2">
+                              <div className="flex items-center justify-end gap-1.5">
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     abrirDetalhes(sol);
                                   }}
-                                  className="text-blue-500 hover:text-blue-700 p-1.5 transition-colors bg-blue-50 hover:bg-blue-100 rounded-lg"
+                                  className="text-blue-500 hover:text-blue-700 p-1.5 transition-colors bg-blue-50 hover:bg-blue-100 rounded-lg shrink-0"
                                   title="Visualizar Detalhes"
                                 >
                                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
