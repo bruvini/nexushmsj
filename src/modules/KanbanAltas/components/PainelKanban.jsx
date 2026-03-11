@@ -46,6 +46,7 @@ export default function PainelKanban() {
   const [filtroKanban, setFiltroKanban] = useState('');
   const [filtroEspecialidade, setFiltroEspecialidade] = useState('');
   const [filtroSisreg, setFiltroSisreg] = useState(false);
+  const [filtroComSisreg, setFiltroComSisreg] = useState(false);
   const [filtroNotas, setFiltroNotas] = useState(false);
 
   const [filtroEmad, setFiltroEmad] = useState(false);
@@ -180,7 +181,7 @@ export default function PainelKanban() {
     hoje.setHours(0, 0, 0, 0);
 
     const counts = { verde: 0, amarelo: 0, vermelho: 0, laranja: 0, roxo: 0, preto: 0, sisreg: 0 };
-    const contadoresFiltros = { sisreg: 0, notas: 0, emad: 0, retaguarda: 0, alta: 0, trauma: 0, medicacao: 0 };
+    const contadoresFiltros = { sisreg: 0, comSisreg: 0, notas: 0, emad: 0, retaguarda: 0, alta: 0, trauma: 0, medicacao: 0 };
     const listaSetores = new Set();
     const mapAgrupado = {};
 
@@ -215,6 +216,7 @@ export default function PainelKanban() {
       const setorLimpo = String(p.setor).toUpperCase().trim();
       p.exigeSisreg = SETORES_URGENCIA.includes(setorLimpo);
       p.semSisreg = p.exigeSisreg && (!p.numeroSisreg || p.numeroSisreg.trim() === "");
+      p.comSisreg = p.exigeSisreg && (!!p.numeroSisreg && p.numeroSisreg.trim() !== "");
 
       let notasArray = [];
       try { notasArray = JSON.parse(p.historicoJson || "[]"); } catch (e) { }
@@ -236,6 +238,7 @@ export default function PainelKanban() {
 
       if (validBase) {
         if (p.semSisreg) contadoresFiltros.sisreg++;
+        if (p.comSisreg) contadoresFiltros.comSisreg++;
         if (p.temNotas) contadoresFiltros.notas++;
         if (p.perfil_emad?.active) contadoresFiltros.emad++;
         if (p.perfil_retaguarda?.active) contadoresFiltros.retaguarda++;
@@ -250,6 +253,7 @@ export default function PainelKanban() {
     let dadosFiltrados = dadosFiltradosBase.filter(p => {
       let valid = true;
       if (filtroSisreg && !p.semSisreg) valid = false;
+      if (filtroComSisreg && !p.comSisreg) valid = false;
       if (filtroNotas && !p.temNotas) valid = false;
       if (filtroEmad && !p.perfil_emad?.active) valid = false;
       if (filtroRetaguarda && !p.perfil_retaguarda?.active) valid = false;
@@ -277,7 +281,7 @@ export default function PainelKanban() {
       setoresAgrupados: mapAgrupado,
       setoresDisponiveis: Array.from(listaSetores).sort()
     };
-  }, [pacientes, busca, filtroSetor, filtroEspecialidade, filtroKanban, filtroSisreg, filtroNotas, filtroEmad, filtroRetaguarda, filtroAlta, filtroTrauma, filtroMedicacao]);
+  }, [pacientes, busca, filtroSetor, filtroEspecialidade, filtroKanban, filtroSisreg, filtroComSisreg, filtroNotas, filtroEmad, filtroRetaguarda, filtroAlta, filtroTrauma, filtroMedicacao]);
 
   // 3. AÇÕES DE BANCO DE DADOS (NOTAS E SISREG)
   const salvarNota = async () => {
@@ -675,11 +679,20 @@ export default function PainelKanban() {
 
             <label className={`flex items-center gap-2 group transition-all ${contadoresRapidos?.sisreg === 0 ? 'opacity-40 grayscale cursor-not-allowed' : 'cursor-pointer'}`}>
               <div className="relative">
-                <input type="checkbox" disabled={contadoresRapidos?.sisreg === 0} checked={filtroSisreg} onChange={() => setFiltroSisreg(!filtroSisreg)} className="sr-only" />
+                <input type="checkbox" disabled={contadoresRapidos?.sisreg === 0} checked={filtroSisreg} onChange={() => { setFiltroSisreg(!filtroSisreg); if (!filtroSisreg) setFiltroComSisreg(false); }} className="sr-only" />
                 <div className={`block w-10 h-5 rounded-full transition-colors ${filtroSisreg ? 'bg-rose-500' : 'bg-slate-300'}`}></div>
                 <div className={`dot absolute left-1 top-0.5 bg-white w-4 h-4 rounded-full transition-transform ${filtroSisreg ? 'transform translate-x-4' : ''} shadow-sm`}></div>
               </div>
               <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-colors ${filtroSisreg ? 'text-rose-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Sem Sisreg <span className="text-[10px] ml-0.5 opacity-80">({contadoresRapidos?.sisreg || 0})</span></span>
+            </label>
+
+            <label className={`flex items-center gap-2 group transition-all ${contadoresRapidos?.comSisreg === 0 ? 'opacity-40 grayscale cursor-not-allowed' : 'cursor-pointer'}`}>
+              <div className="relative">
+                <input type="checkbox" disabled={contadoresRapidos?.comSisreg === 0} checked={filtroComSisreg} onChange={() => { setFiltroComSisreg(!filtroComSisreg); if (!filtroComSisreg) setFiltroSisreg(false); }} className="sr-only" />
+                <div className={`block w-10 h-5 rounded-full transition-colors ${filtroComSisreg ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
+                <div className={`dot absolute left-1 top-0.5 bg-white w-4 h-4 rounded-full transition-transform ${filtroComSisreg ? 'transform translate-x-4' : ''} shadow-sm`}></div>
+              </div>
+              <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-colors ${filtroComSisreg ? 'text-emerald-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Com Sisreg <span className="text-[10px] ml-0.5 opacity-80">({contadoresRapidos?.comSisreg || 0})</span></span>
             </label>
 
             <label className={`flex items-center gap-2 group transition-all ${contadoresRapidos?.notas === 0 ? 'opacity-40 grayscale cursor-not-allowed' : 'cursor-pointer'}`}>
