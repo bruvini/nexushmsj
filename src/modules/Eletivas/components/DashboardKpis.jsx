@@ -21,6 +21,7 @@ export default function DashboardKpis() {
             // 2. Total de AIHs Ativas
             const qAtivas = query(collection(db, 'nexus_eletivas_solicitacoes'), where('situacao', '==', 'ATIVA'));
             const snapAtivas = await getCountFromServer(qAtivas);
+            const totalAtivas = snapAtivas.data().count;
 
             // 3. Gargalo - Aguardando SISREG
             const qAguarda = query(collection(db, 'nexus_eletivas_solicitacoes'), where('status', '==', 'AGUARDA NÚMERO SISREG'));
@@ -30,11 +31,22 @@ export default function DashboardKpis() {
             const qValidacao = query(collection(db, 'nexus_eletivas_solicitacoes'), where('status', '==', 'VALIDAÇÃO SISREG'));
             const snapValidacao = await getCountFromServer(qValidacao);
 
+            // 5. Taxa de Prioridade
+            const qPrioridade = query(
+                collection(db, 'nexus_eletivas_solicitacoes'),
+                where('situacao', '==', 'ATIVA'),
+                where('prioridade', 'in', ['ONCOLOGIA', 'CARTA DE PRIORIDADE', 'JUDICIAL'])
+            );
+            const snapPrioridade = await getCountFromServer(qPrioridade);
+            const totalComPrioridade = snapPrioridade.data().count;
+            const percPrioridade = totalAtivas > 0 ? Math.round((totalComPrioridade / totalAtivas) * 100) : 0;
+
             setKpis({
                 totalPacientes: snapPacientes.data().count,
-                ativas: snapAtivas.data().count,
+                ativas: totalAtivas,
                 aguardaSisreg: snapAguarda.data().count,
                 validacao: snapValidacao.data().count,
+                taxaPrioridade: percPrioridade
             });
         } catch (error) {
             console.error('Erro ao buscar KPIs', error);
@@ -68,7 +80,7 @@ export default function DashboardKpis() {
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 {/* Card 1 */}
                 <div className="bg-sky-50 border border-sky-100 rounded-xl p-4 flex flex-col justify-between hover:shadow-md transition-shadow">
                     <div className="flex justify-between items-start mb-2">
@@ -103,6 +115,22 @@ export default function DashboardKpis() {
                         <svg className="w-6 h-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                     </div>
                     {loading ? <div className="h-8 bg-amber-200/50 rounded animate-pulse w-1/2 mt-1"></div> : <span className="text-3xl font-black text-amber-800 mt-1">{kpis.validacao}</span>}
+                </div>
+
+                {/* Card 5 - Taxa de Prioridade */}
+                <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex flex-col justify-between hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start mb-2">
+                        <span className="text-[11px] uppercase tracking-wider font-bold text-emerald-600 leading-tight">Taxa de<br />Prioridade</span>
+                        <svg className="w-6 h-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                        </svg>
+                    </div>
+                    {loading ? <div className="h-8 bg-emerald-200/50 rounded animate-pulse w-1/2 mt-1"></div> : (
+                        <div>
+                            <span className="text-3xl font-black text-emerald-800 mt-1">{kpis.taxaPrioridade}%</span>
+                            <p className="text-[9px] text-emerald-600/70 leading-tight mt-1">das solicitações ativas possuem prioridade clínica/judicial.</p>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

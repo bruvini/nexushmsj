@@ -5,6 +5,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../../services/firebase';
 import { cidadesSC } from '../../../utils/cidadesSC';
+import { calcularPrioridadeSigtap } from '../../../utils/prioridades';
 import ImportacaoLote from './ImportacaoLote';
 import DashboardKpis from './DashboardKpis';
 
@@ -111,18 +112,19 @@ export default function CadastroSolicitacoes() {
     return () => { unsubPacientes(); unsubProc(); unsubMed(); unsubCounts(); };
   }, []);
 
-  // --- IMPORTAÇÃO EM LOTE INTELIGENTE ---
+  // --- IMPORTAÇÃO EM LOTE INTELIGENTE (SMART UPSERT) ---
   const handleImportarDados = async (resultadoExcel) => {
     if (!resultadoExcel || !resultadoExcel.dados || resultadoExcel.dados.length === 0) {
-      toast.warning('Nenhum paciente ambulatorial encontrado na planilha.');
+      toast.warning('Nenhum dado encontrado na planilha.');
       return;
     }
 
     setLoading(true);
 
     try {
-      const { totalLinhas, totalAmbulatorial, dados } = resultadoExcel;
-      const batch = writeBatch(db);
+      const { totalAmbulatorial, dados } = resultadoExcel;
+      let batch = writeBatch(db);
+      let operacoesBatchCount = 0;
       const dataHoraAtual = new Date().toLocaleString('pt-BR');
 
       let countPacientesNovos = 0;
@@ -132,45 +134,31 @@ export default function CadastroSolicitacoes() {
       let countSolicsIgnoradas = 0;
       let linhasDuplicadasNoExcel = 0;
 
-      // 1. Mapear pacientes existentes no banco
-      const cnsExistentesMap = new Map();
-      pacientes.forEach((p) => {
-        if (p.cns) cnsExistentesMap.set(String(p.cns).trim(), p.id);
-      });
+      // 1. CARGA IN-MEMORY GLOBAL (Otimização de Leitura - Custo: 2 GETs)
+      const pacientesSnap = await getDocs(collection(db, 'nexus_eletivas_pacientes'));
+      const aihsSnap = await getDocs(collection(db, 'nexus_eletivas_solicitacoes'));
 
-      // 2. Buscar TODAS as solicitações ativas no banco de dados (Pré-importação)
-      const qAtivas = query(collection(db, 'nexus_eletivas_solicitacoes'), where('situacao', '==', 'ATIVA'));
-      const ativasSnap = await getDocs(qAtivas);
+      const pacientesMemoria = pacientesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const aihsMemoria = aihsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-      // Map das solicitações que já estavam no Firestore
-      const mapSolicitacoesNoBanco = new Map();
-      ativasSnap.docs.forEach((docSnap) => {
-        const solic = { id: docSnap.id, ...docSnap.data() };
-        if (solic.pacienteId && solic.codigoProcedimento) {
-          mapSolicitacoesNoBanco.set(`${solic.pacienteId}_${solic.codigoProcedimento}`, solic);
-        }
-      });
-
-      // --- PRÉ-PROCESSAMENTO: MANTER APENAS A SOLICITAÇÃO MAIS RECENTE DA PLANILHA ---
+      // 2. PRÉ-PROCESSAMENTO: MANTER APENAS A SOLICITAÇÃO MAIS RECENTE DA PLANILHA PARA EVITAR DUPLICIDADE INTRA-ARQUIVO
       const dadosFiltrados = [];
-      const mapUltimaDataExcel = new Map(); // Guarda a linha mais recente pra cada CNS+Procedimento
+      const mapUltimaDataExcel = new Map();
 
       for (const row of dados) {
-        const cns = row.nr_cns ? String(row.nr_cns).trim() : '';
         const codProc = String(row.cod_proc_solicitado || '');
-        if (!cns || !codProc) continue;
+        if (!codProc) continue; // Necessário ter procedimento
 
-        const chave = `${cns}_${codProc}`;
+        // Chave temporária flexível (CNS ou Nome)
+        const identificador = row.nr_cns ? String(row.nr_cns).trim() : normalizeString(row.nm_paciente);
+        const chave = `${identificador}_${codProc}`;
         const dataRowStr = converterDataParaInput(row.dt_solicitacao);
-        const dataRowTime = new Date(dataRowStr).getTime() || 0; // Converte pra timestamp pra comparar
+        const dataRowTime = new Date(dataRowStr).getTime() || 0;
 
         const existente = mapUltimaDataExcel.get(chave);
-
         if (existente) {
           linhasDuplicadasNoExcel++;
           const dataExistenteTime = new Date(converterDataParaInput(existente.row.dt_solicitacao)).getTime() || 0;
-
-          // Se a data dessa linha for MAIOR (mais recente) que a que já guardamos, substituimos
           if (dataRowTime > dataExistenteTime) {
             mapUltimaDataExcel.set(chave, { row, dataTime: dataRowTime });
           }
@@ -179,144 +167,126 @@ export default function CadastroSolicitacoes() {
         }
       }
 
-      // Agora nosso array final de dados só tem as linhas únicas e mais recentes do Excel
-      mapUltimaDataExcel.forEach((item) => {
-        dadosFiltrados.push(item.row);
-      });
-      // ---------------------------------------------------------------------------------
+      mapUltimaDataExcel.forEach((item) => dadosFiltrados.push(item.row));
 
-      const mapSolicitacoesNesteLote = new Map();
-
-      // 3. Processar cada linha do Excel (agora já filtrada)
+      // 3. PROCESSAMENTO E SMART UPSERT
       for (const row of dadosFiltrados) {
-        const cnsFormatado = row.nr_cns ? String(row.nr_cns).trim() : '';
-        let pacienteId = cnsExistentesMap.get(cnsFormatado);
+        const cnsRow = row.nr_cns ? String(row.nr_cns).trim() : '';
+        const nomeRow = normalizeString(row.nm_paciente);
+        const nascRow = converterDataParaInput(row.dt_nascimento);
 
-        // Lógica de Paciente
-        if (!pacienteId) {
+        // --- 3.1 DEDUPLICAÇÃO DE PACIENTES ---
+        let pacienteEncontrado = pacientesMemoria.find(p => p.nome === nomeRow && p.dataNascimento === nascRow);
+        if (!pacienteEncontrado && cnsRow) {
+          pacienteEncontrado = pacientesMemoria.find(p => p.cns === cnsRow);
+        }
+
+        let pacienteId = null;
+
+        if (!pacienteEncontrado) {
+          // CRIAR PACIENTE
           const refNovoPaciente = doc(collection(db, 'nexus_eletivas_pacientes'));
           pacienteId = refNovoPaciente.id;
-          batch.set(refNovoPaciente, {
-            nome: normalizeString(row.nm_paciente),
-            cns: cnsFormatado,
-            dataNascimento: converterDataParaInput(row.dt_nascimento),
+          const novoPacienteData = {
+            id: pacienteId,
+            nome: nomeRow,
+            cns: cnsRow,
+            dataNascimento: nascRow,
             cidade: normalizeString(row.nm_cidade),
             sexo: normalizeString(row.tp_sexo),
             nomeMae: normalizeString(row.nm_mae),
             criadoEm: serverTimestamp(),
-          });
-          cnsExistentesMap.set(cnsFormatado, pacienteId);
+          };
+
+          if (operacoesBatchCount >= 450) { await batch.commit(); batch = writeBatch(db); operacoesBatchCount = 0; }
+          batch.set(refNovoPaciente, novoPacienteData);
+          operacoesBatchCount++;
+
+          pacientesMemoria.push(novoPacienteData); // Cache
           countPacientesNovos++;
         } else {
+          // ATUALIZAR PACIENTE
+          pacienteId = pacienteEncontrado.id;
           countPacientesExistentes++;
+
+          let atualizouPac = false;
+          const updatesPac = {};
+
+          // Regra CNS do SUS (Substitui Provisório '8' por Definitivo '7')
+          if (cnsRow.startsWith('7') && (pacienteEncontrado.cns || '').startsWith('8')) {
+            updatesPac.cns = cnsRow;
+            pacienteEncontrado.cns = cnsRow;
+            atualizouPac = true;
+          }
+
+          // Atualizar campos vazios
+          if (!pacienteEncontrado.prontuario && row.prontuario) {
+            updatesPac.prontuario = String(row.prontuario);
+            pacienteEncontrado.prontuario = String(row.prontuario);
+            atualizouPac = true;
+          }
+          if (!pacienteEncontrado.atendimentoAmbulatorial && row.atendimentoAmbulatorial) {
+            updatesPac.atendimentoAmbulatorial = String(row.atendimentoAmbulatorial);
+            pacienteEncontrado.atendimentoAmbulatorial = String(row.atendimentoAmbulatorial);
+            atualizouPac = true;
+          }
+
+          if (atualizouPac) {
+            if (operacoesBatchCount >= 450) { await batch.commit(); batch = writeBatch(db); operacoesBatchCount = 0; }
+            batch.update(doc(db, 'nexus_eletivas_pacientes', pacienteId), updatesPac);
+            operacoesBatchCount++;
+          }
         }
 
-        // Preparar dados da solicitação para a linha
-        let prioridadeDefinida = 'NÃO';
-        const justificativa = String(row.ds_cond_just_internacao || '').toUpperCase();
-        const codProc = String(row.cod_proc_solicitado || '');
+        // --- 3.2 PREPARAÇÃO DA AIH ---
+        const codProcOriginal = String(row.cod_proc_solicitado || '');
+        const codProcLimpo = codProcOriginal.replace(/^0+/, ''); // Tratamento Vista Grossa / Zeros
         const descProc = normalizeString(row.proc_solicitado);
-        const prontuarioLinha = row.prontuario ? String(row.prontuario) : '';
-        const consultaLinha = row.nu_consulta ? String(row.nu_consulta) : '';
-        const medicoLinha = normalizeString(row.solicitante);
-        const cidLinha = normalizeString(row.cd_cid_principal);
-        const dataSolicitacaoFormatada = converterDataParaInput(row.dt_solicitacao);
-        const sisregLinha = row.nu_internacao ? String(row.nu_internacao).replace(/\D/g, '') : '';
+        const dataSolicitacaoRow = converterDataParaInput(row.dt_solicitacao);
+        const medicoRow = normalizeString(row.solicitante);
+        const sisregRow = row.nu_internacao ? String(row.nu_internacao).replace(/\D/g, '') : '';
+        const prontuarioRow = row.prontuario ? String(row.prontuario) : '';
+        const consultaRow = row.nu_consulta ? String(row.nu_consulta) : '';
+        const cidRow = normalizeString(row.cd_cid_principal);
 
-        if (justificativa.includes('PRIORIDADE')) {
-          prioridadeDefinida = 'Carta de Prioridade';
-        } else if (codProc.startsWith('416') || codProc.startsWith('0416')) {
-          prioridadeDefinida = 'Oncologia';
+        // Prioridade Inicial + Oncológica
+        let prioridadeDefinida = 'NENHUMA';
+        if (String(row.ds_cond_just_internacao || '').toUpperCase().includes('PRIORIDADE')) {
+          prioridadeDefinida = 'CARTA DE PRIORIDADE';
         }
+        prioridadeDefinida = calcularPrioridadeSigtap(codProcOriginal, prioridadeDefinida);
 
-        const chaveDuplicidade = `${pacienteId}_${codProc}`;
-        const solicNoBanco = mapSolicitacoesNoBanco.get(chaveDuplicidade);
-        const jaProcessadoNoLote = mapSolicitacoesNesteLote.get(chaveDuplicidade);
+        // --- 3.3 DEDUPLICAÇÃO DE AIH (Match Exato) ---
+        // Verifica se O MESMO paciente JÁ TEM esse mesmo procedimento, do mesmo médico, na mesma data.
+        const aihEncontrada = aihsMemoria.find(aih =>
+          aih.pacienteId === pacienteId &&
+          String(aih.codigoProcedimento || '').replace(/^0+/, '') === codProcLimpo &&
+          aih.dataSolicitacao === dataSolicitacaoRow &&
+          aih.medico === medicoRow
+        );
 
-        // Isso não deve mais acontecer devido ao pré-processamento, mas mantemos por segurança
-        if (jaProcessadoNoLote) { countSolicsIgnoradas++; continue; }
+        if (!aihEncontrada) {
+          // CRIAR NOVA AIH
+          const refAih = doc(collection(db, 'nexus_eletivas_solicitacoes'));
+          const statusLinha = sisregRow ? 'VALIDAÇÃO SISREG' : 'AGUARDA NÚMERO SISREG';
 
-        if (solicNoBanco) {
-          // A solicitação já existia no banco antes de darmos o upload
-          let isDifferent = false;
-          const updates = {};
-
-          const safeCompare = (val1, val2) => String(val1 || '').trim() !== String(val2 || '').trim();
-
-          if (safeCompare(solicNoBanco.cns, cnsFormatado)) { updates.cns = cnsFormatado; isDifferent = true; }
-          if (safeCompare(solicNoBanco.prontuario, prontuarioLinha)) { updates.prontuario = prontuarioLinha; isDifferent = true; }
-          if (safeCompare(solicNoBanco.consulta, consultaLinha)) { updates.consulta = consultaLinha; isDifferent = true; }
-          if (safeCompare(solicNoBanco.prioridade, prioridadeDefinida)) { updates.prioridade = prioridadeDefinida; isDifferent = true; }
-          if (safeCompare(solicNoBanco.medico, medicoLinha)) { updates.medico = medicoLinha; isDifferent = true; }
-          if (safeCompare(solicNoBanco.cid, cidLinha)) { updates.cid = cidLinha; isDifferent = true; }
-          // Se a data de solicitação na planilha for diferente (e mais recente, pois já filtramos as mais recentes da planilha), atualiza.
-          if (safeCompare(solicNoBanco.dataSolicitacao, dataSolicitacaoFormatada)) { updates.dataSolicitacao = dataSolicitacaoFormatada; isDifferent = true; }
-
-          let atualizouSisregInfo = false;
-          if (safeCompare(solicNoBanco.numeroSisreg, sisregLinha)) {
-            updates.numeroSisreg = sisregLinha;
-            if (sisregLinha && !solicNoBanco.numeroSisreg) {
-              updates.status = 'VALIDAÇÃO SISREG';
-              updates.dataInclusaoSisreg = dataHoraAtual;
-              atualizouSisregInfo = true;
-            }
-            isDifferent = true;
-          }
-
-          if (isDifferent) {
-            const historicoAnterior = solicNoBanco.historico || [];
-            if (atualizouSisregInfo) {
-              updates.historico = [
-                ...historicoAnterior,
-                {
-                  dataHora: dataHoraAtual,
-                  de: solicNoBanco.status,
-                  para: 'VALIDAÇÃO SISREG',
-                  usuario: 'Sistema',
-                  detalhes: 'SISREG E STATUS ATUALIZADOS VIA IMPORTAÇÃO DE PLANILHA',
-                },
-              ];
-            } else {
-              updates.historico = [
-                ...historicoAnterior,
-                {
-                  dataHora: dataHoraAtual,
-                  de: 'DADOS ANTIGOS',
-                  para: 'DADOS ATUALIZADOS POR LOTE',
-                  usuario: 'Sistema',
-                },
-              ];
-            }
-
-            batch.update(doc(db, 'nexus_eletivas_solicitacoes', solicNoBanco.id), updates);
-            countSolicsAtualizadas++;
-            mapSolicitacoesNesteLote.set(chaveDuplicidade, true);
-          } else {
-            countSolicsIgnoradas++;
-            mapSolicitacoesNesteLote.set(chaveDuplicidade, true);
-          }
-        } else {
-          // 5. Cadastrar uma Nova Solicitação
-          const refSolicitacao = doc(collection(db, 'nexus_eletivas_solicitacoes'));
-
-          const statusLinha = sisregLinha ? 'VALIDAÇÃO SISREG' : 'AGUARDA NÚMERO SISREG';
-
-          const novaSolicitacaoData = {
+          const novaAihData = {
+            id: refAih.id,
             pacienteId: pacienteId,
-            cns: cnsFormatado,
-            nomePaciente: normalizeString(row.nm_paciente),
-            origem: '',
-            numeroSisreg: sisregLinha,
-            dataSolicitacao: dataSolicitacaoFormatada,
+            cns: cnsRow || (pacienteEncontrado ? pacienteEncontrado.cns : ''),
+            nomePaciente: nomeRow,
+            origem: 'IMPORTAÇÃO (Smart Upsert)',
+            numeroSisreg: sisregRow,
+            dataSolicitacao: dataSolicitacaoRow,
             prioridade: prioridadeDefinida,
-            prontuario: prontuarioLinha,
-            consulta: consultaLinha,
-            cid: cidLinha,
-            codigoProcedimento: codProc,
+            prontuario: prontuarioRow,
+            consulta: consultaRow,
+            cid: cidRow,
+            codigoProcedimento: codProcOriginal,
             descricaoProcedimento: descProc,
-            procedimento: `${codProc} - ${descProc}`,
+            procedimento: `${codProcOriginal} - ${descProc}`,
             especialidade: '',
-            medico: medicoLinha,
+            medico: medicoRow,
             situacao: 'ATIVA',
             status: statusLinha,
             criadoEm: serverTimestamp(),
@@ -325,48 +295,101 @@ export default function CadastroSolicitacoes() {
                 dataHora: dataHoraAtual,
                 de: 'IMPORTAÇÃO EM LOTE',
                 para: statusLinha,
-                usuario: 'Sistema',
+                usuario: 'Sistema (Smart Upsert)',
               },
-            ],
+            ]
           };
 
-          batch.set(refSolicitacao, novaSolicitacaoData);
+          if (operacoesBatchCount >= 450) { await batch.commit(); batch = writeBatch(db); operacoesBatchCount = 0; }
+          batch.set(refAih, novaAihData);
+          operacoesBatchCount++;
+
+          aihsMemoria.push(novaAihData); // Cache
           countSolicsNovas++;
-          mapSolicitacoesNesteLote.set(chaveDuplicidade, true);
+
+        } else {
+          // ATUALIZAR AIH EXISTENTE
+          let atualizouAih = false;
+          const updatesAih = {};
+
+          // Atualiza dados faltantes ou mais recentes
+          if (!aihEncontrada.numeroSisreg && sisregRow) {
+            updatesAih.numeroSisreg = sisregRow;
+            aihEncontrada.numeroSisreg = sisregRow;
+            atualizouAih = true;
+
+            // TRANSIÇÃO AUTOMÁTICA DE STATUS
+            if (aihEncontrada.status === 'AGUARDA NÚMERO SISREG') {
+              updatesAih.status = 'VALIDAÇÃO SISREG';
+              aihEncontrada.status = 'VALIDAÇÃO SISREG';
+              updatesAih.dataInclusaoSisreg = dataHoraAtual;
+
+              const historicoAnterior = aihEncontrada.historico || [];
+              updatesAih.historico = [
+                ...historicoAnterior,
+                {
+                  dataHora: dataHoraAtual,
+                  de: 'AGUARDA NÚMERO SISREG',
+                  para: 'VALIDAÇÃO SISREG',
+                  usuario: 'Sistema (Smart Upsert)',
+                  detalhes: 'Status alterado automaticamente para VALIDAÇÃO SISREG após inserção do número SISREG via importação em lote.'
+                }
+              ];
+            }
+          }
+
+          if (!aihEncontrada.prontuario && prontuarioRow) { updatesAih.prontuario = prontuarioRow; aihEncontrada.prontuario = prontuarioRow; atualizouAih = true; }
+          if (!aihEncontrada.consulta && consultaRow) { updatesAih.consulta = consultaRow; aihEncontrada.consulta = consultaRow; atualizouAih = true; }
+          if (!aihEncontrada.cid && cidRow) { updatesAih.cid = cidRow; aihEncontrada.cid = cidRow; atualizouAih = true; }
+
+          if (atualizouAih) {
+            if (operacoesBatchCount >= 450) { await batch.commit(); batch = writeBatch(db); operacoesBatchCount = 0; }
+            batch.update(doc(db, 'nexus_eletivas_solicitacoes', aihEncontrada.id), updatesAih);
+            operacoesBatchCount++;
+            countSolicsAtualizadas++;
+          } else {
+            countSolicsIgnoradas++;
+          }
         }
       }
 
-      await batch.commit();
+      // 4. COMMIT BATCH FINAL
+      if (operacoesBatchCount > 0) {
+        await batch.commit();
+      }
 
       toast.success(
         <div className="flex flex-col gap-1">
-          <strong className="text-sm">Importação Concluída!</strong>
-          <span className="text-sm">Linhas processadas: {totalAmbulatorial} / {totalLinhas}</span>
+          <strong className="text-sm">Importação Inteligente Concluída!</strong>
+          <span className="text-sm">Linhas processadas: {dadosFiltrados.length}</span>
           <hr className="my-1 border-white/30" />
           <span className="text-sm"><strong className="text-emerald-100">+ {countPacientesNovos}</strong> pacientes novos</span>
-          <span className="text-sm"><strong className="text-emerald-100">+ {countSolicsNovas}</strong> solicitações criadas</span>
-          <span className="text-sm"><strong className="text-amber-200">~ {countSolicsAtualizadas}</strong> solicitações atualizadas</span>
-          <span className="text-sm"><strong className="text-slate-300">= {countSolicsIgnoradas}</strong> no banco (ignoradas)</span>
+          <span className="text-sm"><strong className="text-emerald-100">+ {countSolicsNovas}</strong> AIHs criadas</span>
+          <span className="text-sm"><strong className="text-amber-200">~ {countPacientesExistentes}</strong> pacientes e <strong className="text-amber-200">{countSolicsAtualizadas}</strong> AIHs atualizados</span>
+          <span className="text-sm"><strong className="text-slate-300">= {countSolicsIgnoradas}</strong> AIHs idênticas no banco</span>
           {linhasDuplicadasNoExcel > 0 && (
             <span className="text-[10px] text-red-200 leading-tight mt-1 border-t border-white/20 pt-1">
-              * {linhasDuplicadasNoExcel} duplicidades no próprio Excel foram removidas (mantendo a data mais recente).
+              * {linhasDuplicadasNoExcel} duplicidades no próprio Excel foram mescladas.
             </span>
           )}
         </div>,
-        { autoClose: 8000 }
+        { autoClose: 9000 }
       );
 
       resetarFluxo();
     } catch (error) {
-      console.error(error);
-      toast.error('Erro ao processar banco de dados. Tente novamente.');
+      console.error('Erro no Smart Upsert:', error);
+      toast.error('Erro na importação inteligente. Verifique o console.');
     } finally {
       setLoading(false);
     }
   };
 
   // --- CASCATA DO SIGTAP ---
-  const procedimentosFiltrados = buscaProc.trim() === '' ? [] : dbProcedimentos.filter((p) => p.codigo.includes(buscaProc) || p.descricao.includes(buscaProc)).slice(0, 50);
+  const procedimentosFiltrados = buscaProc.trim() === '' ? [] : dbProcedimentos.filter((p) => {
+    const termoBusca = buscaProc.replace(/^0+/, '');
+    return (p.codigo && p.codigo.includes(termoBusca)) || (p.descricao && p.descricao.includes(buscaProc));
+  }).slice(0, 50);
 
   const handleBuscaProcChange = (e) => {
     const val = e.target.value.toUpperCase();
@@ -455,8 +478,14 @@ export default function CadastroSolicitacoes() {
       const numeroSisregStr = formDataSolicitacao.numeroSisreg.trim();
       const statusDefinido = numeroSisregStr ? 'VALIDAÇÃO SISREG' : 'AGUARDA NÚMERO SISREG';
 
+      const prioridadeProcessada = calcularPrioridadeSigtap(
+        procSelecionado.codigo,
+        formDataSolicitacao.prioridade
+      );
+
       const payload = {
         ...formDataSolicitacao,
+        prioridade: prioridadeProcessada,
         cid: formDataSolicitacao.cid.toUpperCase(),
         codigoProcedimento: procSelecionado.codigo,
         descricaoProcedimento: procSelecionado.descricao,
@@ -586,7 +615,8 @@ export default function CadastroSolicitacoes() {
       } else {
         toast.info('Nenhum paciente encontrado com este CNS.');
       }
-    } catch (e) {
+    } catch (error) {
+      console.error(error);
       toast.error('Erro na busca de paciente pelo CNS.');
     } finally {
       setLoading(false);

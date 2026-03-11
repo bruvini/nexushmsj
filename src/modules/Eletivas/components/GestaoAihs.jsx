@@ -7,9 +7,11 @@ import {
   updateDoc,
   deleteDoc,
   getDoc,
+  writeBatch
 } from 'firebase/firestore';
 import { db } from '../../../services/firebase';
 import { ubsfJoinville } from '../../../utils/UBSFJoinville';
+import { calcularPrioridadeSigtap } from '../../../utils/prioridades';
 
 // IMPORTAÇÕES DO TOASTIFY
 import { ToastContainer, toast } from 'react-toastify';
@@ -55,11 +57,36 @@ export default function GestaoAihs() {
   useEffect(() => {
     setBusca('');
     const q = query(collection(db, 'nexus_eletivas_solicitacoes'));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+    const unsubscribe = onSnapshot(q, async (querySnapshot) => {
       const lista = [];
-      querySnapshot.forEach((doc) => {
-        lista.push({ id: doc.id, ...doc.data() });
+      const batch = writeBatch(db);
+      let batchCount = 0;
+
+      querySnapshot.forEach((docSnap) => {
+        const sol = { id: docSnap.id, ...docSnap.data() };
+        lista.push(sol);
+
+        // Higienização Reativa e Econômica (Evita Writes Desnecessários)
+        const codigoReferencia = sol.codigoProcedimento || sol.procedimento;
+        const novaPrioridade = calcularPrioridadeSigtap(codigoReferencia, sol.prioridade);
+
+        if (novaPrioridade !== (sol.prioridade || 'NENHUMA')) {
+          batch.update(docSnap.ref, { prioridade: novaPrioridade });
+          batchCount++;
+          // Atualiza em memória para a listagem imediata
+          sol.prioridade = novaPrioridade;
+        }
       });
+
+      if (batchCount > 0) {
+        try {
+          await batch.commit();
+          console.log(`[HIGIENIZAÇÃO NEXUS] ${batchCount} AIHs priorizadas automaticamente (SIGTAP Oncológico).`);
+        } catch (error) {
+          console.error('[HIGIENIZAÇÃO NEXUS] Erro ao atualizar prioridades:', error);
+        }
+      }
+
       lista.sort(
         (a, b) => new Date(a.dataSolicitacao) - new Date(b.dataSolicitacao)
       );
@@ -765,8 +792,8 @@ export default function GestaoAihs() {
                                 }
 
                                 return (
-                                  <span className={`text-[10px] px-2 py-0.5 rounded-full border ${corBadge} shrink-0`}>
-                                    {prio}
+                                  <span className={`text-[10px] px-2 py-0.5 rounded-full border ${corBadge} shrink-0 whitespace-nowrap`}>
+                                    {prio === 'CARTA DE PRIORIDADE' ? 'CARTA' : prio}
                                   </span>
                                 );
                               })()}
