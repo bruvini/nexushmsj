@@ -410,6 +410,8 @@ export default function PainelKanban() {
         novoEvento.descricao = formSisreg.devolutiva.trim();
         logMsg = `Marcou SISREG como DEVOLVIDO. Motivo: ${novoEvento.descricao}`;
         statGlobal = 'total_devolucoes';
+        // Resetamos o campo de resposta ao registrar devolutiva
+        payload.resposta = ""; 
       } else if (novoStatus === 'PENDENTE' && p.sisreg_status === 'DEVOLVIDO') {
         // Significa que respondeu uma devolução
         if(!formSisreg.resposta.trim()) return toast.warning("Descreva a ação tomada para reativar o pedido.");
@@ -417,6 +419,8 @@ export default function PainelKanban() {
         novoEvento.descricao = formSisreg.resposta.trim();
         logMsg = `Respondeu devolução do SISREG: ${novoEvento.descricao}`;
         statGlobal = 'total_respostas';
+        // Resetamos o campo de devolutiva ao registrar resposta
+        payload.devolutiva = "";
       } else if (novoStatus === 'FINALIZADO') {
         novoEvento.acao = "Finalizado";
         novoEvento.descricao = "Regulação Concluída.";
@@ -1062,19 +1066,21 @@ export default function PainelKanban() {
                       <div className="text-sm text-slate-600 font-medium">Insira a Data e o Número nos campos acima e clique no botão verde para iniciar a regulação SISREG deste paciente.</div>
                     ) : (
                       <>
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
-                            Motivo da Devolutiva <span className="text-red-500">*</span>
-                          </label>
-                          <textarea value={formSisreg.devolutiva} onChange={e => setFormSisreg({ ...formSisreg, devolutiva: e.target.value })} placeholder="O que o NIR ou Médico informou ao devolver o pedido?" className="w-full p-3 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-red-500 bg-white resize-none h-20"></textarea>
-                        </div>
+                        {statusEfetivoModal === 'PENDENTE' && (
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
+                              Devolutiva do SISREG <span className="text-emerald-500">*</span>
+                            </label>
+                            <textarea value={formSisreg.devolutiva} onChange={e => setFormSisreg({ ...formSisreg, devolutiva: e.target.value })} placeholder={`Copie e cole aqui a devolutiva dada pelo SISREG sobre a solicitação N° ${modalSisregPaciente.numero_sisreg || modalSisregPaciente.numeroSisreg || 'Não Informado'}.`} className="w-full p-3 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 bg-white resize-none h-20"></textarea>
+                          </div>
+                        )}
                         
                         {statusEfetivoModal === 'DEVOLVIDO' && (
                           <div>
                             <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
-                              Ação Tomada / Resposta <span className="text-amber-500">*</span>
+                              Resposta para o SISREG <span className="text-amber-500">*</span>
                             </label>
-                            <textarea value={formSisreg.resposta} onChange={e => setFormSisreg({ ...formSisreg, resposta: e.target.value })} placeholder="Qual ação foi tomada para justificar a re-inserção na fila? (Ex: Exames anexados)." className="w-full p-3 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500 bg-white resize-none h-20"></textarea>
+                            <textarea value={formSisreg.resposta} onChange={e => setFormSisreg({ ...formSisreg, resposta: e.target.value })} placeholder="Copie e cole aqui (ou resuma) a resposta dada ao SISREG sobre essa devolutiva" className="w-full p-3 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500 bg-white resize-none h-20"></textarea>
                           </div>
                         )}
                       </>
@@ -1096,12 +1102,14 @@ export default function PainelKanban() {
                   return (
                     <div className="flex gap-3 flex-wrap sm:flex-nowrap">
                       {statusEfetivoModal === 'PENDENTE' && (
-                        <button onClick={() => salvarSisreg('DEVOLVIDO')} className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-shadow shadow-md">Acionar Devolutiva</button>
+                        <>
+                          <button onClick={() => salvarSisreg('DEVOLVIDO')} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition-shadow shadow-md text-sm">Registrar Devolutiva</button>
+                          <button onClick={() => salvarSisreg('FINALIZADO')} className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-shadow shadow-md text-sm whitespace-nowrap">Encerrar SISREG</button>
+                        </>
                       )}
                       {statusEfetivoModal === 'DEVOLVIDO' && (
-                        <button onClick={() => salvarSisreg('PENDENTE')} className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-xl transition-shadow shadow-md text-sm">Responder Devolutiva (Reabrir)</button>
+                        <button onClick={() => salvarSisreg('PENDENTE')} className="flex-1 bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 rounded-xl transition-shadow shadow-md text-sm">Registrar Resposta</button>
                       )}
-                      <button onClick={() => salvarSisreg('FINALIZADO')} className="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-shadow shadow-md text-sm whitespace-nowrap">Encerrar SISREG</button>
                     </div>
                   );
                 }
