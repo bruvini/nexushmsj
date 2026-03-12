@@ -219,6 +219,35 @@ export const updatePatientSpecialties = async (patientId, primary, additional = 
 };
 
 /**
+ * Ativa ou desativa a flag do Protocolo de Capacidade Plena (PCP) para um paciente.
+ *
+ * @param {string} patientId ID do paciente no Firestore
+ * @param {boolean} active true para ativar, false para remover a flag
+ */
+export const togglePCP = async (patientId, active) => {
+    if (!patientId) return;
+    const patientRef = doc(db, 'nexus_kanban_pacientes', patientId);
+    try {
+        if (active) {
+            await updateDoc(patientRef, {
+                pcp: true,
+                pcp_ativado_em: serverTimestamp()
+            });
+            await saveActivityLog(patientId, 'PCP', 'Sinalizou paciente como elegível para leito PCP');
+        } else {
+            await updateDoc(patientRef, {
+                pcp: false,
+                pcp_ativado_em: deleteField()
+            });
+            await saveActivityLog(patientId, 'PCP', 'Removeu sinalização de leito PCP');
+        }
+    } catch (error) {
+        console.error('Erro ao atualizar flag PCP:', error);
+        throw error;
+    }
+};
+
+/**
  * Salva a alteração de status/histórico do SISREG e computa estatística global.
  * @param {string} patientId 
  * @param {object} payload Dados exatos que subirão no updateDoc do paciente.

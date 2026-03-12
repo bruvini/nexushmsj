@@ -4,7 +4,7 @@ import { db } from '../../../services/firebase';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ImportacaoCenso from './ImportacaoCenso';
-import { saveActivityLog, toggleClinicalTag, updateProvavelAlta, removeProvavelAlta, updateFluxoTrauma, removeFluxoTrauma, updateMedications, updatePatientSpecialties, saveSisregWorkflow } from '../services/kanbanService';
+import { saveActivityLog, toggleClinicalTag, updateProvavelAlta, removeProvavelAlta, updateFluxoTrauma, removeFluxoTrauma, updateMedications, updatePatientSpecialties, saveSisregWorkflow, togglePCP } from '../services/kanbanService';
 import { PROFISSIONAL_ESPECIALIDADES } from '../../../utils/specialties';
 import { gerarRelatorioRondas } from './utils/GeradorPDF';
 
@@ -68,6 +68,7 @@ export default function PainelKanban() {
   const [filtroAlta, setFiltroAlta] = useState(false);
   const [filtroTrauma, setFiltroTrauma] = useState(false);
   const [filtroMedicacao, setFiltroMedicacao] = useState(false);
+  const [filtroPCP, setFiltroPCP] = useState(false);
 
   // States do Log e Tutorial
   const [activityLogs, setActivityLogs] = useState([]);
@@ -92,6 +93,10 @@ export default function PainelKanban() {
   const [modalFluxoTrauma, setModalFluxoTrauma] = useState(null);
   const [descricaoTrauma, setDescricaoTrauma] = useState('');
   const [modalDetalhesTrauma, setModalDetalhesTrauma] = useState(null);
+
+  // Estados do Modal PCP (Protocolo de Capacidade Plena)
+  const [modalPCPConfirmar, setModalPCPConfirmar] = useState(null);   // paciente aguardando confirmação de elegibilidade
+  const [modalPCPRemover, setModalPCPRemover] = useState(null);       // paciente aguardando confirmação de remoção
 
   // Estados dos Modais de Medicação
   const [modalMedicacoesPaciente, setModalMedicacoesPaciente] = useState(null);
@@ -192,12 +197,28 @@ export default function PainelKanban() {
   }, []);
 
   // 2. LÓGICA DE PROCESSAMENTO E FILTROS
+  // Utilitária: calcula a idade exata a partir de uma string de data de nascimento (DD/MM/YYYY)
+  const calcularIdade = (nascimento) => {
+    if (!nascimento) return null;
+    const nasc = String(nascimento);
+    // Suporta DD/MM/YYYY
+    const match = nasc.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    if (!match) return null;
+    const [, dia, mes, ano] = match;
+    const dataNasc = new Date(Number(ano), Number(mes) - 1, Number(dia));
+    const hoje = new Date();
+    let idade = hoje.getFullYear() - dataNasc.getFullYear();
+    const mesAtual = hoje.getMonth() - dataNasc.getMonth();
+    if (mesAtual < 0 || (mesAtual === 0 && hoje.getDate() < dataNasc.getDate())) idade--;
+    return isNaN(idade) ? null : idade;
+  };
+
   const { filtrados, kpis, contadoresRapidos, setoresAgrupados, setoresDisponiveis } = useMemo(() => {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
     const counts = { verde: 0, amarelo: 0, vermelho: 0, laranja: 0, roxo: 0, preto: 0, sisreg: 0 };
-    const contadoresFiltros = { sisreg: 0, comSisreg: 0, notas: 0, emad: 0, retaguarda: 0, alta: 0, trauma: 0, medicacao: 0 };
+    const contadoresFiltros = { sisreg: 0, comSisreg: 0, notas: 0, emad: 0, retaguarda: 0, alta: 0, trauma: 0, medicacao: 0, pcp: 0 };
     const listaSetores = new Set();
     const mapAgrupado = {};
 
@@ -253,6 +274,9 @@ export default function PainelKanban() {
         if (!isPrincipal) validBase = false;
       }
 
+      // Calcula e persiste a idade no objeto (usada pelo botão PCP)
+      p.idadeCalculada = calcularIdade(p.nascimento);
+
       if (validBase) {
         if (p.semSisreg) contadoresFiltros.sisreg++;
         if (p.comSisreg) contadoresFiltros.comSisreg++;
@@ -262,6 +286,7 @@ export default function PainelKanban() {
         if (p.provavel_alta?.active) contadoresFiltros.alta++;
         if (p.fluxo_trauma?.active) contadoresFiltros.trauma++;
         if (p.medicacoes_curso && p.medicacoes_curso.length > 0) contadoresFiltros.medicacao++;
+        if (p.pcp === true) contadoresFiltros.pcp++;
       }
 
       return validBase;
@@ -277,6 +302,7 @@ export default function PainelKanban() {
       if (filtroAlta && !p.provavel_alta?.active) valid = false;
       if (filtroTrauma && !p.fluxo_trauma?.active) valid = false;
       if (filtroMedicacao && (!p.medicacoes_curso || p.medicacoes_curso.length === 0)) valid = false;
+      if (filtroPCP && p.pcp !== true) valid = false;
 
       if (valid) {
         counts[p.corKanban]++;
@@ -298,7 +324,7 @@ export default function PainelKanban() {
       setoresAgrupados: mapAgrupado,
       setoresDisponiveis: Array.from(listaSetores).sort()
     };
-  }, [pacientes, busca, filtroSetor, filtroEspecialidade, filtroKanban, filtroSisreg, filtroComSisreg, filtroNotas, filtroEmad, filtroRetaguarda, filtroAlta, filtroTrauma, filtroMedicacao]);
+  }, [pacientes, busca, filtroSetor, filtroEspecialidade, filtroKanban, filtroSisreg, filtroComSisreg, filtroNotas, filtroEmad, filtroRetaguarda, filtroAlta, filtroTrauma, filtroMedicacao, filtroPCP]);
 
   // ===== EASTER EGG: ENF. THIAGO =====
   // Passo 1: Contagem individual por setor-foco
@@ -345,6 +371,7 @@ export default function PainelKanban() {
     setFiltroAlta(false);
     setFiltroTrauma(false);
     setFiltroMedicacao(false);
+    setFiltroPCP(false);
     toast.info("Filtros limpos!");
   };
 
@@ -883,6 +910,16 @@ export default function PainelKanban() {
               </div>
               <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-colors ${filtroMedicacao ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Medicação <span className="text-[10px] ml-0.5 opacity-80">({contadoresRapidos?.medicacao || 0})</span></span>
             </label>
+
+            {/* Toggle PCP - separado por borda como destaque protocolar */}
+            <label className={`flex items-center gap-2 group border-l pl-4 sm:pl-6 border-slate-200 transition-all ${contadoresRapidos?.pcp === 0 ? 'opacity-40 grayscale cursor-not-allowed' : 'cursor-pointer'}`}>
+              <div className="relative">
+                <input type="checkbox" disabled={contadoresRapidos?.pcp === 0} checked={filtroPCP} onChange={() => setFiltroPCP(!filtroPCP)} className="sr-only" />
+                <div className={`block w-10 h-5 rounded-full transition-colors ${filtroPCP ? 'bg-teal-500' : 'bg-slate-300'}`}></div>
+                <div className={`dot absolute left-1 top-0.5 bg-white w-4 h-4 rounded-full transition-transform ${filtroPCP ? 'transform translate-x-4' : ''} shadow-sm`}></div>
+              </div>
+              <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-colors ${filtroPCP ? 'text-teal-600' : 'text-slate-400 group-hover:text-slate-600'}`}>PCP <span className="text-[10px] ml-0.5 opacity-80">({contadoresRapidos?.pcp || 0})</span></span>
+            </label>
           </div>
         </div>
       </div>
@@ -912,6 +949,13 @@ export default function PainelKanban() {
                         <span className="bg-slate-800 text-white text-[11px] font-black px-2.5 py-0.5 rounded shadow-sm shrink-0">{p.leito}</span>
                         <h3 className="font-bold text-slate-800 text-sm sm:text-base uppercase">{p.nome}</h3>
                         <span className="text-[10px] text-slate-500 flex items-center gap-1 ml-1"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg> {p.nascimento}</span>
+                        {/* Badge PCP */}
+                        {p.pcp === true && (
+                          <span className="flex items-center gap-1 bg-teal-100 text-teal-700 border border-teal-300 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide">
+                            <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                            PCP
+                          </span>
+                        )}
                       </div>
                       <span className={`flex items-center gap-1 text-[10px] sm:text-[11px] ${p.diasInternado > 3 ? 'text-red-600 font-bold' : 'text-slate-500'}`}>
                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -1008,6 +1052,39 @@ export default function PainelKanban() {
                           <span className="hidden sm:inline">NOTAS</span>
                           {p.temNotas && <span className="absolute -top-1.5 -right-1.5 bg-sky-600 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full shadow-sm">{p.notasArray.length}</span>}
                         </button>
+
+                        {/* Botão PCP: Visível apenas em setores elegíveis e para pacientes 18-60 anos */}
+                        {(() => {
+                          const SETORES_PCP = ['PS DECISÃO CIRURGICA', 'PS DECISÃO CLINICA'];
+                          const setorLimpo = (p.setor || '').toUpperCase().trim();
+                          const idadeOk = p.idadeCalculada !== null && p.idadeCalculada >= 18 && p.idadeCalculada <= 60;
+                          const setorOk = SETORES_PCP.includes(setorLimpo);
+                          if (!setorOk || !idadeOk) return null;
+
+                          if (p.pcp === true) {
+                            return (
+                              <button
+                                onClick={() => setModalPCPRemover(p)}
+                                className="flex items-center justify-center gap-1 bg-teal-50 text-teal-700 border border-teal-300 ring-1 ring-teal-100 hover:bg-teal-100 p-2 sm:px-2.5 sm:py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black transition-all shrink-0"
+                                title="Remover sinalização PCP"
+                              >
+                                <svg className="w-4 h-4 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                                <span className="hidden sm:inline">PCP ✓</span>
+                              </button>
+                            );
+                          }
+
+                          return (
+                            <button
+                              onClick={() => setModalPCPConfirmar(p)}
+                              className="flex items-center justify-center gap-1 bg-white hover:bg-teal-50 text-teal-700 border border-teal-300 hover:border-teal-400 p-2 sm:px-2.5 sm:py-1.5 rounded-lg text-[9px] sm:text-[10px] font-black transition-all shrink-0"
+                              title={`Sinalizar para leito PCP (${p.idadeCalculada} anos)`}
+                            >
+                              <svg className="w-4 h-4 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                              <span className="hidden sm:inline">PCP</span>
+                            </button>
+                          );
+                        })()}
 
                       </div>
                     </div>
@@ -1826,6 +1903,118 @@ export default function PainelKanban() {
         </div>
       )}
       {/* ========================================= */}
+
+      {/* ===== MODAL PCP: CONFIRMAÇÃO CLÍNICA ===== */}
+      {modalPCPConfirmar && (
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/65 backdrop-blur-sm p-4 animate-[fadeIn_0.2s_ease-in-out]"
+          onClick={(e) => { if (e.target === e.currentTarget) setModalPCPConfirmar(null); }}
+        >
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
+
+            {/* Cabeçalho */}
+            <div className="bg-gradient-to-br from-teal-500 to-emerald-600 p-6 relative overflow-hidden">
+              <div className="absolute -top-6 -right-6 w-32 h-32 bg-white/10 rounded-full" />
+              <div className="text-3xl mb-2 relative z-10">🏥</div>
+              <h2 className="text-lg font-black text-white relative z-10">Protocolo de Capacidade Plena</h2>
+              <p className="text-teal-100 text-xs mt-1 relative z-10">
+                Sinalizando <strong className="text-white">{modalPCPConfirmar.nome}</strong> como apto para leito PCP.
+              </p>
+            </div>
+
+            {/* Corpo */}
+            <div className="p-5 flex flex-col gap-4">
+
+              {/* Aviso */}
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex gap-2 items-start text-xs text-amber-800 font-medium">
+                <span className="text-base shrink-0">⚠️</span>
+                <span>Confirme <strong>visualmente</strong> com o paciente que <strong>todos</strong> os critérios abaixo são atendidos antes de sinalizar.</span>
+              </div>
+
+              {/* Checklist de Critérios */}
+              <div className="flex flex-col gap-2">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Critérios Obrigatórios do PCP</p>
+                {[
+                  'Tem entre 18 e 60 anos.',
+                  'Não tem acompanhante.',
+                  'Não é obeso.',
+                  'Não faz uso de dispositivos ligados à tomada.',
+                  'Está lúcido, orientado, comunicativo, deambula sem auxílio, com alimentação via oral e faz necessidades e banho sozinho no banheiro.'
+                ].map((criterio, i) => (
+                  <div key={i} className="flex items-start gap-2.5 bg-teal-50 border border-teal-200 rounded-xl px-3 py-2.5">
+                    <div className="w-5 h-5 rounded-full bg-teal-500 flex items-center justify-center shrink-0 mt-0.5">
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                    </div>
+                    <p className="text-xs text-teal-800 font-medium leading-snug">{criterio}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Botões */}
+              <div className="flex gap-3 pt-1">
+                <button
+                  onClick={() => setModalPCPConfirmar(null)}
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      await togglePCP(modalPCPConfirmar.id, true);
+                      toast.success(`${modalPCPConfirmar.nome} sinalizado(a) como elegível para leito PCP.`);
+                      setModalPCPConfirmar(null);
+                    } catch { toast.error('Erro ao sinalizar PCP.'); }
+                  }}
+                  className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-2.5 rounded-xl transition-colors shadow-md shadow-teal-600/20"
+                >
+                  Confirmar Elegibilidade PCP
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ============================================ */}
+
+      {/* ===== MODAL PCP: CONFIRMAÇÃO DE REMOÇÃO ===== */}
+      {modalPCPRemover && (
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-[fadeIn_0.2s_ease-in-out]"
+          onClick={(e) => { if (e.target === e.currentTarget) setModalPCPRemover(null); }}
+        >
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">🏥</div>
+              <h3 className="text-lg font-bold text-slate-800 mb-1">Remover PCP?</h3>
+              <p className="text-slate-500 text-sm">
+                Deseja remover a sinalização PCP de <strong className="text-slate-700">{modalPCPRemover.nome}</strong>?
+              </p>
+            </div>
+            <div className="flex gap-3 px-6 pb-6">
+              <button
+                onClick={() => setModalPCPRemover(null)}
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    await togglePCP(modalPCPRemover.id, false);
+                    toast.info(`Sinalização PCP removida de ${modalPCPRemover.nome}.`);
+                    setModalPCPRemover(null);
+                  } catch { toast.error('Erro ao remover PCP.'); }
+                }}
+                className="flex-1 bg-slate-700 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl transition-colors"
+              >
+                Remover PCP
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ============================================== */}
 
     </div>
   );

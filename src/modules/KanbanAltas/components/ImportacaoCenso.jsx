@@ -79,6 +79,7 @@ export default function ImportacaoCenso({ onClose, onImportSuccess }) {
           const pacExistente = pacientesNoBanco.get(uid);
           const docRef = doc(db, 'nexus_kanban_pacientes', pacExistente.idDocumento);
 
+          const SETORES_ELEGIVEIS_PCP = ['PS DECISÃO CIRURGICA', 'PS DECISÃO CLINICA'];
           const payloadUpdate = {
             dataInternacao: dataIntNormalizada, // FORÇA ATUALIZAÇÃO PARA RESETAR LOS EM RE-INTERNAÇÕES
             setor: setor,
@@ -86,6 +87,11 @@ export default function ImportacaoCenso({ onClose, onImportSuccess }) {
             status: pacExistente.status === 'SINALIZADA' ? 'SINALIZADA' : 'ATIVO',
             ultimaAtualizacao: serverTimestamp()
           };
+
+          // Revogação Automática PCP: Paciente saiu do setor elegível → desativa a flag
+          if (pacExistente.pcp === true && !SETORES_ELEGIVEIS_PCP.includes(setor.toUpperCase().trim())) {
+            payloadUpdate.pcp = false;
+          }
 
           // Proteção de Especialidade: Se não for manual, sobrescreve com o dado do Excel
           if (!pacExistente.especialidade_gestao || pacExistente.especialidade_gestao.is_manual !== true) {
