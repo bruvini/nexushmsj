@@ -748,7 +748,7 @@ export default function PainelKanban() {
             Inclusão SISREG (RPA)
           </button>
           {/* Botão Relatório Gerencial SISREG */}
-          <button onClick={() => { setRelatorioGerado(null); setRelatorioFiltro({ dataInicial: '', dataFinal: '' }); setShowRelatorioSisreg(true); }} className="hidden lg:flex bg-slate-800 hover:bg-slate-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all items-center gap-2 shrink-0">
+          <button onClick={() => { setRelatorioGerado(null); setRelatorioFiltro({ dataInicial: '', dataFinal: '' }); setShowRelatorioSisreg(true); }} className="hidden lg:flex bg-white border border-blue-200 hover:bg-blue-50 text-blue-700 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors items-center gap-2 shrink-0">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
             Relatório SISREG
           </button>
@@ -2032,19 +2032,17 @@ export default function PainelKanban() {
           className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/75 backdrop-blur-sm p-4 animate-[fadeIn_0.2s_ease-in-out]"
           onClick={(e) => { if (e.target === e.currentTarget) setShowRelatorioSisreg(false); }}
         >
-          <div className="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden border border-slate-700 max-h-[90vh]">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden border border-slate-200 max-h-[90vh]">
 
             {/* Header técnico */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
               <div className="flex items-center gap-3">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-red-500" />
-                  <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                  <div className="w-3 h-3 rounded-full bg-green-500" />
+                <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                 </div>
-                <span className="font-mono text-sm text-slate-400 ml-2">nexus_kanban <span className="text-emerald-400">→</span> relatorio_sisreg.exe</span>
+                <h2 className="text-base font-bold text-slate-800">Relatório Gerencial — SISREG</h2>
               </div>
-              <button onClick={() => setShowRelatorioSisreg(false)} className="text-slate-500 hover:text-slate-300 transition-colors">
+              <button onClick={() => setShowRelatorioSisreg(false)} className="text-slate-400 hover:text-slate-600 transition-colors bg-slate-100 hover:bg-slate-200 p-1.5 rounded-lg">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
@@ -2053,28 +2051,28 @@ export default function PainelKanban() {
             {!relatorioGerado && (
               <div className="p-8 flex flex-col gap-6">
                 <div>
-                  <p className="font-mono text-xs text-emerald-400 mb-1">$ configurar_periodo --start [data_inicial] --end [data_final]</p>
-                  <h2 className="text-xl font-bold text-white mt-3">Relatório Gerencial SISREG</h2>
-                  <p className="text-slate-400 text-sm mt-1">Selecione o período para análise das inserções diárias. O retrato atual sempre reflete o censo em tempo real.</p>
+                  <p className="text-xs text-blue-500 font-semibold mb-1">Selecione o período para análise das inserções diárias.</p>
+                  <h3 className="text-lg font-bold text-slate-800">Parâmetros do Relatório</h3>
+                  <p className="text-slate-500 text-sm mt-1">O retrato atual sempre reflete o censo em tempo real.</p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Data Inicial</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Data Inicial</label>
                     <input
                       type="date"
                       value={relatorioFiltro.dataInicial}
                       onChange={e => setRelatorioFiltro(prev => ({ ...prev, dataInicial: e.target.value }))}
-                      className="w-full bg-slate-800 border border-slate-600 text-white rounded-xl px-4 py-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      className="w-full bg-white border border-slate-300 text-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Data Final</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Data Final</label>
                     <input
                       type="date"
                       value={relatorioFiltro.dataFinal}
                       onChange={e => setRelatorioFiltro(prev => ({ ...prev, dataFinal: e.target.value }))}
-                      className="w-full bg-slate-800 border border-slate-600 text-white rounded-xl px-4 py-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      className="w-full bg-white border border-slate-300 text-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
                     />
                   </div>
                 </div>
@@ -2128,10 +2126,10 @@ export default function PainelKanban() {
                       retrato: { totalComSisreg, totalPendente, totalDevolvido, totalFinalizado }
                     });
                   }}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl transition-colors font-mono text-sm flex items-center justify-center gap-2"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-colors text-sm flex items-center justify-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                  $ gerar_relatorio --executar
+                  Gerar Relatório
                 </button>
               </div>
             )}
@@ -2173,35 +2171,35 @@ export default function PainelKanban() {
               return (
                 <div className="flex flex-col overflow-hidden">
                   {/* Sub-header de resultado */}
-                  <div className="px-6 py-3 bg-slate-800 border-b border-slate-700 flex items-center justify-between gap-4">
-                    <span className="font-mono text-xs text-emerald-400">✓ relatório gerado · período: {fmt(relatorioGerado.periodo.inicio)} → {fmt(relatorioGerado.periodo.fim)}</span>
-                    <button onClick={() => setRelatorioGerado(null)} className="text-xs text-slate-500 hover:text-slate-300 font-mono transition-colors">← novo período</button>
+                  <div className="px-6 py-3 bg-blue-50 border-b border-slate-200 flex items-center justify-between gap-4">
+                    <span className="text-xs text-blue-700 font-semibold">✓ Relatório gerado · Período: {fmt(relatorioGerado.periodo.inicio)} – {fmt(relatorioGerado.periodo.fim)}</span>
+                    <button onClick={() => setRelatorioGerado(null)} className="text-xs text-slate-500 hover:text-slate-700 transition-colors">← Novo período</button>
                   </div>
 
                   <div className="p-6 overflow-y-auto flex flex-col gap-5">
 
                     {/* Card: Inserções por dia */}
-                    <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-                      <div className="px-4 py-3 border-b border-slate-700 flex items-center gap-2">
-                        <span className="text-yellow-400 text-base">📅</span>
-                        <span className="font-mono text-xs font-bold text-slate-300 uppercase tracking-wider">Inserções por Dia</span>
-                        <span className="ml-auto font-mono text-xs text-slate-500">{relatorioGerado.insercoesOrdenadas.reduce((a, [, n]) => a + n, 0)} total</span>
+                    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                      <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
+                        <span className="text-blue-500 text-base">📅</span>
+                        <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Inserções por Dia</span>
+                        <span className="ml-auto text-xs text-slate-400">{relatorioGerado.insercoesOrdenadas.reduce((a, [, n]) => a + n, 0)} total</span>
                       </div>
                       <div className="p-4">
                         {relatorioGerado.insercoesOrdenadas.length === 0 ? (
-                          <p className="font-mono text-xs text-slate-500 italic">// nenhuma inserção registrada neste período</p>
+                          <p className="text-xs text-slate-400 italic">Nenhuma inserção registrada neste período.</p>
                         ) : (
                           <div className="flex flex-col gap-2">
                             {relatorioGerado.insercoesOrdenadas.map(([dia, qtd]) => (
                               <div key={dia} className="flex items-center gap-3">
-                                <span className="font-mono text-xs text-slate-400 w-24 shrink-0">{dia}</span>
-                                <div className="flex-1 bg-slate-700 rounded-full h-2">
+                                <span className="text-xs text-slate-500 w-24 shrink-0">{dia}</span>
+                                <div className="flex-1 bg-slate-100 rounded-full h-2">
                                   <div
-                                    className="bg-emerald-500 h-2 rounded-full transition-all"
+                                    className="bg-blue-400 h-2 rounded-full transition-all"
                                     style={{ width: `${Math.min(100, (qtd / Math.max(...relatorioGerado.insercoesOrdenadas.map(([, n]) => n))) * 100)}%` }}
                                   />
                                 </div>
-                                <span className="font-mono text-sm font-black text-emerald-400 w-6 text-right shrink-0">{qtd}</span>
+                                <span className="text-sm font-black text-blue-600 w-6 text-right shrink-0">{qtd}</span>
                               </div>
                             ))}
                           </div>
@@ -2210,22 +2208,22 @@ export default function PainelKanban() {
                     </div>
 
                     {/* Card: Retrato Atual */}
-                    <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-                      <div className="px-4 py-3 border-b border-slate-700 flex items-center gap-2">
-                        <span className="text-sky-400 text-base">🏥</span>
-                        <span className="font-mono text-xs font-bold text-slate-300 uppercase tracking-wider">Retrato Atual do Censo</span>
-                        <span className="ml-auto font-mono text-[10px] text-slate-500 italic">tempo real</span>
+                    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                      <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
+                        <span className="text-blue-500 text-base">🏥</span>
+                        <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Retrato Atual do Censo</span>
+                        <span className="ml-auto text-[10px] text-slate-400 italic">tempo real</span>
                       </div>
                       <div className="p-4 grid grid-cols-2 gap-3">
                         {[
-                          { label: 'Total com SISREG', valor: relatorioGerado.retrato.totalComSisreg, cor: 'text-white border-slate-600' },
-                          { label: 'Pendentes', valor: relatorioGerado.retrato.totalPendente, cor: 'text-amber-400 border-amber-800' },
-                          { label: 'Devolvidos', valor: relatorioGerado.retrato.totalDevolvido, cor: 'text-rose-400 border-rose-800' },
-                          { label: 'Finalizados', valor: relatorioGerado.retrato.totalFinalizado, cor: 'text-emerald-400 border-emerald-800' }
+                          { label: 'Total com SISREG', valor: relatorioGerado.retrato.totalComSisreg, cor: 'bg-blue-50 border-blue-100 text-blue-800' },
+                          { label: 'Pendentes', valor: relatorioGerado.retrato.totalPendente, cor: 'bg-amber-50 border-amber-100 text-amber-800' },
+                          { label: 'Devolvidos', valor: relatorioGerado.retrato.totalDevolvido, cor: 'bg-rose-50 border-rose-100 text-rose-800' },
+                          { label: 'Finalizados', valor: relatorioGerado.retrato.totalFinalizado, cor: 'bg-emerald-50 border-emerald-100 text-emerald-800' }
                         ].map(({ label, valor, cor }) => (
-                          <div key={label} className={`bg-slate-900 border rounded-xl p-4 flex flex-col ${cor}`}>
-                            <span className={`font-mono text-3xl font-black`}>{valor}</span>
-                            <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wide mt-1 leading-tight">{label}</span>
+                          <div key={label} className={`border rounded-lg p-4 flex flex-col ${cor}`}>
+                            <span className="text-3xl font-black">{valor}</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wide mt-1 leading-tight opacity-70">{label}</span>
                           </div>
                         ))}
                       </div>
@@ -2239,7 +2237,7 @@ export default function PainelKanban() {
                           .then(() => toast.success('✅ Copiado para a área de transferência! Cole diretamente no WhatsApp.', { autoClose: 4000 }))
                           .catch(() => toast.error('Falha ao copiar. Tente novamente.'));
                       }}
-                      className="w-full bg-[#25D366] hover:bg-[#1ebe5b] text-white font-black py-4 rounded-xl transition-colors flex items-center justify-center gap-3 text-base shadow-lg shadow-green-900/40"
+                      className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3.5 rounded-lg transition-colors flex items-center justify-center gap-3 text-sm shadow"
                     >
                       {/* Ícone WhatsApp */}
                       <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
@@ -2248,7 +2246,7 @@ export default function PainelKanban() {
                       Copiar Relatório para WhatsApp
                     </button>
 
-                    <p className="text-center font-mono text-[10px] text-slate-600">// cole o texto copiado diretamente em qualquer conversa do WhatsApp</p>
+                    <p className="text-center text-[10px] text-slate-400">Cole o texto copiado diretamente em qualquer conversa do WhatsApp.</p>
                   </div>
                 </div>
               );
