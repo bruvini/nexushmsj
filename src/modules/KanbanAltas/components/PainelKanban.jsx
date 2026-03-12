@@ -927,9 +927,12 @@ export default function PainelKanban() {
                           )}
                         </button>
 
-                        {p.exigeSisreg && (() => {
+                        {(() => {
                           const statusSisregEfetivo = p.sisreg_status || (p.numeroSisreg ? 'PENDENTE' : 'SEM SISREG');
+                          const showSisreg = p.exigeSisreg || ['PENDENTE', 'DEVOLVIDO'].includes(statusSisregEfetivo);
                           
+                          if (!showSisreg) return null;
+
                           if(statusSisregEfetivo === 'SEM SISREG') {
                             return (
                                 <button onClick={() => abrirModalSisregParaEdicao(p)} className="flex items-center justify-center gap-1 bg-rose-50 border border-red-200 text-red-600 hover:bg-rose-600 hover:text-white p-2 sm:px-2.5 sm:py-1.5 rounded-lg transition-all text-[9px] sm:text-[10px] font-black shadow-sm animate-pulse shrink-0">
