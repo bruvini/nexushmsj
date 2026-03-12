@@ -15,6 +15,26 @@ export default function ImportacaoCenso({ onClose, onImportSuccess }) {
     return btoa(unescape(encodeURIComponent(stringBase))).replace(/[/+=]/g, '');
   };
 
+  /**
+   * Parser rigoroso para o formato brasileiro DD/MM/YYYY HH:mm
+   * O construtor nativo do JS falha ou inverte dia/mês dependendo do browser.
+   */
+  const safeParseBRDate = (str) => {
+    if (!str || typeof str !== 'string') return str;
+    
+    // Formatos esperados: "DD/MM/YYYY" ou "DD/MM/YYYY HH:mm"
+    const regex = /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/;
+    const match = str.match(regex);
+
+    if (match) {
+      const [ , dia, mes, ano, hora = '00', minuto = '00'] = match;
+      // Reconstroi em ISO-8601 (YYYY-MM-DDTHH:mm:00)
+      return `${ano}-${mes}-${dia}T${hora}:${minuto}:00`;
+    }
+
+    return str; // Fallback se não bater no padrão
+  };
+
   const processarExcel = async (jsonData) => {
     setLoading(true);
     setStatusText('Consultando pacientes ativos no banco de dados...');
@@ -53,11 +73,14 @@ export default function ImportacaoCenso({ onClose, onImportSuccess }) {
         const uid = generateUID(nome, nasc);
         uidsNoRelatorioNovo.add(uid);
 
+        const dataIntNormalizada = safeParseBRDate(dataInt);
+
         if (pacientesNoBanco.has(uid)) {
           const pacExistente = pacientesNoBanco.get(uid);
           const docRef = doc(db, 'nexus_kanban_pacientes', pacExistente.idDocumento);
 
           const payloadUpdate = {
+            dataInternacao: dataIntNormalizada, // FORÇA ATUALIZAÇÃO PARA RESETAR LOS EM RE-INTERNAÇÕES
             setor: setor,
             leito: leito,
             status: pacExistente.status === 'SINALIZADA' ? 'SINALIZADA' : 'ATIVO',
@@ -78,7 +101,7 @@ export default function ImportacaoCenso({ onClose, onImportSuccess }) {
             nome: nome.toUpperCase(),
             nascimento: nasc,
             sexo: sexo,
-            dataInternacao: dataInt,
+            dataInternacao: dataIntNormalizada,
             setor: setor,
             leito: leito,
             especialidade: especialidade,

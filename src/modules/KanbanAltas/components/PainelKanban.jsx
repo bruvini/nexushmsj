@@ -21,17 +21,27 @@ const SETORES_OCULTOS = [
   "CCA - SALAS CIRURGICAS"
 ];
 
-// Helper para converter datas (DD/MM/YYYY ou YYYY-MM-DD)
+// Helper para converter datas de forma resiliente
 const parseDate = (str) => {
   if (!str) return new Date();
   if (str instanceof Date) return str;
-  const stringData = String(str).split(' ')[0];
+  
+  const stringData = String(str);
+  
+  // Caso 1: Formato Brasileiro Legado ou com "/" (DD/MM/YYYY)
   if (stringData.includes('/')) {
-    const partes = stringData.split('/');
-    return new Date(partes[2], partes[1] - 1, partes[0]);
+    const [dataPart, horaPart] = stringData.split(' ');
+    const [dia, mes, ano] = dataPart.split('/');
+    const [hora, minuto] = horaPart ? horaPart.split(':') : [0, 0];
+    const d = new Date(ano, mes - 1, dia, hora, minuto);
+    return isNaN(d.getTime()) ? new Date() : d;
   }
-  const d = new Date(stringData);
-  return isNaN(d.getTime()) ? new Date() : d;
+  
+  // Caso 2: Formato ISO-8601 (YYYY-MM-DDTHH:mm:SS)
+  const dISO = new Date(stringData);
+  if (!isNaN(dISO.getTime())) return dISO;
+
+  return new Date(); // Fallback final
 };
 
 export default function PainelKanban() {
@@ -189,8 +199,9 @@ export default function PainelKanban() {
       if (SETORES_OCULTOS.includes(p.setor)) return false;
 
       const dInt = parseDate(p.dataInternacao);
-      dInt.setHours(0, 0, 0, 0);
-      const dias = Math.floor((hoje - dInt) / (1000 * 60 * 60 * 24));
+      // Cálculo de LOS usando diferença absoluta em milissegundos
+      const diffMs = Math.max(0, hoje.getTime() - dInt.getTime());
+      const dias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
       let pKanban = "verde";
       if (dias >= 2 && dias <= 3) pKanban = "amarelo";
