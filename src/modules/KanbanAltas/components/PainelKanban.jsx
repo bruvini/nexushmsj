@@ -49,6 +49,10 @@ export default function PainelKanban() {
   const [pacientes, setPacientes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ultimaSinc, setUltimaSinc] = useState('Buscando...');
+  const [dataUltimaImportacaoRaw, setDataUltimaImportacaoRaw] = useState(null);
+
+  // Estado do Easter Egg (Enf. Thiago)
+  const [modalThiagoAberto, setModalThiagoAberto] = useState(false);
 
   // Estados dos Filtros
   const [busca, setBusca] = useState('');
@@ -151,8 +155,10 @@ export default function PainelKanban() {
         const dataFormatada = data.toLocaleDateString('pt-BR');
         const horaFormatada = data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         setUltimaSinc(`${dataFormatada} às ${horaFormatada}`);
+        setDataUltimaImportacaoRaw(data); // Armazena o Date bruto para o Staleness Check
       } else {
         setUltimaSinc('Nunca sincronizado');
+        setDataUltimaImportacaoRaw(null);
       }
     });
 
@@ -293,6 +299,38 @@ export default function PainelKanban() {
       setoresDisponiveis: Array.from(listaSetores).sort()
     };
   }, [pacientes, busca, filtroSetor, filtroEspecialidade, filtroKanban, filtroSisreg, filtroComSisreg, filtroNotas, filtroEmad, filtroRetaguarda, filtroAlta, filtroTrauma, filtroMedicacao]);
+
+  // ===== EASTER EGG: ENF. THIAGO =====
+  // Passo 1: Contagem individual por setor-foco
+  const SETORES_FOCO_THIAGO = [
+    'PS DECISÃO CIRURGICA',
+    'PS DECISÃO CLINICA',
+    'SALA DE EMERGENCIA',
+    'SALA LARANJA',
+    'UNID. AVC AGUDO'
+  ];
+
+  const contagemThiago = useMemo(() => {
+    const contagem = {
+      'PS DECISÃO CIRURGICA': 0,
+      'PS DECISÃO CLINICA': 0,
+      'SALA DE EMERGENCIA': 0,
+      'SALA LARANJA': 0,
+      'UNID. AVC AGUDO': 0
+    };
+    pacientes.forEach(p => {
+      const setor = (p.setor || p.setor_atual || '').toUpperCase().trim();
+      if (contagem[setor] !== undefined) contagem[setor]++;
+    });
+    return contagem;
+  }, [pacientes]);
+
+  // Passo 2: Staleness Check - verifica se o censo está desatualizado (> 60 min)
+  const diferencaMinutos = dataUltimaImportacaoRaw
+    ? Math.floor((new Date() - dataUltimaImportacaoRaw) / (1000 * 60))
+    : null;
+  const isDesatualizado = diferencaMinutos !== null && diferencaMinutos > 60;
+  // ===================================
 
   const limparFiltros = () => {
     setBusca('');
@@ -618,7 +656,14 @@ export default function PainelKanban() {
         <div className="text-center sm:text-left w-full sm:w-auto">
           <h2 className="text-lg font-bold text-slate-800">Monitoramento de Fluxo</h2>
           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-sm text-slate-500 mt-0.5">
-            <span>Censo atual: <strong className="text-slate-700">{filtrados.length}</strong> pacientes.</span>
+            {/* Easter Egg: texto clicável para o Enf. Thiago */}
+            <span
+              onClick={() => setModalThiagoAberto(true)}
+              className="cursor-pointer hover:text-indigo-600 transition-colors select-none"
+              title="Clique para detalhes do censo por setor ✨"
+            >
+              Censo atual: <strong className="text-slate-700 hover:text-indigo-700 transition-colors">{filtrados.length}</strong> pacientes.
+            </span>
             <span className="hidden sm:inline text-slate-300">|</span>
             <span className="flex items-center justify-center gap-1.5 bg-slate-100 px-2 py-0.5 rounded-md text-xs border border-slate-200">
               <svg className="w-3.5 h-3.5 text-sky-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
@@ -1709,6 +1754,78 @@ export default function PainelKanban() {
           </div>
         </div>
       )}
+
+      {/* ===== EASTER EGG MODAL: ENF. THIAGO ===== */}
+      {modalThiagoAberto && (
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-[fadeIn_0.2s_ease-in-out]"
+          onClick={(e) => { if (e.target === e.currentTarget) setModalThiagoAberto(false); }}
+        >
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
+
+            {/* Cabeçalho Kawaii */}
+            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-6 text-center relative overflow-hidden">
+              <div className="absolute -top-6 -left-6 w-32 h-32 bg-white/10 rounded-full" />
+              <div className="absolute -bottom-8 -right-4 w-28 h-28 bg-white/10 rounded-full" />
+              <div className="text-4xl mb-2 relative z-10">📋✨</div>
+              <h2 className="text-xl font-black text-white relative z-10">Oie, Enf. Thiago!</h2>
+              <p className="text-indigo-100 text-xs mt-1 relative z-10">Aqui o seu resumo especial do censo 💜</p>
+            </div>
+
+            {/* Corpo do Modal */}
+            <div className="p-5 flex flex-col gap-4">
+
+              {/* Alerta Condicional de Desatualização */}
+              {isDesatualizado && (
+                <div className="bg-amber-50 border border-amber-300 rounded-2xl p-3.5 flex gap-3 items-start">
+                  <span className="text-2xl shrink-0">⚠️</span>
+                  <p className="text-amber-800 text-xs font-medium leading-relaxed">
+                    <strong>Opa!</strong> Notei que o último censo foi importado há mais de 1 hora
+                    {diferencaMinutos !== null && ` (${diferencaMinutos} min atrás)`}. Os dados abaixo
+                    podem estar desatualizados. Que tal dar uma atualizada no relatório antes de
+                    confiar nesses números? 😉
+                  </p>
+                </div>
+              )}
+
+              {/* Lista de Setores com Contagem */}
+              <div className="flex flex-col gap-2">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Pacientes nos seus Setores-Foco</p>
+                {SETORES_FOCO_THIAGO.map(setor => (
+                  <div key={setor} className="flex items-center justify-between px-3 py-2.5 bg-slate-50 hover:bg-indigo-50 rounded-xl border border-slate-200 hover:border-indigo-200 transition-colors">
+                    <span className="text-xs font-semibold text-slate-700 truncate pr-2">{setor}</span>
+                    <span className={`text-sm font-black shrink-0 px-2.5 py-0.5 rounded-full ${
+                      contagemThiago[setor] === 0
+                        ? 'bg-slate-200 text-slate-500'
+                        : 'bg-indigo-100 text-indigo-700'
+                    }`}>
+                      {contagemThiago[setor]}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Rodapé Brincalhão */}
+              <div className="bg-purple-50 border border-purple-200 rounded-2xl p-3.5 flex gap-3 items-start">
+                <span className="text-xl shrink-0">📞</span>
+                <p className="text-purple-800 text-xs font-medium leading-relaxed">
+                  Mas ó, os pacientes <strong>em observação</strong> eu ainda não consigo ver por
+                  aqui, então pra esses você ainda vai ter que dar aquela ligadinha! 💖
+                </p>
+              </div>
+
+              {/* Botão Fechar */}
+              <button
+                onClick={() => setModalThiagoAberto(false)}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl transition-colors shadow-md shadow-indigo-600/20"
+              >
+                Entendido! 👍
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ========================================= */}
 
     </div>
   );
