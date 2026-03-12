@@ -294,6 +294,22 @@ export default function PainelKanban() {
     };
   }, [pacientes, busca, filtroSetor, filtroEspecialidade, filtroKanban, filtroSisreg, filtroComSisreg, filtroNotas, filtroEmad, filtroRetaguarda, filtroAlta, filtroTrauma, filtroMedicacao]);
 
+  const limparFiltros = () => {
+    setBusca('');
+    setFiltroSetor('');
+    setFiltroKanban('');
+    setFiltroEspecialidade('');
+    setFiltroSisreg(false);
+    setFiltroComSisreg(false);
+    setFiltroNotas(false);
+    setFiltroEmad(false);
+    setFiltroRetaguarda(false);
+    setFiltroAlta(false);
+    setFiltroTrauma(false);
+    setFiltroMedicacao(false);
+    toast.info("Filtros limpos!");
+  };
+
   // 3. AÇÕES DE BANCO DE DADOS (NOTAS E SISREG)
   const salvarNota = async () => {
     if (!novaNota.trim()) return toast.warning("Digite uma anotação.");
@@ -716,12 +732,23 @@ export default function PainelKanban() {
             <option value="preto">⚫ &gt; 30 dias de int.</option>
           </select>
         </div>
-        <div className="col-span-2 md:col-span-2">
-          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Especialidade Clínica</label>
-          <select value={filtroEspecialidade} onChange={e => setFiltroEspecialidade(e.target.value)} className="w-full p-2 sm:p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50 outline-none">
-            <option value="">Todas as Especialidades</option>
-            {PROFISSIONAL_ESPECIALIDADES.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
+        <div className="col-span-2 md:col-span-2 flex items-end gap-2">
+          <div className="flex-1">
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Especialidade Clínica</label>
+            <select value={filtroEspecialidade} onChange={e => setFiltroEspecialidade(e.target.value)} className="w-full p-2 sm:p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50 outline-none">
+              <option value="">Todas as Especialidades</option>
+              {PROFISSIONAL_ESPECIALIDADES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <button
+            onClick={limparFiltros}
+            title="Limpar todos os filtros"
+            className="p-2.5 text-slate-500 hover:text-sky-600 hover:bg-sky-50 border border-slate-300 rounded-lg transition-all flex items-center justify-center shrink-0 mb-[1px]"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
         </div>
 
         {/* Toggles Interativos com visual de Switch */}
