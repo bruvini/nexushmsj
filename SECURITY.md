@@ -64,6 +64,26 @@ O Nexus foi construído seguindo os princípios intrínsecos de *Security by Des
 - **Consultas de Agregação e KPIs (`getCountFromServer`):** Painéis e medidores que exigem totais matemáticos globais (KPIs e Dashboards) **devem** utilizar as funções nativas de agregação da SDK do Firebase (`getCountFromServer`). Essa blindagem arquitetural impede que dados sensíveis/payloads robustos do Censo sejam desnecessariamente baixados para o Front-End Client, consumindo rede, banda ou expondo lista massiva de nomes sigilosos.
 - **Validação de Integridade Relacional (Foreign Keys Strict Check):** Rotinas de importação de banco de dados e sincronizações em lotes (CSV Batch Import) legadas possuem validação rígida de consistência de chaves estrangeiras (`pacienteId`). É severamente vedada a injeção ou persistência de dados "órfãos" (exames, contatos ou consultas sem amarração estrutural confirmada na Collection Principal de um paciente válido) para garantir precisão do prontuário digital e prevenir vazamento cruzado.
 - **Tratamento de Dados:** Dados importados de sistemas de terceiros via planilhas (como o Soul MV e Tasy) são tratados no *front-end* e sanitizados antes da serialização final ou persistência via Firestore.
-- **Operações em Massa e Deleções (Regra do "Dry Run"):** Operações de limpeza em massa ou deduplicação em produção NUNCA devem ser executadas diretamente no banco sem aviso. O cruzamento deve ocorrer estritamente na memória RAM do navegador (`in-memory`), exibir o sumário detalhado do resultado (Preview visual / Dry Run) ao usuário e só gravar/deletar lotes via `writeBatch` após confirmação humana explícita. O uso de automação autônoma para deleções silenciosas do Censo é estritamente proibido.
+- **Operações em Massa e Deleções (Regra do "Dry Run"):** Operações de limpeza em massa ou deduplicação em produção NUNCA devem ser executadas diretamente no banco sem aviso. O cruzamento deve ocorrer estritamente na memória RAM do navegador (`in-memory`), exibir o sumário detalhado do resultado (Preview visual / Dry Run) ao usuário e só gravar/deletar lotes via `writeBatch` após confirmação humana explícita. Isso se aplica especificamente à ferramenta de **Entity Resolution (Limpeza de Duplicatas)** do módulo Eletivas e a qualquer futura operação de deduplicação. O uso de automação autônoma para deleções silenciosas do Censo é estritamente proibido.
+
+---
+
+## 🤖 Protocolo de Segurança para Agentes Autônomos de QA (Agent Browser)
+
+O uso de agentes de IA (Browser Subagents) para validação visual e testes de interface segue protocolos rígidos de isolamento:
+
+> [!CAUTION]
+> **Agentes de QA Devem Operar Exclusivamente em Modo Leitura (Read-Only).**  
+> É **terminantemente proibido** que agentes autônomos de teste de UI realizem qualquer operação de escrita no banco de dados Firestore de produção durante validações visuais. Isso inclui:
+> - ❌ Confirmar modais que disparam `updateDoc`, `setDoc` ou `writeBatch`
+> - ❌ Submeter formulários que criam ou editam registros de pacientes
+> - ❌ Acionar workflows de SISREG, PCP ou qualquer tag clínica no ambiente produtivo
+>
+> Toda sessão de validação visual via Agent Browser deve ser documentada com `// turbo` ou instrução explícita de `MODO LEITURA`, e o agente deve fechar modais exclusivamente via botão **"Cancelar"** ou clique no overlay externo — nunca via botões de confirmação de dados.
+
+> [!IMPORTANT]
+> **In-Memory Dry Runs São Obrigatórios Antes de Qualquer `writeBatch`.**  
+> Operações de deleção ou fusão em massa (como a ferramenta de Limpeza de Duplicatas/Entity Resolution) devem executar uma simulação completa em memória RAM do browser, apresentando ao usuário o sumário completo do impacto (registros a apagar, a fundir, quantidade de documentos afetados) **antes** de qualquer `writeBatch.commit()`. A confirmação deve ser uma ação deliberada e explícita do usuário humano — nunca automatizada ou pré-aprovada.
 
 Agradecemos por nos ajudar a manter os dados do hospital e dos pacientes seguros! 💙
+

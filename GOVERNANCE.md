@@ -43,6 +43,13 @@ O ecossistema Nexus deve, sob qualquer hipótese, aderir aos seguintes framework
   Mecanismos de busca por SIGTAP ou indexadores numéricos devem tolerar a presença ou ausência de zeros à esquerda (ex: 0416 = 416).
 - **DB-03 (Preservação de Identidade e Integridade Referencial):**  
   Na resolução de entidades (como fusão de pacientes duplicados), o ID do registro mais antigo deve sempre ser priorizado (sobrevivente) para manter a integridade referencial legada e links históricos.
+- **UI-09 (Semântica de Cores Hospitalares — Veto ao Preto):**  
+  É **estritamente proibido** o uso de botões com fundo preto ou escuro (`bg-slate-800`, `bg-slate-900`, `bg-black`) para acionar funcionalidades gerenciais (relatórios, exportações, modais de dados). Em ambientes hospitalares, a cor preta remete semanticamente ao óbito. Toda ação gerencial deve utilizar paletas corporativas e pastéis: azul (`bg-blue-*`), verde (`bg-green-*`), âmbar (`bg-amber-*`), rose (`bg-rose-*`). Estilos "hacker/terminal" (fontes monospace, bolinhas de janela macOS, prompts `$`) são **terminantemente vetados** em interfaces entregues ao usuário final clínico.
+- **UI-10 (Checklists Clínicos Obrigatórios):**  
+  Tags e marcações de **alto impacto operacional** que afetam o fluxo de leitos ou remanejamento de pacientes (como o Protocolo de Capacidade Plena — PCP) **devem obrigatoriamente** ser acionadas através de um Modal de Confirmação com **checklist visual** dos critérios validadores (ex: deambulação sem auxílio, ausência de acompanhante, ausência de dispositivos elétricos). É vedada a ativação por clique único sem confirmação para funcionalidades de alto impacto clínico.
+- **UI-11 (Staleness Check — Aviso de Dados Desatualizados):**  
+  Toda tela dinâmica que depende de importações periódicas (como o Censo do Kanban de Altas) **deve implementar** uma verificação de temporalidade (`staleness check`). Se o delta entre `serverTimestamp()` atual e a `ultimaSincronizacao` registrada na collection de configuração superar **60 minutos**, o sistema deve exibir um aviso visual proeminente (banner âmbar ou alerta destacado) notificando o usuário, prevenindo decisões clínicas baseadas em dados obsoletos.
+
 
 ---
 

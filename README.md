@@ -24,7 +24,13 @@ Atualmente, o Nexus contempla os seguintes **Módulos Ativos**:
   - **Classificação Oncológica Automática:** Procedimentos com SIGTAP iniciando em "0416" ou "416" recebem prioridade "ONCOLOGIA" automaticamente de forma silenciosa e econômica.
   - **Entity Resolution (Limpeza em Produção):** Ferramenta com "Dry Run" em memória para encontrar e unificar pacientes e AIHs legados duplicados.
 - 📊 **Indicadores & Relatórios**: Rota preparada para a malha de KPIs gerais e exportações para instâncias gerenciais.
-- 📋 **Kanban de Altas (Giro de Leitos)**: Núcleo avançado de gestão operacional do NIR. Combina automação de importações via RPA com a Soberania Clínica, Painel de Logs Semânticos e Universide Nexus acoplada.
+- 📋 **Kanban de Altas (Giro de Leitos)**: Núcleo avançado de gestão operacional do NIR. Combina automação de importações via RPA com a Soberania Clínica, Painel de Logs Semânticos e Universidade Nexus acoplada. Funcionalidades consolidadas:
+  - **Workflow SISREG (State Machine):** Ciclo completo de regulação SEM SISREG → PENDENTE → DEVOLVIDO → FINALIZADO, com histórico temporal auditável e botão de ação persistente para regulações ativas, independente do setor atual.
+  - **Relatório Gerencial SISREG:** Gerador de métricas com agregação por dia (inserções no período) e retrato atual do censo (Pendentes, Devolvidos, Finalizados). Output formatado nativamente para exportação via WhatsApp com um clique (API Clipboard).
+  - **Protocolo de Capacidade Plena (PCP):** Sinalização de pacientes elegíveis para leitos temporários com validação clínica estrita (faixa etária 18–60 anos, setores `PS DECISÃO CIRURGICA` e `PS DECISÃO CLINICA` exclusivamente) e auto-revogação automática por mudança de setor na sincronização do Censo.
+  - **Rastreabilidade de Especialidades:** Indicador visual de alterações manuais ("Alterado em DD/MM/YYYY") com trava `is_manual: true` protegendo contra sobrescritas do sincronizador automático e unificação da Fonte de Verdade para filtros.
+  - **Date Parsing Resiliente (LOS Engine):** Motor customizado de conversão de datas em formato pt-BR (`DD/MM/YYYY HH:mm`) para garantir precisão no cálculo de Tempo de Permanência (LOS), eliminando erros de inversão dia/mês pela API nativa do browser e suportando re-internações automáticas.
+
 - 🧠 **Telemonitoramento AVC (Pós-Alta) (Concluído)**: Navegação Reativa via Kanban (pacientes transferidos sistemicamente por resolução de exames), UX estritamente contextual (Progressive Profiling no Acolhimento e Ações via Modal) e completude da ferramenta integrada de Importação em Massa Legada (CSV Batch Import).
 
 Os próximos horizontes **(Módulos Futuros/Em Breve)** abrangerão fluxos interligados, incluindo:
