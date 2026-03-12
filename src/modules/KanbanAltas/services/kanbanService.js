@@ -193,20 +193,25 @@ export const updateMedications = async (patientId, medicationsArray) => {
  * @param {string} primary Especialidade principal
  * @param {Array} additional Array de strings com especialidades adicionais cruzadas
  */
-export const updatePatientSpecialties = async (patientId, primary, additional = []) => {
+export const updatePatientSpecialties = async (patientId, primary, additional = [], historico = null) => {
     if (!patientId || !primary) return;
     const patientRef = doc(db, 'nexus_kanban_pacientes', patientId);
 
     try {
-        await updateDoc(patientRef, {
+        const payload = {
             especialidade_gestao: {
                 principal: primary,
                 adicionais: additional,
                 atualizado_em: serverTimestamp(),
                 is_manual: true
             }
-        });
-        // Log específico é feito no componente PainelKanban.jsx
+        };
+
+        if (historico) {
+            payload['especialidade_gestao.historico'] = arrayUnion(historico);
+        }
+
+        await updateDoc(patientRef, payload);
     } catch (error) {
         console.error(`Erro ao atualizar Especialidades da Gestão:`, error);
         throw error;

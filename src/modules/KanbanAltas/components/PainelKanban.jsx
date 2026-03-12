@@ -564,9 +564,16 @@ export default function PainelKanban() {
 
     try {
       const p = pacientes.find(pat => pat.id === modalEspecialidadePaciente.id);
+      let historicoObj = null;
       if (p) {
         const principalAntiga = p.especialidade_gestao?.principal || p.especialidade || 'N/A';
         if (principalAntiga !== formEspecialidade.principal) {
+          historicoObj = {
+            dataHora: new Date().toISOString(),
+            usuario: "Equipe NIR",
+            de: principalAntiga,
+            para: formEspecialidade.principal
+          };
           await saveActivityLog(p.id, 'ESPECIALIDADE', `Alterou especialidade principal de [${principalAntiga}] para [${formEspecialidade.principal}]`);
         }
         const adicionaisAntigas = p.especialidade_gestao?.adicionais || [];
@@ -582,7 +589,7 @@ export default function PainelKanban() {
         }
       }
 
-      await updatePatientSpecialties(modalEspecialidadePaciente.id, formEspecialidade.principal, formEspecialidade.adicionais);
+      await updatePatientSpecialties(modalEspecialidadePaciente.id, formEspecialidade.principal, formEspecialidade.adicionais, historicoObj);
       toast.success("Especialidades salvas e protegidas!");
       setModalEspecialidadePaciente(null);
     } catch (error) {
@@ -871,11 +878,18 @@ export default function PainelKanban() {
                     <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 w-full pt-2 border-t border-slate-100/70 mt-1">
 
                       {/* Lado Esquerdo: Especialidades */}
-                      <button onClick={() => setModalEspecialidadePaciente(p)} className="flex items-center gap-1 font-bold text-[11px] text-sky-700 hover:text-sky-900 bg-sky-50 shadow-sm hover:shadow hover:bg-sky-100 px-2.5 py-1.5 rounded-lg transition-all group text-left shrink-0">
-                        <svg className="w-3.5 h-3.5 text-sky-500 group-hover:text-sky-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-                        <span>Especialidade: {p.especialidade_gestao?.principal || p.especialidade || 'NÃO INFORMADA'}</span>
-                        {p.especialidade_gestao?.adicionais?.length > 0 && (
-                          <span className="font-normal opacity-80 ml-1">(+ {p.especialidade_gestao.adicionais.length} acompanham)</span>
+                      <button onClick={() => setModalEspecialidadePaciente(p)} className="flex flex-col items-start gap-0.5 group shrink-0">
+                        <div className="flex items-center gap-1 font-bold text-[11px] text-sky-700 hover:text-sky-900 bg-sky-50 shadow-sm hover:shadow hover:bg-sky-100 px-2.5 py-1.5 rounded-lg transition-all group-hover:bg-sky-100">
+                          <svg className="w-3.5 h-3.5 text-sky-500 group-hover:text-sky-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                          <span>Especialidade: {p.especialidade_gestao?.principal || p.especialidade || 'NÃO INFORMADA'}</span>
+                          {p.especialidade_gestao?.adicionais?.length > 0 && (
+                            <span className="font-normal opacity-80 ml-1">(+ {p.especialidade_gestao.adicionais.length} acompanham)</span>
+                          )}
+                        </div>
+                        {p.especialidade_gestao?.atualizado_em && (
+                          <span className="text-[10px] text-slate-400 font-medium ml-1">
+                            Alterado em {p.especialidade_gestao.atualizado_em.toDate ? p.especialidade_gestao.atualizado_em.toDate().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Recentemente'}
+                          </span>
                         )}
                       </button>
 
@@ -1448,6 +1462,35 @@ export default function PainelKanban() {
                   )}
                 </div>
               </div>
+
+              {/* Histórico de Alterações */}
+              {(modalEspecialidadePaciente.especialidade_gestao?.historico?.length > 0 || modalEspecialidadePaciente.especialidade_gestao?.atualizado_em) && (
+                <div className="border-t border-slate-100 pt-5 mt-5">
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase mb-3">Histórico de Alterações</label>
+                  <div className="space-y-3 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                    {modalEspecialidadePaciente.especialidade_gestao.historico?.map((h, idx) => (
+                      <div key={idx} className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase">{new Date(h.dataHora).toLocaleString('pt-BR')}</span>
+                          <span className="text-[9px] font-bold text-sky-600 uppercase">NIR</span>
+                        </div>
+                        <p className="text-[11px] text-slate-700">
+                          <span className="text-slate-400 font-normal">{h.de}</span> ➔ <span className="font-bold">{h.para}</span>
+                        </p>
+                      </div>
+                    ))}
+                    {(!modalEspecialidadePaciente.especialidade_gestao.historico || modalEspecialidadePaciente.especialidade_gestao.historico.length === 0) && modalEspecialidadePaciente.especialidade_gestao.atualizado_em && (
+                      <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                        <p className="text-[10px] text-slate-500 italic">Última alteração registrada em: {
+                          modalEspecialidadePaciente.especialidade_gestao.atualizado_em.toDate 
+                          ? modalEspecialidadePaciente.especialidade_gestao.atualizado_em.toDate().toLocaleString('pt-BR') 
+                          : 'Recentemente'
+                        }</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
             </div>
 
