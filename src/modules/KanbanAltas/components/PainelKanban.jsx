@@ -76,6 +76,11 @@ export default function PainelKanban() {
   const [hasRecentLog, setHasRecentLog] = useState(false);
   const [showTutorialModal, setShowTutorialModal] = useState(false);
 
+  // Estado do Modal Relatório Gerencial SISREG
+  const [showRelatorioSisreg, setShowRelatorioSisreg] = useState(false);
+  const [relatorioFiltro, setRelatorioFiltro] = useState({ dataInicial: '', dataFinal: '' });
+  const [relatorioGerado, setRelatorioGerado] = useState(null); // null = estágio 1, objeto = estágio 2
+
   // Estados dos Modais Interativos
   const [modalNotasPaciente, setModalNotasPaciente] = useState(null);
   const [novaNota, setNovaNota] = useState('');
@@ -741,6 +746,11 @@ export default function PainelKanban() {
           <button onClick={() => toast.info('Funcionalidade em desenvolvimento: Integração RPA para inclusão automática de pedidos de internação em lote no SISREG.')} className="hidden lg:flex bg-slate-100 border border-indigo-100 hover:bg-indigo-50 text-indigo-800 px-4 py-2.5 rounded-xl text-sm font-bold transition-all items-center gap-2 shrink-0">
             <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
             Inclusão SISREG (RPA)
+          </button>
+          {/* Botão Relatório Gerencial SISREG */}
+          <button onClick={() => { setRelatorioGerado(null); setRelatorioFiltro({ dataInicial: '', dataFinal: '' }); setShowRelatorioSisreg(true); }} className="hidden lg:flex bg-slate-800 hover:bg-slate-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all items-center gap-2 shrink-0">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            Relatório SISREG
           </button>
           <button onClick={() => gerarRelatorioRondas(pacientes)} className="hidden lg:flex bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-[13px] sm:text-sm font-bold transition-all items-center gap-2 shrink-0">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
@@ -2015,6 +2025,238 @@ export default function PainelKanban() {
         </div>
       )}
       {/* ============================================== */}
+
+      {/* ===== MODAL: RELATÓRIO GERENCIAL SISREG ===== */}
+      {showRelatorioSisreg && (
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/75 backdrop-blur-sm p-4 animate-[fadeIn_0.2s_ease-in-out]"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowRelatorioSisreg(false); }}
+        >
+          <div className="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden border border-slate-700 max-h-[90vh]">
+
+            {/* Header técnico */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
+              <div className="flex items-center gap-3">
+                <div className="flex gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-red-500" />
+                  <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                  <div className="w-3 h-3 rounded-full bg-green-500" />
+                </div>
+                <span className="font-mono text-sm text-slate-400 ml-2">nexus_kanban <span className="text-emerald-400">→</span> relatorio_sisreg.exe</span>
+              </div>
+              <button onClick={() => setShowRelatorioSisreg(false)} className="text-slate-500 hover:text-slate-300 transition-colors">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            {/* ESTÁGIO 1: Filtro de período */}
+            {!relatorioGerado && (
+              <div className="p-8 flex flex-col gap-6">
+                <div>
+                  <p className="font-mono text-xs text-emerald-400 mb-1">$ configurar_periodo --start [data_inicial] --end [data_final]</p>
+                  <h2 className="text-xl font-bold text-white mt-3">Relatório Gerencial SISREG</h2>
+                  <p className="text-slate-400 text-sm mt-1">Selecione o período para análise das inserções diárias. O retrato atual sempre reflete o censo em tempo real.</p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Data Inicial</label>
+                    <input
+                      type="date"
+                      value={relatorioFiltro.dataInicial}
+                      onChange={e => setRelatorioFiltro(prev => ({ ...prev, dataInicial: e.target.value }))}
+                      className="w-full bg-slate-800 border border-slate-600 text-white rounded-xl px-4 py-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Data Final</label>
+                    <input
+                      type="date"
+                      value={relatorioFiltro.dataFinal}
+                      onChange={e => setRelatorioFiltro(prev => ({ ...prev, dataFinal: e.target.value }))}
+                      className="w-full bg-slate-800 border border-slate-600 text-white rounded-xl px-4 py-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    if (!relatorioFiltro.dataInicial || !relatorioFiltro.dataFinal) {
+                      return toast.warning('Selecione os dois períodos antes de gerar o relatório.');
+                    }
+                    const dtInicio = new Date(relatorioFiltro.dataInicial + 'T00:00:00');
+                    const dtFim = new Date(relatorioFiltro.dataFinal + 'T23:59:59');
+                    if (dtInicio > dtFim) return toast.warning('A data inicial deve ser anterior à data final.');
+
+                    // ── Motor de Agregação de Dados ──────────────────────────────────────
+                    // 1. Inserções por dia: percorre sisreg_historico de todos os pacientes
+                    const insercoesMap = {}; // { 'DD/MM/YYYY': count }
+
+                    pacientes.forEach(p => {
+                      const historico = p.sisreg_historico || [];
+                      historico.forEach(evento => {
+                        if (evento.acao !== 'SISREG Registrado') return;
+                        const dtEvento = new Date(evento.dataHora);
+                        if (dtEvento >= dtInicio && dtEvento <= dtFim) {
+                          const chave = dtEvento.toLocaleDateString('pt-BR');
+                          insercoesMap[chave] = (insercoesMap[chave] || 0) + 1;
+                        }
+                      });
+                    });
+
+                    // Ordena as chaves por data crescente
+                    const insercoesOrdenadas = Object.entries(insercoesMap).sort((a, b) => {
+                      const [dA, mA, yA] = a[0].split('/');
+                      const [dB, mB, yB] = b[0].split('/');
+                      return new Date(`${yA}-${mA}-${dA}`) - new Date(`${yB}-${mB}-${dB}`);
+                    });
+
+                    // 2. Retrato Atual do censo
+                    let totalComSisreg = 0, totalPendente = 0, totalDevolvido = 0, totalFinalizado = 0;
+                    pacientes.forEach(p => {
+                      const status = p.sisreg_status || (p.numeroSisreg ? 'PENDENTE' : null);
+                      if (!status || status === 'SEM SISREG') return;
+                      totalComSisreg++;
+                      if (status === 'PENDENTE') totalPendente++;
+                      else if (status === 'DEVOLVIDO') totalDevolvido++;
+                      else if (status === 'FINALIZADO') totalFinalizado++;
+                    });
+
+                    setRelatorioGerado({
+                      periodo: { inicio: relatorioFiltro.dataInicial, fim: relatorioFiltro.dataFinal },
+                      insercoesOrdenadas,
+                      retrato: { totalComSisreg, totalPendente, totalDevolvido, totalFinalizado }
+                    });
+                  }}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl transition-colors font-mono text-sm flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                  $ gerar_relatorio --executar
+                </button>
+              </div>
+            )}
+
+            {/* ESTÁGIO 2: Visualização Técnica */}
+            {relatorioGerado && (() => {
+              const fmt = (isoDate) => {
+                const [y, m, d] = isoDate.split('-');
+                return `${d}/${m}/${y}`;
+              };
+
+              const gerarTextoWhatsApp = () => {
+                const { periodo, insercoesOrdenadas, retrato } = relatorioGerado;
+                const totalInsercoes = insercoesOrdenadas.reduce((acc, [, n]) => acc + n, 0);
+
+                let texto = `*📊 RELATÓRIO GERENCIAL SISREG*\n`;
+                texto += `_Período: ${fmt(periodo.inicio)} a ${fmt(periodo.fim)}_\n`;
+                texto += `_Gerado em: ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}_\n\n`;
+
+                texto += `*📅 Inserções no período (${totalInsercoes} total):*\n`;
+                if (insercoesOrdenadas.length === 0) {
+                  texto += `_Nenhuma inserção registrada neste período._\n`;
+                } else {
+                  insercoesOrdenadas.forEach(([dia, qtd]) => {
+                    texto += `› ${dia}: *${qtd}* solicitação${qtd !== 1 ? 'ões' : ''}\n`;
+                  });
+                }
+
+                texto += `\n*🏥 Retrato Atual das Solicitações:*\n`;
+                texto += `› Total de SISREGs Ativos: *${retrato.totalComSisreg}*\n`;
+                texto += `› Aguardando Devolutiva (Pendentes): *${retrato.totalPendente}*\n`;
+                texto += `› Aguardando Nossa Resposta (Devolvidos): *${retrato.totalDevolvido}*\n`;
+                texto += `› Finalizados: *${retrato.totalFinalizado}*\n`;
+                texto += `\n_Fonte: Nexus HMSJ — Kanban de Altas_`;
+
+                return texto;
+              };
+
+              return (
+                <div className="flex flex-col overflow-hidden">
+                  {/* Sub-header de resultado */}
+                  <div className="px-6 py-3 bg-slate-800 border-b border-slate-700 flex items-center justify-between gap-4">
+                    <span className="font-mono text-xs text-emerald-400">✓ relatório gerado · período: {fmt(relatorioGerado.periodo.inicio)} → {fmt(relatorioGerado.periodo.fim)}</span>
+                    <button onClick={() => setRelatorioGerado(null)} className="text-xs text-slate-500 hover:text-slate-300 font-mono transition-colors">← novo período</button>
+                  </div>
+
+                  <div className="p-6 overflow-y-auto flex flex-col gap-5">
+
+                    {/* Card: Inserções por dia */}
+                    <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                      <div className="px-4 py-3 border-b border-slate-700 flex items-center gap-2">
+                        <span className="text-yellow-400 text-base">📅</span>
+                        <span className="font-mono text-xs font-bold text-slate-300 uppercase tracking-wider">Inserções por Dia</span>
+                        <span className="ml-auto font-mono text-xs text-slate-500">{relatorioGerado.insercoesOrdenadas.reduce((a, [, n]) => a + n, 0)} total</span>
+                      </div>
+                      <div className="p-4">
+                        {relatorioGerado.insercoesOrdenadas.length === 0 ? (
+                          <p className="font-mono text-xs text-slate-500 italic">// nenhuma inserção registrada neste período</p>
+                        ) : (
+                          <div className="flex flex-col gap-2">
+                            {relatorioGerado.insercoesOrdenadas.map(([dia, qtd]) => (
+                              <div key={dia} className="flex items-center gap-3">
+                                <span className="font-mono text-xs text-slate-400 w-24 shrink-0">{dia}</span>
+                                <div className="flex-1 bg-slate-700 rounded-full h-2">
+                                  <div
+                                    className="bg-emerald-500 h-2 rounded-full transition-all"
+                                    style={{ width: `${Math.min(100, (qtd / Math.max(...relatorioGerado.insercoesOrdenadas.map(([, n]) => n))) * 100)}%` }}
+                                  />
+                                </div>
+                                <span className="font-mono text-sm font-black text-emerald-400 w-6 text-right shrink-0">{qtd}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Card: Retrato Atual */}
+                    <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                      <div className="px-4 py-3 border-b border-slate-700 flex items-center gap-2">
+                        <span className="text-sky-400 text-base">🏥</span>
+                        <span className="font-mono text-xs font-bold text-slate-300 uppercase tracking-wider">Retrato Atual do Censo</span>
+                        <span className="ml-auto font-mono text-[10px] text-slate-500 italic">tempo real</span>
+                      </div>
+                      <div className="p-4 grid grid-cols-2 gap-3">
+                        {[
+                          { label: 'Total com SISREG', valor: relatorioGerado.retrato.totalComSisreg, cor: 'text-white border-slate-600' },
+                          { label: 'Pendentes', valor: relatorioGerado.retrato.totalPendente, cor: 'text-amber-400 border-amber-800' },
+                          { label: 'Devolvidos', valor: relatorioGerado.retrato.totalDevolvido, cor: 'text-rose-400 border-rose-800' },
+                          { label: 'Finalizados', valor: relatorioGerado.retrato.totalFinalizado, cor: 'text-emerald-400 border-emerald-800' }
+                        ].map(({ label, valor, cor }) => (
+                          <div key={label} className={`bg-slate-900 border rounded-xl p-4 flex flex-col ${cor}`}>
+                            <span className={`font-mono text-3xl font-black`}>{valor}</span>
+                            <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wide mt-1 leading-tight">{label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Botão Copiar para WhatsApp */}
+                    <button
+                      onClick={() => {
+                        const texto = gerarTextoWhatsApp();
+                        navigator.clipboard.writeText(texto)
+                          .then(() => toast.success('✅ Copiado para a área de transferência! Cole diretamente no WhatsApp.', { autoClose: 4000 }))
+                          .catch(() => toast.error('Falha ao copiar. Tente novamente.'));
+                      }}
+                      className="w-full bg-[#25D366] hover:bg-[#1ebe5b] text-white font-black py-4 rounded-xl transition-colors flex items-center justify-center gap-3 text-base shadow-lg shadow-green-900/40"
+                    >
+                      {/* Ícone WhatsApp */}
+                      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                      </svg>
+                      Copiar Relatório para WhatsApp
+                    </button>
+
+                    <p className="text-center font-mono text-[10px] text-slate-600">// cole o texto copiado diretamente em qualquer conversa do WhatsApp</p>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+      {/* ================================================= */}
 
     </div>
   );
