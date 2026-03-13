@@ -59,9 +59,9 @@ export default function PainelKanban() {
   const [filtroSetor, setFiltroSetor] = useState('');
   const [filtroKanban, setFiltroKanban] = useState('');
   const [filtroEspecialidade, setFiltroEspecialidade] = useState('');
-  const [filtroSisreg, setFiltroSisreg] = useState(false);
-  const [filtroComSisreg, setFiltroComSisreg] = useState(false);
+  const [filtrosSisreg, setFiltrosSisreg] = useState([]); // Filtro multiplo: 'SEM SISREG', 'PENDENTE', 'DEVOLVIDO', 'FINALIZADO'
   const [filtroNotas, setFiltroNotas] = useState(false);
+  const [filtroSisregDropdownAberto, setFiltroSisregDropdownAberto] = useState(false);
 
   const [filtroEmad, setFiltroEmad] = useState(false);
   const [filtroRetaguarda, setFiltroRetaguarda] = useState(false);
@@ -299,8 +299,13 @@ export default function PainelKanban() {
 
     let dadosFiltrados = dadosFiltradosBase.filter(p => {
       let valid = true;
-      if (filtroSisreg && !p.semSisreg) valid = false;
-      if (filtroComSisreg && !p.comSisreg) valid = false;
+
+      // Filtro multiplo de SISREG
+      if (filtrosSisreg.length > 0) {
+        const statusSisregEfetivo = p.sisreg_status || (p.numeroSisreg ? 'PENDENTE' : 'SEM SISREG');
+        if (!filtrosSisreg.includes(statusSisregEfetivo)) valid = false;
+      }
+
       if (filtroNotas && !p.temNotas) valid = false;
       if (filtroEmad && !p.perfil_emad?.active) valid = false;
       if (filtroRetaguarda && !p.perfil_retaguarda?.active) valid = false;
@@ -329,7 +334,7 @@ export default function PainelKanban() {
       setoresAgrupados: mapAgrupado,
       setoresDisponiveis: Array.from(listaSetores).sort()
     };
-  }, [pacientes, busca, filtroSetor, filtroEspecialidade, filtroKanban, filtroSisreg, filtroComSisreg, filtroNotas, filtroEmad, filtroRetaguarda, filtroAlta, filtroTrauma, filtroMedicacao, filtroPCP]);
+  }, [pacientes, busca, filtroSetor, filtroEspecialidade, filtroKanban, filtrosSisreg, filtroNotas, filtroEmad, filtroRetaguarda, filtroAlta, filtroTrauma, filtroMedicacao, filtroPCP]);
 
   // ===== EASTER EGG: ENF. THIAGO =====
   // Passo 1: Contagem individual por setor-foco
@@ -368,8 +373,7 @@ export default function PainelKanban() {
     setFiltroSetor('');
     setFiltroKanban('');
     setFiltroEspecialidade('');
-    setFiltroSisreg(false);
-    setFiltroComSisreg(false);
+    setFiltrosSisreg([]);
     setFiltroNotas(false);
     setFiltroEmad(false);
     setFiltroRetaguarda(false);
@@ -704,10 +708,10 @@ export default function PainelKanban() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto flex-wrap sm:flex-nowrap pb-1 sm:pb-0">
+        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto flex-wrap justify-end">
           {/* Central de Atividades Dropdown */}
           <div className="relative shrink-0">
-            <button disabled={activityLogs.length === 0} onClick={() => { setIsLogDropdownOpen(!isLogDropdownOpen); setHasRecentLog(false); }} className={`bg-slate-100 text-slate-700 w-10.5 h-10.5 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all relative text-lg sm:text-base ${activityLogs.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-200 cursor-pointer'}`}>
+            <button disabled={activityLogs.length === 0} onClick={() => { setIsLogDropdownOpen(!isLogDropdownOpen); setHasRecentLog(false); }} className={`bg-slate-100 text-slate-700 w-10 h-10 rounded-xl flex items-center justify-center transition-all relative ${activityLogs.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-200 cursor-pointer'}`}>
               <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
               {hasRecentLog && <span className="absolute -top-1 -right-1 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span></span>}
             </button>
@@ -747,8 +751,8 @@ export default function PainelKanban() {
             <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
             Inclusão SISREG (RPA)
           </button>
-          {/* Botão Relatório Gerencial SISREG */}
-          <button onClick={() => { setRelatorioGerado(null); setRelatorioFiltro({ dataInicial: '', dataFinal: '' }); setShowRelatorioSisreg(true); }} className="hidden lg:flex bg-white border border-blue-200 hover:bg-blue-50 text-blue-700 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors items-center gap-2 shrink-0">
+          {/* Botão Relatório Gerencial SISREG - visível em md+, em sm coloca full-width */}
+          <button onClick={() => { setRelatorioGerado(null); setRelatorioFiltro({ dataInicial: '', dataFinal: '' }); setShowRelatorioSisreg(true); }} className="flex sm:w-auto bg-white border border-blue-200 hover:bg-blue-50 text-blue-700 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors items-center gap-2 shrink-0">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
             Relatório SISREG
           </button>
@@ -802,10 +806,13 @@ export default function PainelKanban() {
 
       {/* Filtros */}
       <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200 grid grid-cols-2 md:grid-cols-6 gap-3 sm:gap-4">
+        {/* Paciente / Leito */}
         <div className="col-span-2 md:col-span-1 relative">
           <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Paciente / Leito</label>
           <input type="text" value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar..." className="w-full p-2 sm:p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50 focus:ring-2 focus:ring-sky-500 outline-none" />
         </div>
+
+        {/* Setor */}
         <div className="col-span-2 md:col-span-1">
           <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Setor</label>
           <select value={filtroSetor} onChange={e => setFiltroSetor(e.target.value)} className="w-full p-2 sm:p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50 outline-none">
@@ -813,6 +820,8 @@ export default function PainelKanban() {
             {setoresDisponiveis.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
+
+        {/* Status Kanban */}
         <div className="col-span-2 md:col-span-1">
           <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Status Kanban</label>
           <select value={filtroKanban} onChange={e => setFiltroKanban(e.target.value)} className="w-full p-2 sm:p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50 outline-none">
@@ -825,6 +834,56 @@ export default function PainelKanban() {
             <option value="preto">⚫ &gt; 30 dias de int.</option>
           </select>
         </div>
+
+        {/* Dropdown Filtro Múltiplo: Status SISREG */}
+        <div className="col-span-2 md:col-span-1 relative">
+          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Status SISREG</label>
+          <button
+            type="button"
+            onClick={() => setFiltroSisregDropdownAberto(prev => !prev)}
+            className={`w-full p-2 sm:p-2.5 border rounded-lg text-sm text-left flex items-center justify-between gap-2 transition-all outline-none ${
+              filtrosSisreg.length > 0
+                ? 'border-indigo-400 bg-indigo-50 text-indigo-700 font-semibold'
+                : 'border-slate-300 bg-slate-50 text-slate-500'
+            }`}
+          >
+            <span className="truncate">
+              {filtrosSisreg.length === 0 ? 'Todos os Status' : filtrosSisreg.join(', ')}
+            </span>
+            <svg className={`w-4 h-4 shrink-0 transition-transform ${filtroSisregDropdownAberto ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          {filtroSisregDropdownAberto && (
+            <div className="absolute z-50 top-full left-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-2 flex flex-col gap-1">
+              {['SEM SISREG', 'PENDENTE', 'DEVOLVIDO', 'FINALIZADO'].map(opcao => (
+                <label key={opcao} className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm text-slate-700 select-none">
+                  <input
+                    type="checkbox"
+                    checked={filtrosSisreg.includes(opcao)}
+                    onChange={() => {
+                      setFiltrosSisreg(prev =>
+                        prev.includes(opcao)
+                          ? prev.filter(f => f !== opcao)
+                          : [...prev, opcao]
+                      );
+                    }}
+                    className="w-4 h-4 accent-indigo-600 rounded"
+                  />
+                  <span className="font-medium">{opcao}</span>
+                </label>
+              ))}
+              {filtrosSisreg.length > 0 && (
+                <button
+                  onClick={() => setFiltrosSisreg([])}
+                  className="mt-1 w-full text-xs text-center text-rose-500 hover:text-rose-700 font-semibold py-1 border-t border-slate-100"
+                >
+                  Limpar seleção
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Especialidade Clínica + Botão Limpar */}
         <div className="col-span-2 md:col-span-2 flex items-end gap-2">
           <div className="flex-1">
             <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Especialidade Clínica</label>
@@ -844,29 +903,10 @@ export default function PainelKanban() {
           </button>
         </div>
 
-        {/* Toggles Interativos com visual de Switch */}
+        {/* Toggles Rápidos */}
         <div className="col-span-2 md:col-span-6 border-t pt-3 md:pt-4">
           <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Filtros Rápidos</label>
           <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-
-            <label className={`flex items-center gap-2 group transition-all ${contadoresRapidos?.sisreg === 0 ? 'opacity-40 grayscale cursor-not-allowed' : 'cursor-pointer'}`}>
-              <div className="relative">
-                <input type="checkbox" disabled={contadoresRapidos?.sisreg === 0} checked={filtroSisreg} onChange={() => { setFiltroSisreg(!filtroSisreg); if (!filtroSisreg) setFiltroComSisreg(false); }} className="sr-only" />
-                <div className={`block w-10 h-5 rounded-full transition-colors ${filtroSisreg ? 'bg-rose-500' : 'bg-slate-300'}`}></div>
-                <div className={`dot absolute left-1 top-0.5 bg-white w-4 h-4 rounded-full transition-transform ${filtroSisreg ? 'transform translate-x-4' : ''} shadow-sm`}></div>
-              </div>
-              <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-colors ${filtroSisreg ? 'text-rose-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Sem Sisreg <span className="text-[10px] ml-0.5 opacity-80">({contadoresRapidos?.sisreg || 0})</span></span>
-            </label>
-
-            <label className={`flex items-center gap-2 group transition-all ${contadoresRapidos?.comSisreg === 0 ? 'opacity-40 grayscale cursor-not-allowed' : 'cursor-pointer'}`}>
-              <div className="relative">
-                <input type="checkbox" disabled={contadoresRapidos?.comSisreg === 0} checked={filtroComSisreg} onChange={() => { setFiltroComSisreg(!filtroComSisreg); if (!filtroComSisreg) setFiltroSisreg(false); }} className="sr-only" />
-                <div className={`block w-10 h-5 rounded-full transition-colors ${filtroComSisreg ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
-                <div className={`dot absolute left-1 top-0.5 bg-white w-4 h-4 rounded-full transition-transform ${filtroComSisreg ? 'transform translate-x-4' : ''} shadow-sm`}></div>
-              </div>
-              <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-colors ${filtroComSisreg ? 'text-emerald-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Com Sisreg <span className="text-[10px] ml-0.5 opacity-80">({contadoresRapidos?.comSisreg || 0})</span></span>
-            </label>
-
             <label className={`flex items-center gap-2 group transition-all ${contadoresRapidos?.notas === 0 ? 'opacity-40 grayscale cursor-not-allowed' : 'cursor-pointer'}`}>
               <div className="relative">
                 <input type="checkbox" disabled={contadoresRapidos?.notas === 0} checked={filtroNotas} onChange={() => setFiltroNotas(!filtroNotas)} className="sr-only" />
@@ -875,7 +915,6 @@ export default function PainelKanban() {
               </div>
               <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-colors ${filtroNotas ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Com Notas <span className="text-[10px] ml-0.5 opacity-80">({contadoresRapidos?.notas || 0})</span></span>
             </label>
-
             <label className={`flex items-center gap-2 group border-l pl-4 sm:pl-6 border-slate-200 transition-all ${contadoresRapidos?.emad === 0 ? 'opacity-40 grayscale cursor-not-allowed' : 'cursor-pointer'}`}>
               <div className="relative">
                 <input type="checkbox" disabled={contadoresRapidos?.emad === 0} checked={filtroEmad} onChange={() => setFiltroEmad(!filtroEmad)} className="sr-only" />
@@ -884,7 +923,6 @@ export default function PainelKanban() {
               </div>
               <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-colors ${filtroEmad ? 'text-sky-600' : 'text-slate-400 group-hover:text-slate-600'}`}>EMAD <span className="text-[10px] ml-0.5 opacity-80">({contadoresRapidos?.emad || 0})</span></span>
             </label>
-
             <label className={`flex items-center gap-2 group transition-all ${contadoresRapidos?.retaguarda === 0 ? 'opacity-40 grayscale cursor-not-allowed' : 'cursor-pointer'}`}>
               <div className="relative">
                 <input type="checkbox" disabled={contadoresRapidos?.retaguarda === 0} checked={filtroRetaguarda} onChange={() => setFiltroRetaguarda(!filtroRetaguarda)} className="sr-only" />
@@ -893,7 +931,6 @@ export default function PainelKanban() {
               </div>
               <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-colors ${filtroRetaguarda ? 'text-purple-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Retaguarda <span className="text-[10px] ml-0.5 opacity-80">({contadoresRapidos?.retaguarda || 0})</span></span>
             </label>
-
             <label className={`flex items-center gap-2 group transition-all ${contadoresRapidos?.alta === 0 ? 'opacity-40 grayscale cursor-not-allowed' : 'cursor-pointer'}`}>
               <div className="relative">
                 <input type="checkbox" disabled={contadoresRapidos?.alta === 0} checked={filtroAlta} onChange={() => setFiltroAlta(!filtroAlta)} className="sr-only" />
@@ -902,7 +939,6 @@ export default function PainelKanban() {
               </div>
               <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-colors ${filtroAlta ? 'text-emerald-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Alta <span className="text-[10px] ml-0.5 opacity-80">({contadoresRapidos?.alta || 0})</span></span>
             </label>
-
             <label className={`flex items-center gap-2 group transition-all ${contadoresRapidos?.trauma === 0 ? 'opacity-40 grayscale cursor-not-allowed' : 'cursor-pointer'}`}>
               <div className="relative">
                 <input type="checkbox" disabled={contadoresRapidos?.trauma === 0} checked={filtroTrauma} onChange={() => setFiltroTrauma(!filtroTrauma)} className="sr-only" />
@@ -911,7 +947,6 @@ export default function PainelKanban() {
               </div>
               <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-colors ${filtroTrauma ? 'text-amber-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Trauma <span className="text-[10px] ml-0.5 opacity-80">({contadoresRapidos?.trauma || 0})</span></span>
             </label>
-
             <label className={`flex items-center gap-2 group border-l pl-4 sm:pl-6 border-slate-200 transition-all ${contadoresRapidos?.medicacao === 0 ? 'opacity-40 grayscale cursor-not-allowed' : 'cursor-pointer'}`}>
               <div className="relative">
                 <input type="checkbox" disabled={contadoresRapidos?.medicacao === 0} checked={filtroMedicacao} onChange={() => setFiltroMedicacao(!filtroMedicacao)} className="sr-only" />
@@ -920,8 +955,6 @@ export default function PainelKanban() {
               </div>
               <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-colors ${filtroMedicacao ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-600'}`}>Medicação <span className="text-[10px] ml-0.5 opacity-80">({contadoresRapidos?.medicacao || 0})</span></span>
             </label>
-
-            {/* Toggle PCP - separado por borda como destaque protocolar */}
             <label className={`flex items-center gap-2 group border-l pl-4 sm:pl-6 border-slate-200 transition-all ${contadoresRapidos?.pcp === 0 ? 'opacity-40 grayscale cursor-not-allowed' : 'cursor-pointer'}`}>
               <div className="relative">
                 <input type="checkbox" disabled={contadoresRapidos?.pcp === 0} checked={filtroPCP} onChange={() => setFiltroPCP(!filtroPCP)} className="sr-only" />
