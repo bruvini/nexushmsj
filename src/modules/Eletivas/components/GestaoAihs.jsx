@@ -591,18 +591,61 @@ export default function GestaoAihs() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 max-w-6xl mx-auto w-full">
-        {grupos.map((grupo, index) => {
-          const solicitacoesDoGrupo = solicitacoesFiltradas.filter((sol) => {
-            if (grupo.titulo === 'Aguarda Número do SISREG') {
-              return sol.status === 'AGUARDA NÚMERO SISREG' || (sol.status === 'VALIDAÇÃO SISREG' && !sol.numeroSisreg);
-            }
-            if (grupo.titulo === 'Validação SISREG (Fila de Entrada)') {
-              return sol.status === 'VALIDAÇÃO SISREG' && !!sol.numeroSisreg;
-            }
-            return grupo.statusOriginais.includes(sol.status);
-          });
-          const isOpen = grupoAberto === grupo.titulo;
+      {/* Cálculo de busca ativa e total de resultados para controle de UX */}
+      {(() => {
+        const isBuscaAtiva = busca.trim().length > 0;
+        const totalResultados = solicitacoesFiltradas.length;
+
+        // Empty state: busca ativa sem nenhum resultado
+        if (isBuscaAtiva && totalResultados === 0) {
+          return (
+            <div className="flex flex-col items-center justify-center py-16 text-center max-w-lg mx-auto">
+              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <h3 className="text-base font-bold text-nexus-text mb-2">Nenhum resultado encontrado</h3>
+              <p className="text-sm text-nexus-text/60 leading-relaxed">
+                Não encontramos nenhum resultado para esta pesquisa. Verifique se o que foi digitado está correto.
+                Caso a solicitação que você procura ainda não esteja no sistema, você pode registrá-la manualmente
+                na aba{' '}
+                <span className="font-semibold text-nexus-primary">&apos;Cadastro de Solicitações&apos;</span>.
+              </p>
+            </div>
+          );
+        }
+
+        // Renderização normal dos acordeões (com filtro e auto-expansão no modo busca)
+        const gruposVisiveis = isBuscaAtiva
+          ? grupos.filter((grupo) => {
+              const solsDoGrupo = solicitacoesFiltradas.filter((sol) => {
+                if (grupo.titulo === 'Aguarda Número do SISREG') {
+                  return sol.status === 'AGUARDA NÚMERO SISREG' || (sol.status === 'VALIDAÇÃO SISREG' && !sol.numeroSisreg);
+                }
+                if (grupo.titulo === 'Validação SISREG (Fila de Entrada)') {
+                  return sol.status === 'VALIDAÇÃO SISREG' && !!sol.numeroSisreg;
+                }
+                return grupo.statusOriginais.includes(sol.status);
+              });
+              return solsDoGrupo.length > 0;
+            })
+          : grupos;
+
+        return (
+          <div className="flex flex-col gap-3 max-w-6xl mx-auto w-full">
+            {gruposVisiveis.map((grupo, index) => {
+              const solicitacoesDoGrupo = solicitacoesFiltradas.filter((sol) => {
+                if (grupo.titulo === 'Aguarda Número do SISREG') {
+                  return sol.status === 'AGUARDA NÚMERO SISREG' || (sol.status === 'VALIDAÇÃO SISREG' && !sol.numeroSisreg);
+                }
+                if (grupo.titulo === 'Validação SISREG (Fila de Entrada)') {
+                  return sol.status === 'VALIDAÇÃO SISREG' && !!sol.numeroSisreg;
+                }
+                return grupo.statusOriginais.includes(sol.status);
+              });
+              // No modo busca: força acordeão aberto. No modo normal: usa estado controlado
+              const isOpen = isBuscaAtiva ? true : grupoAberto === grupo.titulo;
 
           // As cores semânticas foram mantidas pois são essenciais para indicar a urgência/status do acordeão
           const bgColors = {
@@ -858,8 +901,10 @@ export default function GestaoAihs() {
               )}
             </div>
           );
-        })}
-      </div>
+            })}
+          </div>
+        );
+      })()}
 
       {sidebarAberto && (
         <div
