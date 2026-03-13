@@ -1282,42 +1282,66 @@ export default function GestaoAihs() {
                     </div>
                   )}
 
-                  {decisao === 'DELIBERAÇÃO 66/CIB/2018' && (
-                    <div className="animate-[fadeIn_0.2s_ease-in-out] grid grid-cols-1 gap-3">
-                      <div>
-                        <label className="block text-sm font-bold text-purple-700 mb-1">
-                          Nº Contrarreferência (Olostech)
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={contraReferencia}
-                          onChange={(e) => setContraReferencia(e.target.value)}
-                          className="w-full bg-white border border-purple-300 text-nexus-text rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 uppercase"
-                          placeholder="Ex: 12345"
-                        />
+                  {decisao === 'DELIBERAÇÃO 66/CIB/2018' && (() => {
+                    // Regra de negócio: verifica se o paciente reside em Joinville
+                    // para determinar o fluxo de contrarreferência adequado.
+                    const isJoinville = dadosPacienteAtivo?.cidade?.toUpperCase().trim() === 'JOINVILLE';
+
+                    if (isJoinville) {
+                      // Paciente de Joinville: fluxo padrão via sistema Olostech
+                      return (
+                        <div className="animate-[fadeIn_0.2s_ease-in-out] grid grid-cols-1 gap-3">
+                          <div>
+                            <label className="block text-sm font-bold text-purple-700 mb-1">
+                              Nº Contrarreferência (Olostech)
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={contraReferencia}
+                              onChange={(e) => setContraReferencia(e.target.value)}
+                              className="w-full bg-white border border-purple-300 text-nexus-text rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 uppercase"
+                              placeholder="Ex: 12345"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-base font-bold text-purple-700 mb-1">
+                              Unidade de Referência
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              list="lista-ubsf"
+                              placeholder="Digite para buscar a unidade..."
+                              value={unidadeReferencia}
+                              onChange={(e) => setUnidadeReferencia(e.target.value)}
+                              className="w-full bg-white border border-purple-300 text-nexus-text rounded-lg px-3 py-2 text-base focus:ring-2 focus:ring-purple-500 uppercase"
+                            />
+                            <datalist id="lista-ubsf">
+                              {ubsfJoinville.map((ubsf) => (
+                                <option key={ubsf} value={ubsf}>{ubsf}</option>
+                              ))}
+                            </datalist>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Paciente de outro município: fluxo via malote/e-mail institucional
+                    const nomeCidade = dadosPacienteAtivo?.cidade || 'informado no cadastro';
+                    return (
+                      <div className="animate-[fadeIn_0.2s_ease-in-out] bg-blue-50 border-l-4 border-blue-500 p-4 rounded text-blue-800">
+                        <div className="flex items-start gap-3">
+                          <svg className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <p className="text-sm font-medium leading-relaxed">
+                            Para realizar a contrarreferência deste paciente para o município de origem (<span className="font-bold uppercase">{nomeCidade}</span>), faça a devolução via <span className="font-bold">e-mail ou malote institucional</span>.
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-base font-bold text-purple-700 mb-1">
-                          Unidade de Referência
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          list="lista-ubsf"
-                          placeholder="Digite para buscar a unidade..."
-                          value={unidadeReferencia}
-                          onChange={(e) => setUnidadeReferencia(e.target.value)}
-                          className="w-full bg-white border border-purple-300 text-nexus-text rounded-lg px-3 py-2 text-base focus:ring-2 focus:ring-purple-500 uppercase"
-                        />
-                        <datalist id="lista-ubsf">
-                          {ubsfJoinville.map((ubsf) => (
-                            <option key={ubsf} value={ubsf}>{ubsf}</option>
-                          ))}
-                        </datalist>
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Campos Dinâmicos: Mapa SES/SC */}
                   {decisao === 'NEGADO SES/SC' && (
