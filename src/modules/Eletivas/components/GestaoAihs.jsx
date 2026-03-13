@@ -722,16 +722,38 @@ export default function GestaoAihs() {
                 <div>
                   <table className="w-full table-fixed text-left text-sm text-nexus-text">
                     <thead className="bg-slate-50 text-sm text-nexus-text/70 font-medium border-b border-nexus-border">
-                      <tr>
-                        <th className="px-6 py-3 w-[35%] lg:w-[40%]">Nome Completo / CNS</th>
-                        {grupo.titulo !== 'Aguarda Número do SISREG' && (
-                          <th className="px-6 py-3 w-[15%]">SISREG</th>
-                        )}
-                        <th className="px-6 py-3 text-center w-[15%]">Prioridade</th>
-                        <th className="px-6 py-3 w-[15%]">Solicitado Em</th>
-                        <th className="px-6 py-3 w-[25%] lg:w-[20%]">Especialidade / Médico</th>
-                        <th className="px-6 py-3 text-center w-28">Ações</th>
-                      </tr>
+                      {grupo.titulo === 'Devoluções por Divergência / Duplicidade' ? (
+                        /* Cabeçalho contextual: exibe metadados da devolução */
+                        <tr>
+                          <th className="px-6 py-3 w-[28%]">Paciente / Procedimento</th>
+                          <th className="px-6 py-3 w-[12%] text-center">Tipo</th>
+                          <th className="px-6 py-3 w-[12%]">SISREG Original</th>
+                          <th className="px-6 py-3 w-[12%]">Data Original</th>
+                          <th className="px-6 py-3 w-[28%]">Detalhes da Devolução</th>
+                          <th className="px-6 py-3 text-center w-20">Ações</th>
+                        </tr>
+                      ) : grupo.titulo === 'Deliberação 66/CIB/2018' ? (
+                        /* Cabeçalho contextual: exibe metadados da contrarreferência (Olostech) */
+                        <tr>
+                          <th className="px-6 py-3 w-[35%] lg:w-[40%]">Nome Completo / CNS</th>
+                          <th className="px-6 py-3 w-[15%]">Cidade</th>
+                          <th className="px-6 py-3 w-[15%]">Nº Olostech</th>
+                          <th className="px-6 py-3 w-[25%] lg:w-[20%]">Unidade de Referência</th>
+                          <th className="px-6 py-3 text-center w-28">Ações</th>
+                        </tr>
+                      ) : (
+                        /* Cabeçalho padrão para todos os outros grupos */
+                        <tr>
+                          <th className="px-6 py-3 w-[35%] lg:w-[40%]">Nome Completo / CNS</th>
+                          {grupo.titulo !== 'Aguarda Número do SISREG' && (
+                            <th className="px-6 py-3 w-[15%]">SISREG</th>
+                          )}
+                          <th className="px-6 py-3 text-center w-[15%]">Prioridade</th>
+                          <th className="px-6 py-3 w-[15%]">Solicitado Em</th>
+                          <th className="px-6 py-3 w-[25%] lg:w-[20%]">Especialidade / Médico</th>
+                          <th className="px-6 py-3 text-center w-28">Ações</th>
+                        </tr>
+                      )}
                     </thead>
                     <tbody className="divide-y divide-nexus-border/50">
                       {solicitacoesDoGrupo.length === 0 ? (
@@ -814,44 +836,103 @@ export default function GestaoAihs() {
                                 );
                               })()}
                             </td>
-                            {grupo.titulo !== 'Aguarda Número do SISREG' && (
-                              <td className="px-6 py-3 font-mono font-bold text-nexus-text">
-                                {sol.numeroSisreg || (
-                                  <span className="text-nexus-text/40 font-medium italic text-sm">
-                                    Pendente
-                                  </span>
+                            {grupo.titulo === 'Devoluções por Divergência / Duplicidade' ? (
+                              /* Células contextuais para o grupo de devoluções */
+                              <>
+                                {/* Coluna 2: Tipo (Badge) */}
+                                <td className="px-6 py-3 text-center align-middle">
+                                  {sol.status === 'DUPLICIDADE' ? (
+                                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200 whitespace-nowrap">
+                                      DUPLICIDADE
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-red-100 text-red-700 border border-red-200 whitespace-nowrap">
+                                      DIVERGÊNCIA
+                                    </span>
+                                  )}
+                                </td>
+                                {/* Coluna 3: SISREG Original */}
+                                <td className="px-6 py-3 font-mono text-nexus-text/70">
+                                  {sol.sisregOriginal || (
+                                    <span className="text-nexus-text/30 italic">—</span>
+                                  )}
+                                </td>
+                                {/* Coluna 4: Data Original */}
+                                <td className="px-6 py-3 text-nexus-text/70">
+                                  {sol.dataSisregOriginal ? formatarData(sol.dataSisregOriginal) : (
+                                    <span className="text-nexus-text/30 italic">—</span>
+                                  )}
+                                </td>
+                                {/* Coluna 5: Detalhes da Divergência */}
+                                <td className="px-6 py-3 text-sm text-nexus-text/70 break-words whitespace-normal">
+                                  {sol.motivoDivergencia || (
+                                    <span className="text-nexus-text/30 italic">Sem detalhes registrados</span>
+                                  )}
+                                </td>
+                              </>
+                            ) : grupo.titulo === 'Deliberação 66/CIB/2018' ? (
+                              /* Células contextuais para o grupo Deliberação 66 */
+                              <>
+                                {/* Coluna 2: Cidade */}
+                                <td className="px-6 py-3 font-medium text-nexus-text/80 uppercase">
+                                  {sol.cidade || (
+                                    <span className="text-nexus-text/30 italic normal-case">—</span>
+                                  )}
+                                </td>
+                                {/* Coluna 3: Nº Olostech */}
+                                <td className="px-6 py-3 font-mono font-bold text-nexus-text">
+                                  {sol.contraReferencia || (
+                                    <span className="text-nexus-text/30 italic font-medium normal-case sm:text-sm">—</span>
+                                  )}
+                                </td>
+                                {/* Coluna 4: Unidade de Referência */}
+                                <td className="px-6 py-3 font-medium text-nexus-text/80 uppercase">
+                                  {sol.unidadeReferencia || (
+                                    <span className="text-nexus-text/30 italic normal-case">—</span>
+                                  )}
+                                </td>
+                              </>
+                            ) : (
+                              /* Células padrão para os demais grupos */
+                              <>
+                                {grupo.titulo !== 'Aguarda Número do SISREG' && (
+                                  <td className="px-6 py-3 font-mono font-bold text-nexus-text">
+                                    {sol.numeroSisreg || (
+                                      <span className="text-nexus-text/40 font-medium italic text-sm">
+                                        Pendente
+                                      </span>
+                                    )}
+                                  </td>
                                 )}
-                              </td>
+                                <td className="px-6 py-3 text-center align-middle">
+                                  {(() => {
+                                    const prio = sol.prioridade || 'NENHUMA';
+                                    let corBadge = 'bg-slate-100 text-slate-500 border-slate-200';
+                                    if (prio === 'ONCOLOGIA' || prio === 'JUDICIAL') {
+                                      corBadge = 'bg-red-100 text-red-700 border-red-200 animate-pulse font-bold';
+                                    } else if (prio === 'CARTA DE PRIORIDADE') {
+                                      corBadge = 'bg-amber-100 text-amber-700 border-amber-200 font-bold';
+                                    }
+                                    return (
+                                      <span className={`text-[10px] px-2 py-0.5 rounded-full border ${corBadge} shrink-0 whitespace-nowrap`}>
+                                        {prio === 'CARTA DE PRIORIDADE' ? 'CARTA' : prio}
+                                      </span>
+                                    );
+                                  })()}
+                                </td>
+                                <td className="px-6 py-3 break-words whitespace-normal text-nexus-text/70">
+                                  {formatarData(sol.dataSolicitacao)}
+                                </td>
+                                <td className="px-6 py-3 break-words whitespace-normal">
+                                  <div className="font-medium text-nexus-text line-clamp-2">
+                                    {sol.especialidade}
+                                  </div>
+                                  <div className="text-[11px] text-nexus-text/60 line-clamp-2 mt-0.5">
+                                    {sol.medico}
+                                  </div>
+                                </td>
+                              </>
                             )}
-                            <td className="px-6 py-3 text-center align-middle">
-                              {(() => {
-                                const prio = sol.prioridade || 'NENHUMA';
-                                let corBadge = 'bg-slate-100 text-slate-500 border-slate-200';
-
-                                if (prio === 'ONCOLOGIA' || prio === 'JUDICIAL') {
-                                  corBadge = 'bg-red-100 text-red-700 border-red-200 animate-pulse font-bold';
-                                } else if (prio === 'CARTA DE PRIORIDADE') {
-                                  corBadge = 'bg-amber-100 text-amber-700 border-amber-200 font-bold';
-                                }
-
-                                return (
-                                  <span className={`text-[10px] px-2 py-0.5 rounded-full border ${corBadge} shrink-0 whitespace-nowrap`}>
-                                    {prio === 'CARTA DE PRIORIDADE' ? 'CARTA' : prio}
-                                  </span>
-                                );
-                              })()}
-                            </td>
-                            <td className="px-6 py-3 break-words whitespace-normal text-nexus-text/70">
-                              {formatarData(sol.dataSolicitacao)}
-                            </td>
-                            <td className="px-6 py-3 break-words whitespace-normal">
-                              <div className="font-medium text-nexus-text line-clamp-2">
-                                {sol.especialidade}
-                              </div>
-                              <div className="text-[11px] text-nexus-text/60 line-clamp-2 mt-0.5">
-                                {sol.medico}
-                              </div>
-                            </td>
                             <td className="px-6 py-3">
                               <div className="flex items-center justify-end gap-1.5">
                                 <button
