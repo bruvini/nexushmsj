@@ -21,8 +21,7 @@ export default function GestaoAihs() {
   const [todasSolicitacoes, setTodasSolicitacoes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [busca, setBusca] = useState('');
-
-  // ESTADOS DO MODAL DE DELEÇÃO
+  const [pacientesMap, setPacientesMap] = useState({}); // Cache para a cidade dos pacientes
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [solicitacaoParaDeletar, setSolicitacaoParaDeletar] = useState(null);
 
@@ -55,6 +54,15 @@ export default function GestaoAihs() {
 
   // 1. Busca TODAS as solicitações em Tempo Real (Ativas, Concluídas e Negadas)
   useEffect(() => {
+    // 1.1 Listener de Pacientes para mapear a cidade localmente de forma rápida
+    const unsubPacientes = onSnapshot(collection(db, 'nexus_eletivas_pacientes'), (snap) => {
+      const pMap = {};
+      snap.forEach((doc) => {
+        pMap[doc.id] = doc.data();
+      });
+      setPacientesMap(pMap);
+    });
+
     setBusca('');
     const q = query(collection(db, 'nexus_eletivas_solicitacoes'));
     const unsubscribe = onSnapshot(q, async (querySnapshot) => {
@@ -92,7 +100,10 @@ export default function GestaoAihs() {
       );
       setTodasSolicitacoes(lista);
     });
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      unsubPacientes();
+    };
   }, []);
 
   const solicitacoesFiltradas = todasSolicitacoes.filter((sol) => {
@@ -741,6 +752,14 @@ export default function GestaoAihs() {
                           <th className="px-6 py-3 w-[25%] lg:w-[20%]">Unidade de Referência</th>
                           <th className="px-6 py-3 text-center w-28">Ações</th>
                         </tr>
+                      ) : grupo.titulo === 'Negadas (SES/SC)' ? (
+                        /* Cabeçalho contextual: exibe informações da negativa */
+                        <tr>
+                          <th className="px-6 py-3 w-[35%] lg:w-[40%]">Nome Completo / CNS</th>
+                          <th className="px-6 py-3 w-[15%]">Data da Negativa</th>
+                          <th className="px-6 py-3 w-[40%] text-left">Motivo da Negativa</th>
+                          <th className="px-6 py-3 text-center w-28">Ações</th>
+                        </tr>
                       ) : (
                         /* Cabeçalho padrão para todos os outros grupos */
                         <tr>
@@ -873,9 +892,9 @@ export default function GestaoAihs() {
                             ) : grupo.titulo === 'Deliberação 66/CIB/2018' ? (
                               /* Células contextuais para o grupo Deliberação 66 */
                               <>
-                                {/* Coluna 2: Cidade */}
+                                {/* Coluna 2: Cidade (Buscada em tempo real no map de pacientes) */}
                                 <td className="px-6 py-3 font-medium text-nexus-text/80 uppercase">
-                                  {sol.cidade || (
+                                  {pacientesMap[sol.pacienteId]?.cidade || (
                                     <span className="text-nexus-text/30 italic normal-case">—</span>
                                   )}
                                 </td>
@@ -890,6 +909,35 @@ export default function GestaoAihs() {
                                   {sol.unidadeReferencia || (
                                     <span className="text-nexus-text/30 italic normal-case">—</span>
                                   )}
+                                </td>
+                              </>
+                            ) : grupo.titulo === 'Negadas (SES/SC)' ? (
+                              /* Células contextuais para o grupo Negadas */
+                              <>
+                                {/* Coluna 2: Data da Negativa */}
+                                <td className="px-6 py-3 text-nexus-text/70 whitespace-nowrap">
+                                  {(() => {
+                                    // Procura no array historico pela entrada de status 'NEGADO SES/SC'
+                                    const arrayHist = sol.historico || [];
+                                    const logNegativa = arrayHist.slice().reverse().find(h => h.para === 'NEGADO SES/SC');
+                                    if (logNegativa && logNegativa.dataHora) {
+                                      // dataHora já costuma vir em um formato amigável ou string. Vamos exibir limpo.
+                                      const partes = logNegativa.dataHora.split(' ');
+                                      return <span className="font-medium">{partes[0]}</span>;
+                                    }
+                                    return <span className="text-nexus-text/30 italic">—</span>;
+                                  })()}
+                                </td>
+                                {/* Coluna 3: Motivo da Negativa */}
+                                <td className="px-6 py-3">
+                                  <div
+                                    className="text-sm text-nexus-text/70 italic line-clamp-2 md:line-clamp-3 overflow-hidden text-ellipsis bg-slate-50 border border-slate-100 p-2 rounded-lg"
+                                    title={sol.motivoNegativaSes || 'Sem justificativa registrada'}
+                                  >
+                                    {sol.motivoNegativaSes || (
+                                      <span className="text-nexus-text/40">Sem justificativa registrada</span>
+                                    )}
+                                  </div>
                                 </td>
                               </>
                             ) : (
